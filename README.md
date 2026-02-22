@@ -66,6 +66,9 @@ Commands:
 ./gradlew :app:lint
 ```
 
+or just download the latest official release on [Repo Releases](https://github.com/isotjs/todosian-app/releases)
+
+
 ## Release Signing (optional)
 
 `app/build.gradle.kts` supports release signing via either environment variables or a local `keystore.properties` file:
