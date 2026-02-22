@@ -10,7 +10,10 @@
     <!-- Home -->
     <string name="home_title">Todosian</string>
     <string name="home_daily_focus_title">Daily focus</string>
-    <string name="home_daily_focus_subtitle">%1$d tasks remaining today</string>
+    <plurals name="home_daily_focus_subtitle">
+        <item quantity="one">%1$d task remaining today</item>
+        <item quantity="other">%1$d tasks remaining today</item>
+    </plurals>
     <string name="home_empty_title">No categories yet</string>
     <string name="home_empty_subtitle">Create a category or choose a different folder.</string>
     <string name="home_create_category">Create category</string>
@@ -123,7 +126,10 @@
     <string name="settings_status_permission_lost">Permission lost</string>
     <string name="settings_status_unknown">Unknown</string>
     <string name="settings_status_empty">No .md files found</string>
-    <string name="settings_status_ok">%1$d markdown files</string>
+    <plurals name="settings_status_ok">
+        <item quantity="one">%1$d markdown file</item>
+        <item quantity="other">%1$d markdown files</item>
+    </plurals>
 
     <string name="settings_appearance">Appearance</string>
     <string name="settings_theme_mode">Theme</string>

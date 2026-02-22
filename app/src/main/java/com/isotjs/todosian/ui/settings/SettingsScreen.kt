@@ -53,6 +53,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -255,10 +256,7 @@ fun SettingsScreen(
                         !storageState.hasPersistedPermission -> stringResource(R.string.settings_status_permission_lost)
                         mdCount == null -> stringResource(R.string.settings_status_unknown)
                         mdCount == 0 -> stringResource(R.string.settings_status_empty)
-                        else -> stringResource(
-                            R.string.settings_status_ok,
-                            mdCount,
-                        )
+                        else -> pluralStringResource(R.plurals.settings_status_ok, mdCount, mdCount)
                     }
 
                     ListItem(
