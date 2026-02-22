@@ -4,11 +4,13 @@ Todosian is an Android app for managing todo lists stored as Markdown files insi
 
 It is designed to work with a folder that is synced to your phone (for example via Syncthing). The app reads and writes the Markdown files directly; it does not import your data into a database.
 
-**Disclaimer:** Todosian modifies your Markdown files directly. The repository owner assumes no liability for any unintended data loss or file corruption. Please ensure you have a reliable backup of your Obsidian vault (e.g., via Git, Syncthing file versioning, or Obsidian Sync) before using this application.
-
 ## AI Usage & Disclaimer
 
 This application was heavily co-developed with an AI agent to test their ability to code an Native Kotlin app from scratch(as they did). While the codebase has been strictly audited for performance, privacy, and security standards, it is provided "as is" without warranties of any kind. 
+
+**Disclaimer:** Todosian modifies your Markdown files directly. The repository owner assumes no liability for any unintended data loss or file corruption. Please ensure you have a reliable backup of your Obsidian vault (e.g., via Git, Syncthing file versioning, or Obsidian Sync) before using this application.
+
+**Trademark Disclaimer:** Todosian is an independent, open-source application and is not affiliated with, endorsed by, or sponsored by Obsidian or the developers of the Obsidian Tasks plugin.
 
 ## Features
 
