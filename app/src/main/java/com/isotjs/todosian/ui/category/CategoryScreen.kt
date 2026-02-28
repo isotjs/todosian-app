@@ -39,6 +39,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -130,6 +131,7 @@ fun CategoryScreen(
     var sheetMode by remember { mutableStateOf<TodoSheetMode?>(null) }
     var sheetText by remember { mutableStateOf("") }
     var sheetMeta by remember { mutableStateOf(MarkdownParser.TasksMeta()) }
+    var deleteTodoTarget by remember { mutableStateOf<Todo?>(null) }
 
     if (sheetMode != null) {
         ModalBottomSheet(
@@ -230,6 +232,32 @@ fun CategoryScreen(
                 }
             }
         }
+    }
+
+    if (deleteTodoTarget != null) {
+        AlertDialog(
+            onDismissRequest = { deleteTodoTarget = null },
+            title = { Text(text = stringResource(R.string.category_delete_todo_title)) },
+            text = { Text(text = stringResource(R.string.category_delete_todo_body)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val target = deleteTodoTarget
+                        if (target != null) {
+                            viewModel.deleteTodo(target)
+                        }
+                        deleteTodoTarget = null
+                    },
+                ) {
+                    Text(text = stringResource(R.string.category_delete_todo_confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { deleteTodoTarget = null }) {
+                    Text(text = stringResource(R.string.action_cancel))
+                }
+            },
+        )
     }
 
     Scaffold(
@@ -335,7 +363,7 @@ fun CategoryScreen(
                                 recurrence = todo.recurrence,
                             )
                         },
-                        onDelete = { viewModel.deleteTodo(todo) },
+                        onRequestDelete = { deleteTodoTarget = todo },
                         modifier = Modifier.animateItem(
                             fadeInSpec = tween(durationMillis = 180),
                             placementSpec = spring(
@@ -374,7 +402,7 @@ fun CategoryScreen(
                                 recurrence = todo.recurrence,
                             )
                         },
-                        onDelete = { viewModel.deleteTodo(todo) },
+                        onRequestDelete = { deleteTodoTarget = todo },
                         modifier = Modifier.animateItem(
                             fadeInSpec = tween(durationMillis = 180),
                             placementSpec = spring(
@@ -411,7 +439,7 @@ fun CategoryScreen(
                                 recurrence = todo.recurrence,
                             )
                         },
-                        onDelete = { viewModel.deleteTodo(todo) },
+                        onRequestDelete = { deleteTodoTarget = todo },
                         modifier = Modifier.animateItem(
                             fadeInSpec = tween(durationMillis = 180),
                             placementSpec = spring(
@@ -437,14 +465,14 @@ private fun TodoRow(
     useEmojisInUi: Boolean,
     onToggle: () -> Unit,
     onEdit: () -> Unit,
-    onDelete: () -> Unit,
+    onRequestDelete: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
             if (value == SwipeToDismissBoxValue.EndToStart) {
-                onDelete()
-                true
+                onRequestDelete()
+                false
             } else {
                 false
             }

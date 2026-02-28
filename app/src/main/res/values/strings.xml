@@ -2,10 +2,12 @@
     <string name="app_name">Todosian</string>
 
     <!-- Onboarding -->
-    <string name="onboarding_title">Todosian</string>
-    <string name="onboarding_subtitle">Select your Obsidian todo folder to manage your tasks.</string>
+    <string name="onboarding_title">Connect your task folder</string>
+    <string name="onboarding_subtitle">Pick the Obsidian folder that stores your markdown task files.</string>
     <string name="onboarding_choose_folder">Choose folder</string>
-    <string name="onboarding_permission_hint">Storage permission required</string>
+    <string name="onboarding_permission_hint">Todosian only accesses the folder you select. You can change this anytime in Settings.</string>
+    <string name="onboarding_requirements">The selected folder must include at least one .md file.</string>
+    <string name="onboarding_validating">Checking folder…</string>
 
     <!-- Home -->
     <string name="home_title">Todosian</string>
@@ -38,6 +40,9 @@
     <string name="category_add_todo_hint">What needs to be done?</string>
     <string name="category_edit_todo_title">Edit todo</string>
     <string name="category_edit_todo_hint">Todo text</string>
+    <string name="category_delete_todo_title">Delete todo?</string>
+    <string name="category_delete_todo_body">This action removes the todo from the markdown file.</string>
+    <string name="category_delete_todo_confirm">Delete</string>
 
     <string name="category_tasks_metadata_title">Tasks metadata</string>
     <string name="category_tasks_created">➕ Created</string>
