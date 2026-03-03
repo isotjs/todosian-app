@@ -26,3 +26,13 @@
 # Jetpack Compose / Navigation / Coroutines are largely handled by consumer rules,
 # but keep runtime-visible annotations to avoid edge cases with reflection-based APIs.
 -keepattributes RuntimeVisibleAnnotations,RuntimeVisibleParameterAnnotations
+
+# Room database rules (required for WorkManager which uses Room internally)
+-keep class * extends androidx.room.RoomDatabase
+-keep @androidx.room.Entity class *
+-dontwarn androidx.room.paging.**
+
+# Keep Room generated _Impl classes (needed for WorkManager's internal database)
+-keep class androidx.work.impl.WorkDatabase_Impl { *; }
+-keep class * extends androidx.room.RoomDatabase { *; }
+-keep class * implements androidx.room.RoomDatabase$Callback { *; }
