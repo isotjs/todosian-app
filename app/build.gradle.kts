@@ -18,8 +18,8 @@ android {
         applicationId = "com.isotjs.todosian"
         minSdk = 30
         targetSdk = 36
-        versionCode = 2
-        versionName = "1.2"
+        versionCode = 3
+        versionName = "1.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -84,6 +84,7 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.documentfile)
     implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.androidx.work.runtime.ktx)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)

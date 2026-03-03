@@ -6,7 +6,6 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
 
 interface AppSettingsRepository {
     val settings: Flow<AppSettings>
@@ -17,6 +16,7 @@ interface AppSettingsRepository {
     fun setShowDailyFocus(enabled: Boolean)
     fun setCategorySort(sort: CategorySort)
     fun setTodoGrouping(grouping: TodoGrouping)
+    fun setTodoSort(sort: TodoSort)
 
     fun setEnableTasksPluginSupport(enabled: Boolean)
 
@@ -66,6 +66,10 @@ class SharedPrefsAppSettingsRepository(
         prefs.edit().putString(KEY_TODO_GROUPING, grouping.name).apply()
     }
 
+    override fun setTodoSort(sort: TodoSort) {
+        prefs.edit().putString(KEY_TODO_SORT, sort.name).apply()
+    }
+
     override fun setEnableTasksPluginSupport(enabled: Boolean) {
         prefs.edit().putBoolean(KEY_TASKS_PLUGIN, enabled).apply()
     }
@@ -87,12 +91,17 @@ class SharedPrefsAppSettingsRepository(
             runCatching { TodoGrouping.valueOf(raw) }.getOrNull()
         } ?: TodoGrouping.GROUPED
 
+        val todoSort = prefs.getString(KEY_TODO_SORT, null)?.let { raw ->
+            runCatching { TodoSort.valueOf(raw) }.getOrNull()
+        } ?: TodoSort.FILE_ORDER
+
         return AppSettings(
             themeMode = themeMode,
             dynamicColorEnabled = prefs.getBoolean(KEY_DYNAMIC_COLOR, true),
             showDailyFocus = prefs.getBoolean(KEY_SHOW_DAILY_FOCUS, true),
             categorySort = categorySort,
             todoGrouping = todoGrouping,
+            todoSort = todoSort,
             enableTasksPluginSupport = prefs.getBoolean(KEY_TASKS_PLUGIN, false),
             tasksPluginUseEmojisInUi = prefs.getBoolean(KEY_TASKS_PLUGIN_UI_EMOJIS, false),
         )
@@ -106,6 +115,7 @@ class SharedPrefsAppSettingsRepository(
         private const val KEY_SHOW_DAILY_FOCUS = "show_daily_focus"
         private const val KEY_CATEGORY_SORT = "category_sort"
         private const val KEY_TODO_GROUPING = "todo_grouping"
+        private const val KEY_TODO_SORT = "todo_sort"
 
         private const val KEY_TASKS_PLUGIN = "tasks_plugin_support"
 

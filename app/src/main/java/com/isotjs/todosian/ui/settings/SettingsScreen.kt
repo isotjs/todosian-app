@@ -1,6 +1,8 @@
 package com.isotjs.todosian.ui.settings
 
+import android.Manifest
 import android.os.Build
+import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -57,6 +59,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -69,6 +72,8 @@ import com.isotjs.todosian.data.settings.AppSettingsRepository
 import com.isotjs.todosian.data.settings.CategorySort
 import com.isotjs.todosian.data.settings.ThemeMode
 import com.isotjs.todosian.data.settings.TodoGrouping
+import com.isotjs.todosian.data.settings.TodoSort
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.collectLatest
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -91,6 +96,20 @@ fun SettingsScreen(
 
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        if (!granted) {
+            scope.launch {
+                snackbarHostState.showSnackbar(
+                    message = context.getString(R.string.settings_notification_permission_denied),
+                )
+            }
+        }
+    }
+
     LaunchedEffect(viewModel) {
         viewModel.events.collectLatest { event ->
             when (event) {
@@ -110,6 +129,7 @@ fun SettingsScreen(
     var showThemeDialog by remember { mutableStateOf(false) }
     var showSortDialog by remember { mutableStateOf(false) }
     var showGroupingDialog by remember { mutableStateOf(false) }
+    var showTodoSortDialog by remember { mutableStateOf(false) }
     var showResetDialog by remember { mutableStateOf(false) }
 
     if (showThemeDialog) {
@@ -149,6 +169,21 @@ fun SettingsScreen(
             selected = settings.todoGrouping,
             onSelected = { appSettingsRepository.setTodoGrouping(it) },
             onDismiss = { showGroupingDialog = false },
+        )
+    }
+
+    if (showTodoSortDialog) {
+        SingleChoiceDialog(
+            title = stringResource(R.string.settings_todo_sort),
+            options = listOf(
+                ChoiceOption(TodoSort.FILE_ORDER, stringResource(R.string.settings_todo_sort_file_order)),
+                ChoiceOption(TodoSort.PRIORITY_HIGH_TO_LOW, stringResource(R.string.settings_todo_sort_priority_desc)),
+                ChoiceOption(TodoSort.CREATED_DATE_NEWEST_FIRST, stringResource(R.string.settings_todo_sort_created_newest)),
+                ChoiceOption(TodoSort.DUE_DATE_EARLIEST_FIRST, stringResource(R.string.settings_todo_sort_due_earliest)),
+            ),
+            selected = settings.todoSort,
+            onSelected = { appSettingsRepository.setTodoSort(it) },
+            onDismiss = { showTodoSortDialog = false },
         )
     }
 
@@ -398,7 +433,20 @@ fun SettingsScreen(
                         trailingContent = {
                             Switch(
                                 checked = settings.enableTasksPluginSupport,
-                                onCheckedChange = { appSettingsRepository.setEnableTasksPluginSupport(it) },
+                                onCheckedChange = { enabled ->
+                                    appSettingsRepository.setEnableTasksPluginSupport(enabled)
+
+                                    if (!enabled) return@Switch
+                                    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return@Switch
+
+                                    val granted = ContextCompat.checkSelfPermission(
+                                        context,
+                                        Manifest.permission.POST_NOTIFICATIONS,
+                                    ) == PackageManager.PERMISSION_GRANTED
+                                    if (!granted) {
+                                        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                    }
+                                },
                             )
                         },
                         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
@@ -462,6 +510,28 @@ fun SettingsScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable { showGroupingDialog = true }
+                            .padding(horizontal = 4.dp),
+                    )
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+
+                    ListItem(
+                        headlineContent = { Text(text = stringResource(R.string.settings_todo_sort)) },
+                        supportingContent = {
+                            Text(text = todoSortLabel(settings.todoSort))
+                        },
+                        leadingContent = { Icon(imageVector = Icons.AutoMirrored.Filled.Sort, contentDescription = null) },
+                        trailingContent = {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        },
+                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showTodoSortDialog = true }
                             .padding(horizontal = 4.dp),
                     )
                 }
@@ -596,6 +666,16 @@ private fun todoGroupingLabel(grouping: TodoGrouping): String {
     return when (grouping) {
         TodoGrouping.GROUPED -> stringResource(R.string.settings_grouping_grouped)
         TodoGrouping.FILE_ORDER -> stringResource(R.string.settings_grouping_file_order)
+    }
+}
+
+@Composable
+private fun todoSortLabel(sort: TodoSort): String {
+    return when (sort) {
+        TodoSort.FILE_ORDER -> stringResource(R.string.settings_todo_sort_file_order)
+        TodoSort.PRIORITY_HIGH_TO_LOW -> stringResource(R.string.settings_todo_sort_priority_desc)
+        TodoSort.CREATED_DATE_NEWEST_FIRST -> stringResource(R.string.settings_todo_sort_created_newest)
+        TodoSort.DUE_DATE_EARLIEST_FIRST -> stringResource(R.string.settings_todo_sort_due_earliest)
     }
 }
 

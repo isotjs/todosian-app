@@ -154,12 +154,32 @@
     <string name="settings_todo_grouping">Todo ordering</string>
     <string name="settings_grouping_grouped">Grouped (Active/Completed)</string>
     <string name="settings_grouping_file_order">File order</string>
+    <string name="settings_todo_sort">Todo sorting</string>
+    <string name="settings_todo_sort_file_order">File order</string>
+    <string name="settings_todo_sort_priority_desc">Priority (high to low)</string>
+    <string name="settings_todo_sort_created_newest">Created date (newest first)</string>
+    <string name="settings_todo_sort_due_earliest">Due date (earliest first)</string>
 
     <string name="settings_enable_tasks_plugin_support">Enable Tasks Plugin Support</string>
     <string name="settings_enable_tasks_plugin_support_subtitle">Parse and edit Obsidian Tasks metadata (dates, priority, recurrence).</string>
 
     <string name="settings_tasks_plugin_ui_emojis">Use emojis in UI</string>
     <string name="settings_tasks_plugin_ui_emojis_subtitle">Show Tasks metadata as emojis instead of icons.</string>
+    <string name="settings_notification_permission_denied">Notifications are disabled, so due reminders cannot be shown.</string>
+
+    <!-- Notifications -->
+    <string name="notification_due_channel_name">Due reminders</string>
+    <string name="notification_due_channel_description">Reminds you when tasks are close to their due date.</string>
+    <plurals name="notification_due_title">
+        <item quantity="one">%1$d task due soon</item>
+        <item quantity="other">%1$d tasks due soon</item>
+    </plurals>
+    <string name="notification_due_body_single">%1$s is due %2$s.</string>
+    <string name="notification_due_body_multi">Next due %1$s. Tap to review %2$d tasks.</string>
+    <string name="notification_due_when_overdue">overdue</string>
+    <string name="notification_due_when_today">today</string>
+    <string name="notification_due_when_tomorrow">tomorrow</string>
+    <string name="notification_due_when_in_days">in %1$d days</string>
 
     <string name="settings_about">About</string>
     <string name="settings_version">App version</string>

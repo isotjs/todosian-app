@@ -77,6 +77,7 @@ import com.isotjs.todosian.R
 import com.isotjs.todosian.data.FileRepository
 import com.isotjs.todosian.data.settings.AppSettingsRepository
 import com.isotjs.todosian.data.settings.TodoGrouping
+import com.isotjs.todosian.data.settings.TodoSort
 import com.isotjs.todosian.data.model.TasksPriority
 import com.isotjs.todosian.data.model.Todo
 import com.isotjs.todosian.ui.components.TodosianDimens
@@ -330,8 +331,14 @@ fun CategoryScreen(
             return@Scaffold
         }
 
-        val fileOrderTodos = remember(uiState.activeTodos, uiState.completedTodos) {
-            (uiState.activeTodos + uiState.completedTodos).sortedBy { it.lineIndex }
+        val sortedActiveTodos = remember(uiState.activeTodos, settings.todoSort) {
+            sortTodos(uiState.activeTodos, settings.todoSort)
+        }
+        val sortedCompletedTodos = remember(uiState.completedTodos, settings.todoSort) {
+            sortTodos(uiState.completedTodos, settings.todoSort)
+        }
+        val sortedAllTodos = remember(uiState.activeTodos, uiState.completedTodos, settings.todoSort) {
+            sortTodos(uiState.activeTodos + uiState.completedTodos, settings.todoSort)
         }
 
         LazyColumn(
@@ -342,7 +349,7 @@ fun CategoryScreen(
         ) {
             if (settings.todoGrouping == TodoGrouping.FILE_ORDER) {
                 items(
-                    items = fileOrderTodos,
+                    items = sortedAllTodos,
                     key = { it.id },
                 ) { todo ->
                     TodoRow(
@@ -378,10 +385,10 @@ fun CategoryScreen(
                 return@LazyColumn
             }
 
-            if (uiState.activeTodos.isNotEmpty()) {
+            if (sortedActiveTodos.isNotEmpty()) {
                 item { TodosianSectionHeader(text = stringResource(R.string.category_active)) }
                 items(
-                    items = uiState.activeTodos,
+                    items = sortedActiveTodos,
                     key = { it.id },
                 ) { todo ->
                     TodoRow(
@@ -415,10 +422,10 @@ fun CategoryScreen(
                 }
             }
 
-            if (uiState.completedTodos.isNotEmpty()) {
+            if (sortedCompletedTodos.isNotEmpty()) {
                 item { TodosianSectionHeader(text = stringResource(R.string.category_completed)) }
                 items(
-                    items = uiState.completedTodos,
+                    items = sortedCompletedTodos,
                     key = { it.id },
                 ) { todo ->
                     TodoRow(
@@ -860,6 +867,42 @@ private data class TasksMetaChipUi(
     val label: String,
     val icon: ImageVector?,
 )
+
+private fun sortTodos(todos: List<Todo>, sort: TodoSort): List<Todo> {
+    return when (sort) {
+        TodoSort.FILE_ORDER -> todos.sortedBy { it.lineIndex }
+        TodoSort.PRIORITY_HIGH_TO_LOW ->
+            todos.sortedWith(
+                compareByDescending<Todo> { priorityRank(it.priority) }
+                    .thenBy { it.lineIndex },
+            )
+
+        TodoSort.CREATED_DATE_NEWEST_FIRST ->
+            todos.sortedWith(
+                compareByDescending<Todo> { it.createdDate != null }
+                    .thenByDescending { it.createdDate ?: "" }
+                    .thenBy { it.lineIndex },
+            )
+
+        TodoSort.DUE_DATE_EARLIEST_FIRST ->
+            todos.sortedWith(
+                compareBy<Todo> { it.dueDate == null }
+                    .thenBy { it.dueDate ?: "" }
+                    .thenBy { it.lineIndex },
+            )
+    }
+}
+
+private fun priorityRank(priority: TasksPriority?): Int {
+    return when (priority) {
+        TasksPriority.HIGHEST -> 5
+        TasksPriority.HIGH -> 4
+        TasksPriority.MEDIUM -> 3
+        TasksPriority.LOW -> 2
+        TasksPriority.LOWEST -> 1
+        TasksPriority.NONE, null -> 0
+    }
+}
 
 @Composable
 private fun buildTasksMetaChips(

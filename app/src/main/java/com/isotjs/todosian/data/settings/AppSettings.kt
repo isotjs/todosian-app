@@ -6,6 +6,7 @@ data class AppSettings(
     val showDailyFocus: Boolean = true,
     val categorySort: CategorySort = CategorySort.A_Z,
     val todoGrouping: TodoGrouping = TodoGrouping.GROUPED,
+    val todoSort: TodoSort = TodoSort.FILE_ORDER,
     val enableTasksPluginSupport: Boolean = false,
     val tasksPluginUseEmojisInUi: Boolean = false,
 )
@@ -24,4 +25,11 @@ enum class CategorySort {
 enum class TodoGrouping {
     GROUPED,
     FILE_ORDER,
+}
+
+enum class TodoSort {
+    FILE_ORDER,
+    PRIORITY_HIGH_TO_LOW,
+    CREATED_DATE_NEWEST_FIRST,
+    DUE_DATE_EARLIEST_FIRST,
 }
