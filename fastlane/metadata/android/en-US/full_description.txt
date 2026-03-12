@@ -1,0 +1,22 @@
+Todosian is an Android todo app for Obsidian users. It manages todo lists stored as Markdown files inside your vault (or any folder you sync to your phone).
+
+Todosian reads and writes your existing .md files directly. There is no database import, no account, and no built-in sync.
+
+<b>How it works</b>
+
+- Connect a folder using Android's Storage Access Framework (SAF)
+- Each Markdown file becomes a category
+- Todos use standard Markdown checkboxes: - [ ] and - [x]
+
+<b>Features</b>
+
+- Add / edit / toggle / delete todos
+- Create / rename / delete categories (files)
+- Optional support for Obsidian Tasks plugin metadata (dates, priority, recurrence)
+- Material 3 UI, dynamic color (Android 12+)
+- Offline-first and privacy-focused (no analytics)
+
+<b>Notes</b>
+
+- Todosian modifies your Markdown files directly. Keep a reliable backup of your vault/folder.
+- Todosian is independent and not affiliated with Obsidian or the Obsidian Tasks plugin.

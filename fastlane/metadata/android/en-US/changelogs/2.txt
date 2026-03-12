@@ -1,0 +1,1 @@
+Redesigned onboarding. Added a safety warning before removing todos.
