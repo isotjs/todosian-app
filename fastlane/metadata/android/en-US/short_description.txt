@@ -1,0 +1,1 @@
+Manage Obsidian todo lists. Edit Markdown files directly; no account or sync
