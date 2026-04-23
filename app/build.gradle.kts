@@ -18,7 +18,7 @@ android {
         applicationId = "com.isotjs.todosian"
         minSdk = 30
         targetSdk = 36
-        versionCode = 3
+        versionCode = 4
         versionName = "1.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -63,6 +63,10 @@ android {
                 "proguard-rules.pro"
             )
         }
+        getByName("debug") {
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -71,6 +75,12 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+}
+
+android.sourceSets {
+    getByName("debug") {
+        res.srcDirs("src/debug/res")
     }
 }
 

@@ -1,0 +1,1 @@
+F-Droid compatibility improvements, Gradle wrapper integrity refresh, and internal build updates.
