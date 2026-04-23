@@ -63,6 +63,10 @@ android {
                 "proguard-rules.pro"
             )
         }
+        getByName("debug") {
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -71,6 +75,12 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+}
+
+android.sourceSets {
+    getByName("debug") {
+        res.srcDirs("src/debug/res")
     }
 }
 
