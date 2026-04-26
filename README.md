@@ -93,6 +93,4 @@ Issues and pull requests are welcome.
 
 ## License
 
-Licensed under the Apache License 2.0. See `LICENSE`.
-
-Copyright 2026 İsmail TİRYAKİ (https://github.com/isotjs)
+Licensed under the Apache License 2.0. See [LICENSE](LICENSE).
