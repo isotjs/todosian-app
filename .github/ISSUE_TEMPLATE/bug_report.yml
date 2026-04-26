@@ -1,0 +1,109 @@
+name: Bug report
+description: Create a bug report to help us improve
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## ⚠️ IMPORTANT WARNING
+
+        **Duplicate or incomplete issues will be closed immediately without any response from developers.**
+
+        - Check existing issues before opening a new one
+        - All required checkboxes below must be checked
+        - Duplicate issues will be closed instantly with no response
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: "Checklist - Required"
+      description: "You must complete these checks before submitting."
+      options:
+        - label: " I've checked that there is NO open or closed issue about this bug."
+          required: true
+        - label: " This issue contains only ONE bug."
+          required: true
+        - label: " The title accurately describes the bug."
+          required: true
+        - label: " The entire issue report is written in English."
+          required: true
+
+  - type: markdown
+    attributes:
+      value: |
+        ---
+        ## Bug Details
+
+  - type: textarea
+    id: reproduce-steps
+    attributes:
+      label: Steps to reproduce
+      description: "What did you do for the bug to show up?"
+      placeholder: |
+        Example:
+          1. Go to '...'
+          2. Click on '....'
+          3. Scroll down to '....'
+          4. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected behavior
+      description: "What should happen?"
+      placeholder: |
+        Example:
+          "This should happen..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual-behavior
+    attributes:
+      label: Actual behavior
+      description: "What actually happened?"
+      placeholder: |
+        Example:
+          "This happened instead..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: media
+    attributes:
+      label: Screenshots/Screen recordings
+      description: "A picture or video helps us understand the bug more. You can upload them directly."
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs (optional)
+      description: |
+        Upload a logcat recording or debug log file if available.
+        You can use `adb logcat -d > logs.txt` command or take screenshots.
+
+  - type: input
+    id: app-version
+    attributes:
+      label: Todosian version
+      description: "You can find your Todosian version in Settings."
+      placeholder: "1.5"
+    validations:
+      required: true
+
+  - type: input
+    id: android-version
+    attributes:
+      label: Android version
+      description: "You can find this in Android Settings > About Phone."
+      placeholder: "Android 14"
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional information
+      description: "Any other details or attachments."
