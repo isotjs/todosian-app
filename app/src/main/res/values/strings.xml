@@ -97,7 +97,6 @@
     <string name="action_move">Move</string>
     <string name="action_save">Save</string>
     <string name="action_cancel">Cancel</string>
-    <string name="action_retry">Retry</string>
     <string name="action_set">Set</string>
     <string name="action_clear">Clear</string>
 
@@ -107,7 +106,6 @@
     <string name="cd_add_category">Add category</string>
     <string name="cd_add_todo">Add todo</string>
     <string name="cd_navigate_back">Navigate back</string>
-    <string name="cd_delete">Delete</string>
 
     <!-- Errors -->
     <string name="error_folder_empty">The selected folder has no markdown (.md) files.</string>
@@ -117,14 +115,12 @@
 
     <!-- Settings -->
     <string name="settings_title">Settings</string>
-    <string name="settings_change">Change</string>
 
     <string name="settings_storage">Storage</string>
     <string name="settings_folder">Selected folder</string>
     <string name="settings_no_folder">No folder selected</string>
     <string name="settings_change_folder">Change folder</string>
     <string name="settings_change_folder_subtitle">Choose a different Obsidian todo folder.</string>
-    <string name="settings_change_folder_action">Choose folder</string>
     <string name="settings_recheck_access">Re-check access</string>
     <string name="settings_reset_folder">Reset folder</string>
     <string name="settings_reset_folder_title">Reset folder selection?</string>
@@ -182,11 +178,17 @@
         <item quantity="other">%1$d tasks due soon</item>
     </plurals>
     <string name="notification_due_body_single">%1$s is due %2$s.</string>
-    <string name="notification_due_body_multi">Next due %1$s. Tap to review %2$d tasks.</string>
+    <plurals name="notification_due_body_multi">
+        <item quantity="one">Next due %1$s. Tap to review %2$d task.</item>
+        <item quantity="other">Next due %1$s. Tap to review %2$d tasks.</item>
+    </plurals>
     <string name="notification_due_when_overdue">overdue</string>
     <string name="notification_due_when_today">today</string>
     <string name="notification_due_when_tomorrow">tomorrow</string>
-    <string name="notification_due_when_in_days">in %1$d days</string>
+    <plurals name="notification_due_when_in_days">
+        <item quantity="one">in %1$d day</item>
+        <item quantity="other">in %1$d days</item>
+    </plurals>
 
     <string name="settings_about">About</string>
     <string name="settings_version">App version</string>

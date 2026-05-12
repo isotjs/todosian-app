@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import androidx.core.content.edit
 import androidx.documentfile.provider.DocumentFile
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
@@ -128,17 +129,17 @@ class DueReminderWorker(
     }
 
     private fun saveSentToday(signature: String) {
-        statePrefs().edit()
-            .putString(KEY_LAST_DAY, LocalDate.now().toString())
-            .putString(KEY_LAST_SIGNATURE, signature)
-            .apply()
+        statePrefs().edit {
+            putString(KEY_LAST_DAY, LocalDate.now().toString())
+            putString(KEY_LAST_SIGNATURE, signature)
+        }
     }
 
     private fun clearSignatureState() {
-        statePrefs().edit()
-            .remove(KEY_LAST_DAY)
-            .remove(KEY_LAST_SIGNATURE)
-            .apply()
+        statePrefs().edit {
+            remove(KEY_LAST_DAY)
+            remove(KEY_LAST_SIGNATURE)
+        }
     }
 
     private fun statePrefs() =

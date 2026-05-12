@@ -97,6 +97,10 @@ fun SettingsScreen(
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = androidx.compose.runtime.rememberCoroutineScope()
+    
+    val notificationPermissionDeniedMsg = stringResource(R.string.settings_notification_permission_denied)
+    val errorWriteFailedMsg = stringResource(R.string.error_write_failed)
+    val settingsFolderUpdatedMsg = stringResource(R.string.settings_folder_updated)
 
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
@@ -104,7 +108,7 @@ fun SettingsScreen(
         if (!granted) {
             scope.launch {
                 snackbarHostState.showSnackbar(
-                    message = context.getString(R.string.settings_notification_permission_denied),
+                    message = notificationPermissionDeniedMsg,
                 )
             }
         }
@@ -113,8 +117,14 @@ fun SettingsScreen(
     LaunchedEffect(viewModel) {
         viewModel.events.collectLatest { event ->
             when (event) {
-                is SettingsViewModel.Event.ShowMessage ->
-                    snackbarHostState.showSnackbar(context.getString(event.messageResId))
+                is SettingsViewModel.Event.ShowMessage -> {
+                    val message = when (event.messageResId) {
+                        R.string.error_write_failed -> errorWriteFailedMsg
+                        R.string.settings_folder_updated -> settingsFolderUpdatedMsg
+                        else -> ""
+                    }
+                    snackbarHostState.showSnackbar(message)
+                }
                 SettingsViewModel.Event.RequireOnboarding -> onRequireOnboarding()
             }
         }

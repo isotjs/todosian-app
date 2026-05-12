@@ -111,13 +111,22 @@ fun CategoryScreen(
         initialValue = com.isotjs.todosian.data.settings.AppSettings(),
     )
 
-    val context = LocalContext.current
+    val categoryMoveSuccessMsg = stringResource(R.string.category_move_todo_success)
+    val categoryMovePartialFailMsg = stringResource(R.string.category_move_todo_partial_failure)
+    val errorReadFailedMsg = stringResource(R.string.error_read_failed)
     val snackbarHostState = remember { SnackbarHostState() }
-    LaunchedEffect(viewModel, context) {
+    
+    LaunchedEffect(viewModel) {
         viewModel.events.collectLatest { event ->
             when (event) {
                 is CategoryViewModel.Event.ShowMessage -> {
-                    snackbarHostState.showSnackbar(context.getString(event.messageResId))
+                    val message = when (event.messageResId) {
+                        R.string.category_move_todo_success -> categoryMoveSuccessMsg
+                        R.string.category_move_todo_partial_failure -> categoryMovePartialFailMsg
+                        R.string.error_read_failed -> errorReadFailedMsg
+                        else -> ""
+                    }
+                    snackbarHostState.showSnackbar(message)
                 }
             }
         }

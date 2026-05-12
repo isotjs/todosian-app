@@ -2,6 +2,8 @@ package com.isotjs.todosian.data
 
 import android.content.Context
 import android.net.Uri
+import androidx.core.content.edit
+import androidx.core.net.toUri
 
 class PreferencesManager(
     context: Context,
@@ -10,15 +12,15 @@ class PreferencesManager(
 
     fun getFolderUri(): Uri? {
         val raw = prefs.getString(KEY_FOLDER_URI, null) ?: return null
-        return runCatching { Uri.parse(raw) }.getOrNull()
+        return runCatching { raw.toUri() }.getOrNull()
     }
 
     fun saveFolderUri(uri: Uri) {
-        prefs.edit().putString(KEY_FOLDER_URI, uri.toString()).apply()
+        prefs.edit { putString(KEY_FOLDER_URI, uri.toString()) }
     }
 
     fun clearFolderUri() {
-        prefs.edit().remove(KEY_FOLDER_URI).apply()
+        prefs.edit { remove(KEY_FOLDER_URI) }
     }
 
     private companion object {

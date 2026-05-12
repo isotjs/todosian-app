@@ -10,6 +10,7 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.core.net.toUri
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -126,7 +127,7 @@ fun TodosianApp(
             ),
         ) { backStackEntry ->
             val encoded = backStackEntry.arguments?.getString(Routes.ARG_CATEGORY_URI).orEmpty()
-            val uri = Uri.parse(encoded)
+            val uri = encoded.toUri()
             CategoryScreen(
                 fileRepository = fileRepository,
                 appSettingsRepository = appSettingsRepository,

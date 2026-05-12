@@ -56,10 +56,12 @@ object DueReminderNotifier {
                 dueLabel(appContext, payload.nextDueDate),
             )
         } else {
-            appContext.getString(
-                R.string.notification_due_body_multi,
+            val quantity = payload.totalCount
+            appContext.resources.getQuantityString(
+                R.plurals.notification_due_body_multi,
+                quantity,
                 dueLabel(appContext, payload.nextDueDate),
-                payload.totalCount,
+                quantity,
             )
         }
 
@@ -91,13 +93,18 @@ object DueReminderNotifier {
             days < 0L -> context.getString(R.string.notification_due_when_overdue)
             days == 0L -> context.getString(R.string.notification_due_when_today)
             days == 1L -> context.getString(R.string.notification_due_when_tomorrow)
-            else -> context.getString(R.string.notification_due_when_in_days, days)
+            else -> {
+                val dayCount = days.toInt()
+                context.resources.getQuantityString(
+                    R.plurals.notification_due_when_in_days,
+                    dayCount,
+                    dayCount,
+                )
+            }
         }
     }
 
     private fun createChannelIfNeeded(context: Context) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
-
         val appContext = context.applicationContext
         val manager = appContext.getSystemService(NotificationManager::class.java)
         val existing = manager.getNotificationChannel(CHANNEL_ID)
@@ -114,7 +121,6 @@ object DueReminderNotifier {
     }
 
     private fun canPostNotifications(context: Context): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return true
         return ContextCompat.checkSelfPermission(
             context,
             Manifest.permission.POST_NOTIFICATIONS,

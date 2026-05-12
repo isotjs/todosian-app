@@ -109,13 +109,22 @@ fun HomeScreen(
         }
     }
 
-    val context = LocalContext.current
+    val errorFolderInvalidMsg = stringResource(R.string.error_folder_invalid)
+    val errorFolderEmptyMsg = stringResource(R.string.error_folder_empty)
+    val errorWriteFailedMsg = stringResource(R.string.error_write_failed)
     val snackbarHostState = remember { SnackbarHostState() }
+    
     LaunchedEffect(viewModel) {
         viewModel.events.collectLatest { event ->
             when (event) {
                 is HomeViewModel.Event.ShowMessage -> {
-                    snackbarHostState.showSnackbar(context.getString(event.messageResId))
+                    val message = when (event.messageResId) {
+                        R.string.error_folder_invalid -> errorFolderInvalidMsg
+                        R.string.error_folder_empty -> errorFolderEmptyMsg
+                        R.string.error_write_failed -> errorWriteFailedMsg
+                        else -> ""
+                    }
+                    snackbarHostState.showSnackbar(message)
                 }
                 HomeViewModel.Event.RequireOnboarding -> onRequireOnboarding()
             }

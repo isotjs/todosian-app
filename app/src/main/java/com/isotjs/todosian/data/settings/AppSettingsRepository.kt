@@ -2,6 +2,7 @@ package com.isotjs.todosian.data.settings
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.core.content.edit
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -47,35 +48,35 @@ class SharedPrefsAppSettingsRepository(
     }.distinctUntilChanged()
 
     override fun setThemeMode(themeMode: ThemeMode) {
-        prefs.edit().putString(KEY_THEME_MODE, themeMode.name).apply()
+        prefs.edit { putString(KEY_THEME_MODE, themeMode.name) }
     }
 
     override fun setDynamicColorEnabled(enabled: Boolean) {
-        prefs.edit().putBoolean(KEY_DYNAMIC_COLOR, enabled).apply()
+        prefs.edit { putBoolean(KEY_DYNAMIC_COLOR, enabled) }
     }
 
     override fun setShowDailyFocus(enabled: Boolean) {
-        prefs.edit().putBoolean(KEY_SHOW_DAILY_FOCUS, enabled).apply()
+        prefs.edit { putBoolean(KEY_SHOW_DAILY_FOCUS, enabled) }
     }
 
     override fun setCategorySort(sort: CategorySort) {
-        prefs.edit().putString(KEY_CATEGORY_SORT, sort.name).apply()
+        prefs.edit { putString(KEY_CATEGORY_SORT, sort.name) }
     }
 
     override fun setTodoGrouping(grouping: TodoGrouping) {
-        prefs.edit().putString(KEY_TODO_GROUPING, grouping.name).apply()
+        prefs.edit { putString(KEY_TODO_GROUPING, grouping.name) }
     }
 
     override fun setTodoSort(sort: TodoSort) {
-        prefs.edit().putString(KEY_TODO_SORT, sort.name).apply()
+        prefs.edit { putString(KEY_TODO_SORT, sort.name) }
     }
 
     override fun setEnableTasksPluginSupport(enabled: Boolean) {
-        prefs.edit().putBoolean(KEY_TASKS_PLUGIN, enabled).apply()
+        prefs.edit { putBoolean(KEY_TASKS_PLUGIN, enabled) }
     }
 
     override fun setTasksPluginUseEmojisInUi(enabled: Boolean) {
-        prefs.edit().putBoolean(KEY_TASKS_PLUGIN_UI_EMOJIS, enabled).apply()
+        prefs.edit { putBoolean(KEY_TASKS_PLUGIN_UI_EMOJIS, enabled) }
     }
 
     private fun readSettings(): AppSettings {
