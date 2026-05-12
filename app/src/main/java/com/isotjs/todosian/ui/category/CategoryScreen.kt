@@ -8,7 +8,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,7 +25,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.AddCircle
 import androidx.compose.material.icons.outlined.CheckCircle
@@ -48,12 +47,9 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -75,6 +71,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.isotjs.todosian.R
 import com.isotjs.todosian.data.FileRepository
+import com.isotjs.todosian.data.model.Category
 import com.isotjs.todosian.data.settings.AppSettingsRepository
 import com.isotjs.todosian.data.settings.TodoGrouping
 import com.isotjs.todosian.data.settings.TodoSort
@@ -116,7 +113,7 @@ fun CategoryScreen(
 
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
-    LaunchedEffect(viewModel) {
+    LaunchedEffect(viewModel, context) {
         viewModel.events.collectLatest { event ->
             when (event) {
                 is CategoryViewModel.Event.ShowMessage -> {
@@ -128,31 +125,49 @@ fun CategoryScreen(
 
     val scope = rememberCoroutineScope()
     val todoSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val actionSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val moveSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     var sheetMode by remember { mutableStateOf<TodoSheetMode?>(null) }
     var sheetText by remember { mutableStateOf("") }
     var sheetMeta by remember { mutableStateOf(MarkdownParser.TasksMeta()) }
+    var actionTodoTarget by remember { mutableStateOf<Todo?>(null) }
+    var moveTodoTarget by remember { mutableStateOf<Todo?>(null) }
     var deleteTodoTarget by remember { mutableStateOf<Todo?>(null) }
 
+    fun resetEditorState() {
+        sheetMode = null
+        sheetText = ""
+        sheetMeta = MarkdownParser.TasksMeta()
+    }
+
+    fun openTodoEditor(todo: Todo) {
+        sheetMode = TodoSheetMode.Edit(todo)
+        sheetText = todo.text
+        sheetMeta = todo.toTasksMeta()
+    }
+
+    fun dismissMovePicker() {
+        moveTodoTarget = null
+        viewModel.clearMoveTargets()
+    }
+
     if (sheetMode != null) {
+        val currentSheetMode = requireNotNull(sheetMode)
         ModalBottomSheet(
             onDismissRequest = {
-                sheetMode = null
-                sheetText = ""
-                sheetMeta = MarkdownParser.TasksMeta()
+                resetEditorState()
             },
             sheetState = todoSheetState,
         ) {
-            val titleRes = when (sheetMode) {
+            val titleRes = when (currentSheetMode) {
                 TodoSheetMode.Add -> R.string.category_add_todo_title
                 is TodoSheetMode.Edit -> R.string.category_edit_todo_title
-                null -> R.string.category_add_todo_title
             }
 
-            val hintRes = when (sheetMode) {
+            val hintRes = when (currentSheetMode) {
                 TodoSheetMode.Add -> R.string.category_add_todo_hint
                 is TodoSheetMode.Edit -> R.string.category_edit_todo_hint
-                null -> R.string.category_add_todo_hint
             }
 
             Column(
@@ -193,9 +208,7 @@ fun CategoryScreen(
                         onClick = {
                             scope.launch {
                                 todoSheetState.hide()
-                                sheetMode = null
-                                sheetText = ""
-                                sheetMeta = MarkdownParser.TasksMeta()
+                                resetEditorState()
                             }
                         },
                     ) {
@@ -203,7 +216,7 @@ fun CategoryScreen(
                     }
                     TextButton(
                         onClick = {
-                            when (val mode = sheetMode) {
+                            when (val mode = currentSheetMode) {
                                 TodoSheetMode.Add -> viewModel.addTodo(
                                     text = sheetText,
                                     meta = if (settings.enableTasksPluginSupport) sheetMeta else null,
@@ -216,19 +229,176 @@ fun CategoryScreen(
                                     meta = if (settings.enableTasksPluginSupport) sheetMeta else null,
                                     enableTasksPluginSupport = settings.enableTasksPluginSupport,
                                 )
-
-                                null -> Unit
                             }
                             scope.launch {
                                 todoSheetState.hide()
-                                sheetMode = null
-                                sheetText = ""
-                                sheetMeta = MarkdownParser.TasksMeta()
+                                resetEditorState()
                             }
                         },
                         enabled = sheetText.trim().isNotEmpty(),
                     ) {
                         Text(text = stringResource(R.string.action_save))
+                    }
+                }
+            }
+        }
+    }
+
+    val actionTarget = actionTodoTarget
+    if (actionTarget != null) {
+        ModalBottomSheet(
+            onDismissRequest = { actionTodoTarget = null },
+            sheetState = actionSheetState,
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.category_todo_actions_title),
+                    style = MaterialTheme.typography.titleLarge,
+                )
+                Text(
+                    text = actionTarget.text,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                TextButton(
+                    onClick = {
+                        scope.launch {
+                            actionSheetState.hide()
+                            actionTodoTarget = null
+                            openTodoEditor(actionTarget)
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(text = stringResource(R.string.action_edit))
+                }
+                TextButton(
+                    onClick = {
+                        scope.launch {
+                            actionSheetState.hide()
+                            actionTodoTarget = null
+                            moveTodoTarget = actionTarget
+                            viewModel.loadMoveTargets()
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(text = stringResource(R.string.action_move))
+                }
+                TextButton(
+                    onClick = {
+                        scope.launch {
+                            actionSheetState.hide()
+                            actionTodoTarget = null
+                            deleteTodoTarget = actionTarget
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(
+                        text = stringResource(R.string.category_delete_todo_confirm),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            }
+        }
+    }
+
+    val moveTargetTodo = moveTodoTarget
+    if (moveTargetTodo != null) {
+        ModalBottomSheet(
+            onDismissRequest = { dismissMovePicker() },
+            sheetState = moveSheetState,
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.category_move_todo_title),
+                    style = MaterialTheme.typography.titleLarge,
+                )
+                Text(
+                    text = moveTargetTodo.text,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                when {
+                    uiState.isLoadingMoveTargets -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 24.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    }
+
+                    uiState.moveTargetsLoadFailed -> {
+                        Text(
+                            text = stringResource(R.string.error_read_failed),
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
+
+                    uiState.moveTargets.isEmpty() -> {
+                        Text(
+                            text = stringResource(R.string.category_move_todo_no_targets),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+
+                    else -> {
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            uiState.moveTargets.forEach { category ->
+                                MoveTargetButton(
+                                    category = category,
+                                    onClick = {
+                                        scope.launch {
+                                            moveSheetState.hide()
+                                            dismissMovePicker()
+                                            viewModel.moveTodo(moveTargetTodo, category.uri)
+                                        }
+                                    },
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    horizontalArrangement = Arrangement.End,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    TextButton(
+                        onClick = {
+                            scope.launch {
+                                moveSheetState.hide()
+                                dismissMovePicker()
+                            }
+                        },
+                    ) {
+                        Text(text = stringResource(R.string.action_cancel))
                     }
                 }
             }
@@ -357,20 +527,7 @@ fun CategoryScreen(
                         enableTasksPluginSupport = settings.enableTasksPluginSupport,
                         useEmojisInUi = settings.tasksPluginUseEmojisInUi,
                         onToggle = { viewModel.toggleTodo(todo, settings.enableTasksPluginSupport) },
-                        onEdit = {
-                            sheetMode = TodoSheetMode.Edit(todo)
-                            sheetText = todo.text
-                            sheetMeta = MarkdownParser.TasksMeta(
-                                dueDate = todo.dueDate,
-                                startDate = todo.startDate,
-                                scheduledDate = todo.scheduledDate,
-                                completionDate = todo.completionDate,
-                                createdDate = todo.createdDate,
-                                priority = todo.priority,
-                                recurrence = todo.recurrence,
-                            )
-                        },
-                        onRequestDelete = { deleteTodoTarget = todo },
+                        onOpenActions = { actionTodoTarget = todo },
                         modifier = Modifier.animateItem(
                             fadeInSpec = tween(durationMillis = 180),
                             placementSpec = spring(
@@ -396,20 +553,7 @@ fun CategoryScreen(
                         enableTasksPluginSupport = settings.enableTasksPluginSupport,
                         useEmojisInUi = settings.tasksPluginUseEmojisInUi,
                         onToggle = { viewModel.toggleTodo(todo, settings.enableTasksPluginSupport) },
-                        onEdit = {
-                            sheetMode = TodoSheetMode.Edit(todo)
-                            sheetText = todo.text
-                            sheetMeta = MarkdownParser.TasksMeta(
-                                dueDate = todo.dueDate,
-                                startDate = todo.startDate,
-                                scheduledDate = todo.scheduledDate,
-                                completionDate = todo.completionDate,
-                                createdDate = todo.createdDate,
-                                priority = todo.priority,
-                                recurrence = todo.recurrence,
-                            )
-                        },
-                        onRequestDelete = { deleteTodoTarget = todo },
+                        onOpenActions = { actionTodoTarget = todo },
                         modifier = Modifier.animateItem(
                             fadeInSpec = tween(durationMillis = 180),
                             placementSpec = spring(
@@ -433,20 +577,7 @@ fun CategoryScreen(
                         enableTasksPluginSupport = settings.enableTasksPluginSupport,
                         useEmojisInUi = settings.tasksPluginUseEmojisInUi,
                         onToggle = { viewModel.toggleTodo(todo, settings.enableTasksPluginSupport) },
-                        onEdit = {
-                            sheetMode = TodoSheetMode.Edit(todo)
-                            sheetText = todo.text
-                            sheetMeta = MarkdownParser.TasksMeta(
-                                dueDate = todo.dueDate,
-                                startDate = todo.startDate,
-                                scheduledDate = todo.scheduledDate,
-                                completionDate = todo.completionDate,
-                                createdDate = todo.createdDate,
-                                priority = todo.priority,
-                                recurrence = todo.recurrence,
-                            )
-                        },
-                        onRequestDelete = { deleteTodoTarget = todo },
+                        onOpenActions = { actionTodoTarget = todo },
                         modifier = Modifier.animateItem(
                             fadeInSpec = tween(durationMillis = 180),
                             placementSpec = spring(
@@ -464,127 +595,119 @@ fun CategoryScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun TodoRow(
     todo: Todo,
     enableTasksPluginSupport: Boolean,
     useEmojisInUi: Boolean,
     onToggle: () -> Unit,
-    onEdit: () -> Unit,
-    onRequestDelete: () -> Unit,
+    onOpenActions: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val dismissState = rememberSwipeToDismissBoxState(
-        confirmValueChange = { value ->
-            if (value == SwipeToDismissBoxValue.EndToStart) {
-                onRequestDelete()
-                false
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .background(
+                color = MaterialTheme.colorScheme.surfaceContainer,
+                shape = RoundedCornerShape(16.dp),
+            )
+            .combinedClickable(
+                onClick = {},
+                onLongClick = onOpenActions,
+            )
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+    ) {
+        Checkbox(
+            checked = todo.isDone,
+            onCheckedChange = { onToggle() },
+        )
+        Column(
+            modifier = Modifier.weight(1f),
+        ) {
+            val targetColor = if (todo.isDone) {
+                MaterialTheme.colorScheme.onSurfaceVariant
             } else {
-                false
+                MaterialTheme.colorScheme.onSurface
             }
-        },
-    )
+            val textColor by animateColorAsState(
+                targetValue = targetColor,
+                animationSpec = tween(300),
+                label = "todo-text-color",
+            )
+            Text(
+                text = todo.text,
+                style = MaterialTheme.typography.bodyLarge,
+                textDecoration = if (todo.isDone) TextDecoration.LineThrough else TextDecoration.None,
+                color = textColor,
+            )
 
-    SwipeToDismissBox(
-        modifier = modifier,
-        state = dismissState,
-        enableDismissFromStartToEnd = false,
-        backgroundContent = {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        color = MaterialTheme.colorScheme.errorContainer,
-                        shape = RoundedCornerShape(16.dp),
-                    )
-                    .padding(horizontal = 16.dp),
-                contentAlignment = Alignment.CenterEnd,
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Delete,
-                    contentDescription = stringResource(R.string.cd_delete),
-                    tint = MaterialTheme.colorScheme.onErrorContainer,
-                )
-            }
-        },
-        content = {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(
-                        color = MaterialTheme.colorScheme.surfaceContainer,
-                        shape = RoundedCornerShape(16.dp),
-                    )
-                    .clickable(onClick = onEdit)
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
-            ) {
-                Checkbox(
-                    checked = todo.isDone,
-                    onCheckedChange = { onToggle() },
-                )
-                Column(
-                    modifier = Modifier.weight(1f),
-                ) {
-                    val targetColor = if (todo.isDone) {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    } else {
-                        MaterialTheme.colorScheme.onSurface
-                    }
-                    val textColor by animateColorAsState(
-                        targetValue = targetColor,
-                        animationSpec = tween(300),
-                        label = "todo-text-color",
-                    )
-                    Text(
-                        text = todo.text,
-                        style = MaterialTheme.typography.bodyLarge,
-                        textDecoration = if (todo.isDone) TextDecoration.LineThrough else TextDecoration.None,
-                        color = textColor,
-                    )
-
-                    if (enableTasksPluginSupport) {
-                        val chips = buildTasksMetaChips(todo = todo, useEmojisInUi = useEmojisInUi)
-                        if (chips.isNotEmpty()) {
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .horizontalScroll(rememberScrollState()),
-                            ) {
-                                chips.forEach { chip ->
-                                    androidx.compose.material3.AssistChip(
-                                        onClick = {},
-                                        enabled = false,
-                                        leadingIcon = chip.icon?.let { icon ->
-                                            {
-                                                Icon(
-                                                    imageVector = icon,
-                                                    contentDescription = null,
-                                                    modifier = Modifier.size(18.dp),
-                                                )
-                                            }
-                                        },
-                                        label = {
-                                            Text(
-                                                text = chip.label,
-                                                style = MaterialTheme.typography.labelMedium,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis,
-                                            )
-                                        },
+            if (enableTasksPluginSupport) {
+                val chips = buildTasksMetaChips(todo = todo, useEmojisInUi = useEmojisInUi)
+                if (chips.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                    ) {
+                        chips.forEach { chip ->
+                            androidx.compose.material3.AssistChip(
+                                onClick = {},
+                                enabled = false,
+                                leadingIcon = chip.icon?.let { icon ->
+                                    {
+                                        Icon(
+                                            imageVector = icon,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(18.dp),
+                                        )
+                                    }
+                                },
+                                label = {
+                                    Text(
+                                        text = chip.label,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
                                     )
-                                }
-                            }
+                                },
+                            )
                         }
                     }
                 }
             }
-        },
-    )
+        }
+    }
+}
+
+@Composable
+private fun MoveTargetButton(
+    category: Category,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    TextButton(
+        onClick = onClick,
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(
+                text = category.displayName,
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            Text(
+                text = "${category.doneCount}/${category.todoCount}",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
 }
 
 @Composable
@@ -980,6 +1103,18 @@ private fun buildTasksMetaChips(
     }
 
     return chips.filter { it.label.isNotBlank() }
+}
+
+private fun Todo.toTasksMeta(): MarkdownParser.TasksMeta {
+    return MarkdownParser.TasksMeta(
+        dueDate = dueDate,
+        startDate = startDate,
+        scheduledDate = scheduledDate,
+        completionDate = completionDate,
+        createdDate = createdDate,
+        priority = priority,
+        recurrence = recurrence,
+    )
 }
 
 private sealed interface TodoSheetMode {

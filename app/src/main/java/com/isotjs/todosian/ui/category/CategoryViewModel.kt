@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.isotjs.todosian.R
 import com.isotjs.todosian.data.FileRepository
+import com.isotjs.todosian.data.model.Category
 import com.isotjs.todosian.data.model.Todo
 import com.isotjs.todosian.utils.MarkdownParser
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -27,6 +28,9 @@ data class CategoryUiState(
     val activeTodos: List<Todo> = emptyList(),
     val completedTodos: List<Todo> = emptyList(),
     val lines: List<String> = emptyList(),
+    val moveTargets: List<Category> = emptyList(),
+    val isLoadingMoveTargets: Boolean = false,
+    val moveTargetsLoadFailed: Boolean = false,
 )
 
 class CategoryViewModel(
@@ -92,7 +96,7 @@ class CategoryViewModel(
             val todos = MarkdownParser.parse(lines)
             val (completed, active) = todos.partition { it.isDone }
 
-            _uiState.value = CategoryUiState(
+            _uiState.value = _uiState.value.copy(
                 isLoading = false,
                 title = title,
                 activeTodos = active.sortedBy { it.lineIndex },
@@ -100,6 +104,41 @@ class CategoryViewModel(
                 lines = lines,
             )
         }
+    }
+
+    fun loadMoveTargets() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(
+                isLoadingMoveTargets = true,
+                moveTargets = emptyList(),
+                moveTargetsLoadFailed = false,
+            )
+
+            val result = fileRepository.getCategories()
+            if (result.isFailure) {
+                _uiState.value = _uiState.value.copy(
+                    isLoadingMoveTargets = false,
+                    moveTargets = emptyList(),
+                    moveTargetsLoadFailed = true,
+                )
+                _events.emit(Event.ShowMessage(R.string.error_read_failed))
+                return@launch
+            }
+
+            _uiState.value = _uiState.value.copy(
+                isLoadingMoveTargets = false,
+                moveTargets = result.getOrThrow().filterNot { it.uri == categoryUri },
+                moveTargetsLoadFailed = false,
+            )
+        }
+    }
+
+    fun clearMoveTargets() {
+        _uiState.value = _uiState.value.copy(
+            moveTargets = emptyList(),
+            isLoadingMoveTargets = false,
+            moveTargetsLoadFailed = false,
+        )
     }
 
     fun toggleTodo(todo: Todo, enableTasksPluginSupport: Boolean) {
@@ -229,6 +268,65 @@ class CategoryViewModel(
                     }
                     _events.emit(Event.ShowMessage(R.string.error_write_failed))
                 }
+            } finally {
+                onWriteFinishedMaybeRefresh()
+            }
+        }
+    }
+
+    fun moveTodo(todo: Todo, targetCategoryUri: Uri) {
+        if (targetCategoryUri == categoryUri) return
+
+        viewModelScope.launch {
+            val previousLines = _uiState.value.lines
+            if (todo.lineIndex !in previousLines.indices) {
+                _events.emit(Event.ShowMessage(R.string.error_read_failed))
+                refreshFromDisk(showLoading = false)
+                return@launch
+            }
+
+            val sourceLine = previousLines[todo.lineIndex]
+            if (!MarkdownParser.isTodoLine(sourceLine)) {
+                _events.emit(Event.ShowMessage(R.string.error_read_failed))
+                refreshFromDisk(showLoading = false)
+                return@launch
+            }
+
+            val sourceLinesAfterDelete = MarkdownParser.tryDeleteTodo(previousLines, todo.lineIndex)
+            if (sourceLinesAfterDelete == null) {
+                _events.emit(Event.ShowMessage(R.string.error_read_failed))
+                refreshFromDisk(showLoading = false)
+                return@launch
+            }
+
+            val targetLinesResult = fileRepository.readLines(targetCategoryUri)
+            if (targetLinesResult.isFailure) {
+                _events.emit(Event.ShowMessage(R.string.error_read_failed))
+                return@launch
+            }
+
+            val targetLinesAfterAppend = targetLinesResult.getOrThrow().toMutableList().apply {
+                add(sourceLine)
+            }
+
+            inFlightWrites.incrementAndGet()
+            try {
+                val targetWrite = fileRepository.writeLines(targetCategoryUri, targetLinesAfterAppend)
+                if (targetWrite.isFailure) {
+                    _events.emit(Event.ShowMessage(R.string.error_write_failed))
+                    return@launch
+                }
+
+                val sourceWrite = fileRepository.writeLines(categoryUri, sourceLinesAfterDelete)
+                if (sourceWrite.isFailure) {
+                    _events.emit(Event.ShowMessage(R.string.category_move_todo_partial_failure))
+                    refreshFromDisk(showLoading = false)
+                    return@launch
+                }
+
+                applyLines(sourceLinesAfterDelete)
+                clearMoveTargets()
+                _events.emit(Event.ShowMessage(R.string.category_move_todo_success))
             } finally {
                 onWriteFinishedMaybeRefresh()
             }

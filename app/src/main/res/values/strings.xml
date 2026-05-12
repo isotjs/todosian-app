@@ -40,9 +40,14 @@
     <string name="category_add_todo_hint">What needs to be done?</string>
     <string name="category_edit_todo_title">Edit todo</string>
     <string name="category_edit_todo_hint">Todo text</string>
+    <string name="category_todo_actions_title">Todo actions</string>
+    <string name="category_move_todo_title">Move todo</string>
+    <string name="category_move_todo_no_targets">No other categories are available.</string>
     <string name="category_delete_todo_title">Delete todo?</string>
     <string name="category_delete_todo_body">This action removes the todo from the markdown file.</string>
     <string name="category_delete_todo_confirm">Delete</string>
+    <string name="category_move_todo_success">Todo moved.</string>
+    <string name="category_move_todo_partial_failure">The todo was copied to the target category, but could not be removed from the current one.</string>
 
     <string name="category_tasks_metadata_title">Tasks metadata</string>
     <string name="category_tasks_created">➕ Created</string>
@@ -88,6 +93,8 @@
     <string name="category_tasks_chip_recurrence_label">%1$s</string>
 
     <!-- Common actions -->
+    <string name="action_edit">Edit</string>
+    <string name="action_move">Move</string>
     <string name="action_save">Save</string>
     <string name="action_cancel">Cancel</string>
     <string name="action_retry">Retry</string>
