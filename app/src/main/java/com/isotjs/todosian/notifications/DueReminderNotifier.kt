@@ -56,8 +56,9 @@ object DueReminderNotifier {
                 dueLabel(appContext, payload.nextDueDate),
             )
         } else {
-            appContext.getString(
-                R.string.notification_due_body_multi,
+            appContext.resources.getQuantityString(
+                R.plurals.notification_due_body_multi,
+                payload.totalCount,
                 dueLabel(appContext, payload.nextDueDate),
                 payload.totalCount,
             )
@@ -91,13 +92,15 @@ object DueReminderNotifier {
             days < 0L -> context.getString(R.string.notification_due_when_overdue)
             days == 0L -> context.getString(R.string.notification_due_when_today)
             days == 1L -> context.getString(R.string.notification_due_when_tomorrow)
-            else -> context.getString(R.string.notification_due_when_in_days, days)
+            else -> context.resources.getQuantityString(
+                R.plurals.notification_due_when_in_days,
+                days.toInt(),
+                days,
+            )
         }
     }
 
     private fun createChannelIfNeeded(context: Context) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
-
         val appContext = context.applicationContext
         val manager = appContext.getSystemService(NotificationManager::class.java)
         val existing = manager.getNotificationChannel(CHANNEL_ID)

@@ -196,11 +196,17 @@
         <item quantity="other">%1$d tasks due soon</item>
     </plurals>
     <string name="notification_due_body_single">%1$s is due %2$s.</string>
-    <string name="notification_due_body_multi">Next due %1$s. Tap to review %2$d tasks.</string>
+    <plurals name="notification_due_body_multi">
+        <item quantity="one">Next due %1$s. Tap to review %2$d task.</item>
+        <item quantity="other">Next due %1$s. Tap to review %2$d tasks.</item>
+    </plurals>
     <string name="notification_due_when_overdue">overdue</string>
     <string name="notification_due_when_today">today</string>
     <string name="notification_due_when_tomorrow">tomorrow</string>
-    <string name="notification_due_when_in_days">in %1$d days</string>
+    <plurals name="notification_due_when_in_days">
+        <item quantity="one">in %1$d day</item>
+        <item quantity="other">in %1$d days</item>
+    </plurals>
 
     <string name="settings_about">About</string>
     <string name="settings_version">App version</string>

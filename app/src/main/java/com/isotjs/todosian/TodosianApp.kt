@@ -1,6 +1,7 @@
 package com.isotjs.todosian
 
 import android.net.Uri
+import androidx.core.net.toUri
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -126,7 +127,7 @@ fun TodosianApp(
             ),
         ) { backStackEntry ->
             val encoded = backStackEntry.arguments?.getString(Routes.ARG_CATEGORY_URI).orEmpty()
-            val uri = Uri.parse(encoded)
+            val uri = encoded.toUri()
             CategoryScreen(
                 fileRepository = fileRepository,
                 appSettingsRepository = appSettingsRepository,

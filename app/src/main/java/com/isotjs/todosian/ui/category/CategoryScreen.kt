@@ -215,7 +215,7 @@ fun CategoryScreen(
                         meta = sheetMeta,
                         onMetaChange = { sheetMeta = it },
                         useEmojisInUi = settings.tasksPluginUseEmojisInUi,
-                        recurrenceModifier = Modifier
+                        modifier = Modifier
                             .bringIntoViewRequester(recurrenceBringIntoView)
                             .onFocusEvent { focusState ->
                                 if (focusState.isFocused) {
@@ -858,7 +858,6 @@ private fun TasksMetaEditor(
     meta: MarkdownParser.TasksMeta,
     onMetaChange: (MarkdownParser.TasksMeta) -> Unit,
     useEmojisInUi: Boolean,
-    recurrenceModifier: Modifier = Modifier,
     modifier: Modifier = Modifier,
 ) {
     val isAdd = mode is TodoSheetMode.Add
@@ -943,7 +942,7 @@ private fun TasksMetaEditor(
                     },
                 )
             },
-            modifier = recurrenceModifier.fillMaxWidth(),
+            modifier = modifier.fillMaxWidth(),
         )
     }
 }
