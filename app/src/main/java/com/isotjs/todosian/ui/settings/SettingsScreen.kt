@@ -70,6 +70,7 @@ import com.isotjs.todosian.data.FileRepository
 import com.isotjs.todosian.data.settings.AppSettings
 import com.isotjs.todosian.data.settings.AppSettingsRepository
 import com.isotjs.todosian.data.settings.CategorySort
+import com.isotjs.todosian.data.settings.DailyFocusMode
 import com.isotjs.todosian.data.settings.ThemeMode
 import com.isotjs.todosian.data.settings.TodoGrouping
 import com.isotjs.todosian.data.settings.TodoSort
@@ -131,6 +132,7 @@ fun SettingsScreen(
     var showGroupingDialog by remember { mutableStateOf(false) }
     var showTodoSortDialog by remember { mutableStateOf(false) }
     var showResetDialog by remember { mutableStateOf(false) }
+    var showDailyFocusModeDialog by remember { mutableStateOf(false) }
 
     if (showThemeDialog) {
         SingleChoiceDialog(
@@ -184,6 +186,20 @@ fun SettingsScreen(
             selected = settings.todoSort,
             onSelected = { appSettingsRepository.setTodoSort(it) },
             onDismiss = { showTodoSortDialog = false },
+        )
+    }
+
+    if (showDailyFocusModeDialog) {
+        SingleChoiceDialog(
+            title = stringResource(R.string.settings_daily_focus_mode),
+            options = listOf(
+                ChoiceOption(DailyFocusMode.TODAY, stringResource(R.string.settings_daily_focus_mode_today)),
+                ChoiceOption(DailyFocusMode.OVERDUE, stringResource(R.string.settings_daily_focus_mode_overdue)),
+                ChoiceOption(DailyFocusMode.TODAY_AND_OVERDUE, stringResource(R.string.settings_daily_focus_mode_today_overdue)),
+            ),
+            selected = settings.dailyFocusMode,
+            onSelected = { appSettingsRepository.setDailyFocusMode(it) },
+            onDismiss = { showDailyFocusModeDialog = false },
         )
     }
 
@@ -422,6 +438,26 @@ fun SettingsScreen(
                             )
                         },
                         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                    )
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+
+                    ListItem(
+                        headlineContent = { Text(text = stringResource(R.string.settings_daily_focus_mode)) },
+                        supportingContent = { Text(text = dailyFocusModeLabel(settings.dailyFocusMode)) },
+                        leadingContent = { Icon(imageVector = Icons.Filled.Info, contentDescription = null) },
+                        trailingContent = {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        },
+                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showDailyFocusModeDialog = true }
+                            .padding(horizontal = 4.dp),
                     )
 
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
@@ -676,6 +712,15 @@ private fun todoSortLabel(sort: TodoSort): String {
         TodoSort.PRIORITY_HIGH_TO_LOW -> stringResource(R.string.settings_todo_sort_priority_desc)
         TodoSort.CREATED_DATE_NEWEST_FIRST -> stringResource(R.string.settings_todo_sort_created_newest)
         TodoSort.DUE_DATE_EARLIEST_FIRST -> stringResource(R.string.settings_todo_sort_due_earliest)
+    }
+}
+
+@Composable
+private fun dailyFocusModeLabel(mode: DailyFocusMode): String {
+    return when (mode) {
+        DailyFocusMode.TODAY -> stringResource(R.string.settings_daily_focus_mode_today)
+        DailyFocusMode.OVERDUE -> stringResource(R.string.settings_daily_focus_mode_overdue)
+        DailyFocusMode.TODAY_AND_OVERDUE -> stringResource(R.string.settings_daily_focus_mode_today_overdue)
     }
 }
 

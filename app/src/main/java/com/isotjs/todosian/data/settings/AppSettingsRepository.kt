@@ -14,6 +14,7 @@ interface AppSettingsRepository {
     fun setDynamicColorEnabled(enabled: Boolean)
 
     fun setShowDailyFocus(enabled: Boolean)
+    fun setDailyFocusMode(mode: DailyFocusMode)
     fun setCategorySort(sort: CategorySort)
     fun setTodoGrouping(grouping: TodoGrouping)
     fun setTodoSort(sort: TodoSort)
@@ -58,6 +59,10 @@ class SharedPrefsAppSettingsRepository(
         prefs.edit().putBoolean(KEY_SHOW_DAILY_FOCUS, enabled).apply()
     }
 
+    override fun setDailyFocusMode(mode: DailyFocusMode) {
+        prefs.edit().putString(KEY_DAILY_FOCUS_MODE, mode.name).apply()
+    }
+
     override fun setCategorySort(sort: CategorySort) {
         prefs.edit().putString(KEY_CATEGORY_SORT, sort.name).apply()
     }
@@ -99,6 +104,9 @@ class SharedPrefsAppSettingsRepository(
             themeMode = themeMode,
             dynamicColorEnabled = prefs.getBoolean(KEY_DYNAMIC_COLOR, true),
             showDailyFocus = prefs.getBoolean(KEY_SHOW_DAILY_FOCUS, true),
+            dailyFocusMode = prefs.getString(KEY_DAILY_FOCUS_MODE, null)?.let { raw ->
+                runCatching { DailyFocusMode.valueOf(raw) }.getOrNull()
+            } ?: DailyFocusMode.TODAY,
             categorySort = categorySort,
             todoGrouping = todoGrouping,
             todoSort = todoSort,
@@ -113,6 +121,7 @@ class SharedPrefsAppSettingsRepository(
         private const val KEY_THEME_MODE = "theme_mode"
         private const val KEY_DYNAMIC_COLOR = "dynamic_color"
         private const val KEY_SHOW_DAILY_FOCUS = "show_daily_focus"
+        private const val KEY_DAILY_FOCUS_MODE = "daily_focus_mode"
         private const val KEY_CATEGORY_SORT = "category_sort"
         private const val KEY_TODO_GROUPING = "todo_grouping"
         private const val KEY_TODO_SORT = "todo_sort"

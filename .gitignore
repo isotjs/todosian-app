@@ -21,3 +21,4 @@ keystore.properties
 *.keystore
 *.p12
 /keystore
+/.kotlin

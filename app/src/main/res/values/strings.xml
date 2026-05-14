@@ -12,9 +12,17 @@
     <!-- Home -->
     <string name="home_title">Todosian</string>
     <string name="home_daily_focus_title">Daily focus</string>
-    <plurals name="home_daily_focus_subtitle">
-        <item quantity="one">%1$d task remaining today</item>
-        <item quantity="other">%1$d tasks remaining today</item>
+    <plurals name="home_daily_focus_subtitle_today">
+        <item quantity="one">%1$d task due today</item>
+        <item quantity="other">%1$d tasks due today</item>
+    </plurals>
+    <plurals name="home_daily_focus_subtitle_overdue">
+        <item quantity="one">%1$d overdue task</item>
+        <item quantity="other">%1$d overdue tasks</item>
+    </plurals>
+    <plurals name="home_daily_focus_subtitle_today_overdue">
+        <item quantity="one">%1$d task due today or overdue</item>
+        <item quantity="other">%1$d tasks due today or overdue</item>
     </plurals>
     <string name="home_empty_title">No categories yet</string>
     <string name="home_empty_subtitle">Create a category or choose a different folder.</string>
@@ -148,6 +156,10 @@
     <string name="settings_behaviour">Behaviour</string>
     <string name="settings_show_daily_focus">Daily focus banner</string>
     <string name="settings_show_daily_focus_subtitle">Show remaining tasks on the Home screen.</string>
+    <string name="settings_daily_focus_mode">Daily focus content</string>
+    <string name="settings_daily_focus_mode_today">Today</string>
+    <string name="settings_daily_focus_mode_overdue">Overdue</string>
+    <string name="settings_daily_focus_mode_today_overdue">Today and overdue</string>
     <string name="settings_category_sort">Category sorting</string>
     <string name="settings_sort_az">A–Z</string>
     <string name="settings_sort_remaining">Most remaining</string>

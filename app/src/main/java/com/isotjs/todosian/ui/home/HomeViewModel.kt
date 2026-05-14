@@ -23,7 +23,14 @@ data class HomeUiState(
     val isLoading: Boolean = false,
     val categories: List<Category> = emptyList(),
 ) {
-    val remainingToday: Int = categories.sumOf { it.todoCount - it.doneCount }
+    fun remainingFor(mode: com.isotjs.todosian.data.settings.DailyFocusMode): Int {
+        return when (mode) {
+            com.isotjs.todosian.data.settings.DailyFocusMode.TODAY -> categories.sumOf { it.dueTodayCount }
+            com.isotjs.todosian.data.settings.DailyFocusMode.OVERDUE -> categories.sumOf { it.overdueCount }
+            com.isotjs.todosian.data.settings.DailyFocusMode.TODAY_AND_OVERDUE ->
+                categories.sumOf { it.dueTodayCount + it.overdueCount }
+        }
+    }
 }
 
 class HomeViewModel(

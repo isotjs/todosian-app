@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import java.time.LocalDate
 
 interface FileRepository {
     fun getFolderUri(): Uri?
@@ -97,12 +98,20 @@ class SafFileRepository(
                         val lines = readLinesInternal(file.uri)
                         val todos = MarkdownParser.parse(lines)
                         val doneCount = todos.count { it.isDone }
+                        val today = LocalDate.now().toString()
+                        val activeTodos = todos.filter { !it.isDone }
+                        val dueTodayCount = activeTodos.count { it.dueDate == today }
+                        val overdueCount = activeTodos.count { todo ->
+                            todo.dueDate?.let { it < today } == true
+                        }
                         Category(
                             fileName = name,
                             displayName = displayName,
                             uri = file.uri,
                             todoCount = todos.size,
                             doneCount = doneCount,
+                            dueTodayCount = dueTodayCount,
+                            overdueCount = overdueCount,
                         )
                     }
                     .sortedBy { it.displayName.lowercase() }

@@ -8,4 +8,6 @@ data class Category(
     val uri: Uri,
     val todoCount: Int,
     val doneCount: Int,
+    val dueTodayCount: Int,
+    val overdueCount: Int,
 )

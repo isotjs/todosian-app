@@ -75,6 +75,7 @@ import com.isotjs.todosian.R
 import com.isotjs.todosian.data.FileRepository
 import com.isotjs.todosian.data.settings.AppSettingsRepository
 import com.isotjs.todosian.data.settings.CategorySort
+import com.isotjs.todosian.data.settings.DailyFocusMode
 import com.isotjs.todosian.data.model.Category
 import com.isotjs.todosian.ui.components.TodosianDimens
 import com.isotjs.todosian.ui.components.TodosianLinearProgress
@@ -375,7 +376,10 @@ fun HomeScreen(
                             exit = fadeOut(tween(140)) + shrinkVertically(tween(200)),
                         ) {
                             Column {
-                                DailyFocusBanner(remaining = uiState.remainingToday)
+                                DailyFocusBanner(
+                                    remaining = uiState.remainingFor(settings.dailyFocusMode),
+                                    mode = settings.dailyFocusMode,
+                                )
                                 Spacer(modifier = Modifier.height(16.dp))
                             }
                         }
@@ -394,7 +398,10 @@ fun HomeScreen(
                             exit = fadeOut(tween(140)) + shrinkVertically(tween(200)),
                         ) {
                             Column {
-                                DailyFocusBanner(remaining = uiState.remainingToday)
+                                DailyFocusBanner(
+                                    remaining = uiState.remainingFor(settings.dailyFocusMode),
+                                    mode = settings.dailyFocusMode,
+                                )
                                 Spacer(modifier = Modifier.height(16.dp))
                             }
                         }
@@ -490,6 +497,7 @@ private fun validateCategoryNameForRename(input: String): RenameCategoryValidati
 @Composable
 private fun DailyFocusBanner(
     remaining: Int,
+    mode: DailyFocusMode,
     modifier: Modifier = Modifier,
 ) {
     Card(
@@ -512,7 +520,15 @@ private fun DailyFocusBanner(
                 color = MaterialTheme.colorScheme.onPrimaryContainer,
             )
             Text(
-                text = pluralStringResource(R.plurals.home_daily_focus_subtitle, remaining, remaining),
+                text = pluralStringResource(
+                    when (mode) {
+                        DailyFocusMode.TODAY -> R.plurals.home_daily_focus_subtitle_today
+                        DailyFocusMode.OVERDUE -> R.plurals.home_daily_focus_subtitle_overdue
+                        DailyFocusMode.TODAY_AND_OVERDUE -> R.plurals.home_daily_focus_subtitle_today_overdue
+                    },
+                    remaining,
+                    remaining,
+                ),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f),
             )

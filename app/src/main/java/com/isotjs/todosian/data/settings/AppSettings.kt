@@ -4,12 +4,19 @@ data class AppSettings(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val dynamicColorEnabled: Boolean = true,
     val showDailyFocus: Boolean = true,
+    val dailyFocusMode: DailyFocusMode = DailyFocusMode.TODAY,
     val categorySort: CategorySort = CategorySort.A_Z,
     val todoGrouping: TodoGrouping = TodoGrouping.GROUPED,
     val todoSort: TodoSort = TodoSort.FILE_ORDER,
     val enableTasksPluginSupport: Boolean = false,
     val tasksPluginUseEmojisInUi: Boolean = false,
 )
+
+enum class DailyFocusMode {
+    TODAY,
+    OVERDUE,
+    TODAY_AND_OVERDUE,
+}
 
 enum class ThemeMode {
     SYSTEM,
