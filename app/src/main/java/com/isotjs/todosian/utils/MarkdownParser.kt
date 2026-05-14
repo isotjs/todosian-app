@@ -51,6 +51,7 @@ object MarkdownParser {
         lines: List<String>,
         lineIndex: Int,
         enableTasksPlugin: Boolean,
+        today: LocalDate = LocalDate.now(),
     ): List<String> {
         if (lineIndex !in lines.indices) return lines
 
@@ -62,32 +63,56 @@ object MarkdownParser {
         val remainder = match.groupValues[3]
         val newMark = if (isDone) " " else "x"
 
+        val todayStr = today.toString()
+
         val newRemainder = if (!enableTasksPlugin) {
             remainder
         } else {
             val withoutDoneDate = removeCompletionDate(remainder)
             if (!isDone) {
-                withoutDoneDate + " ✅ ${todayString()}"
+                withoutDoneDate + " ✅ $todayStr"
             } else {
                 withoutDoneDate
             }
         }
 
         val newLine = "$indentPrefix- [$newMark] ${newRemainder.trimEnd()}"
-        return lines.toMutableList().apply {
+        val updatedLines = lines.toMutableList().apply {
             this[lineIndex] = newLine
         }
+        
+        if (!isDone && enableTasksPlugin) {
+            val parsed = parseRemainder(remainder)
+            val rule = parsed.meta.recurrence
+            if (!rule.isNullOrBlank()) {
+                val nextLine = buildRecurredTaskLine(
+                    indentPrefix = indentPrefix,
+                    taskText = parsed.mainText,
+                    originalMeta = parsed.meta,
+                    rule = rule,
+                    today = today,
+                )
+                if (nextLine != null) {
+                    return updatedLines.toMutableList().apply {
+                        add(lineIndex, nextLine)
+                    }
+                }
+            }
+        }
+
+        return updatedLines
     }
 
     fun tryToggleLine(
         lines: List<String>,
         lineIndex: Int,
         enableTasksPlugin: Boolean,
+        today: LocalDate = LocalDate.now(),
     ): List<String>? {
         if (lineIndex !in lines.indices) return null
         val line = lines[lineIndex]
         if (!isTodoLine(line)) return null
-        return toggleLine(lines, lineIndex, enableTasksPlugin)
+        return toggleLine(lines, lineIndex, enableTasksPlugin, today)
     }
 
     fun addTodo(
@@ -312,7 +337,41 @@ object MarkdownParser {
         return lines.toMutableList().apply { this[lineIndex] = newLine }
     }
 
-    private fun todayString(): String = LocalDate.now().toString()
+    private fun todayString(today: LocalDate = LocalDate.now()): String = today.toString()
+
+    private fun buildRecurredTaskLine(
+        indentPrefix: String,
+        taskText: String,
+        originalMeta: TasksMeta,
+        rule: String,
+        today: LocalDate,
+    ): String? {
+        val next = RecurrenceEngine.nextOccurrence(
+            ruleText = rule,
+            dueDate = originalMeta.dueDate,
+            scheduledDate = originalMeta.scheduledDate,
+            startDate = originalMeta.startDate,
+            today = today,
+        ) ?: return null
+
+        val newMeta = TasksMeta(
+            dueDate = next.dueDate?.toString(),
+            scheduledDate = next.scheduledDate?.toString(),
+            startDate = next.startDate?.toString(),
+            completionDate = null,
+            createdDate = if (originalMeta.createdDate != null) today.toString() else null,
+            priority = originalMeta.priority,
+            recurrence = originalMeta.recurrence,
+        )
+
+        return buildString {
+            append(indentPrefix)
+            append("- [ ] ")
+            append(taskText)
+            val suffix = newMeta.toSuffixString()
+            if (suffix.isNotEmpty()) append(suffix)
+        }
+    }
 
     private fun buildTodoLine(
         text: String,

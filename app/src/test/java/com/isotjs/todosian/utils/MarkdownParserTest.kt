@@ -333,4 +333,216 @@ class MarkdownParserTest {
         assertEquals(true, MarkdownParser.hasSubtasks(lines, lineIndex = 0))
         assertEquals(false, MarkdownParser.hasSubtasks(lines, lineIndex = 1))
     }
+    
+    @Test
+    fun toggleLine_recurring_daily_inserts_new_open_task_above() {
+        val today = LocalDate.of(2024, 3, 15)
+        val lines = listOf(
+            "- [ ] Water plants 📅 2024-03-14 🔁 every day",
+        )
+
+        val result = MarkdownParser.toggleLine(
+            lines = lines,
+            lineIndex = 0,
+            enableTasksPlugin = true,
+            today = today,
+        )
+
+        assertEquals(2, result.size)
+        assertEquals("- [ ] Water plants 📅 2024-03-15 🔁 every day", result[0])
+        assertEquals("- [x] Water plants 📅 2024-03-14 🔁 every day ✅ 2024-03-15", result[1])
+    }
+
+    @Test
+    fun toggleLine_recurring_weekly_inserts_new_task_with_advanced_due_date() {
+        val today = LocalDate.of(2024, 3, 15)
+        val lines = listOf(
+            "- [ ] Weekly review 📅 2024-03-08 🔁 every week",
+        )
+
+        val result = MarkdownParser.toggleLine(
+            lines = lines,
+            lineIndex = 0,
+            enableTasksPlugin = true,
+            today = today,
+        )
+
+        assertEquals(2, result.size)
+        assertEquals("- [ ] Weekly review 📅 2024-03-15 🔁 every week", result[0])
+        assertEquals("- [x] Weekly review 📅 2024-03-08 🔁 every week ✅ 2024-03-15", result[1])
+    }
+
+    @Test
+    fun toggleLine_recurring_preserves_surrounding_non_todo_lines() {
+        val today = LocalDate.of(2024, 3, 15)
+        val lines = listOf(
+            "# Heading",
+            "- [ ] Task 📅 2024-03-14 🔁 every day",
+            "Some note",
+        )
+
+        val result = MarkdownParser.toggleLine(
+            lines = lines,
+            lineIndex = 1,
+            enableTasksPlugin = true,
+            today = today,
+        )
+
+        assertEquals(4, result.size)
+        assertEquals("# Heading", result[0])
+        assertEquals("- [ ] Task 📅 2024-03-15 🔁 every day", result[1])
+        assertEquals("- [x] Task 📅 2024-03-14 🔁 every day ✅ 2024-03-15", result[2])
+        assertEquals("Some note", result[3])
+    }
+
+    @Test
+    fun toggleLine_recurring_preserves_priority_on_new_task() {
+        val today = LocalDate.of(2024, 3, 15)
+        val lines = listOf(
+            "- [ ] Important task 📅 2024-03-10 🔁 every month 🔺",
+        )
+
+        val result = MarkdownParser.toggleLine(
+            lines = lines,
+            lineIndex = 0,
+            enableTasksPlugin = true,
+            today = today,
+        )
+
+        assertEquals(2, result.size)
+        assertEquals("- [ ] Important task 📅 2024-04-10 🔁 every month 🔺", result[0])
+    }
+
+    @Test
+    fun toggleLine_recurring_updates_created_date_on_new_task() {
+        val today = LocalDate.of(2024, 3, 15)
+        val lines = listOf(
+            "- [ ] Daily habit ➕ 2024-01-01 📅 2024-03-14 🔁 every day",
+        )
+
+        val result = MarkdownParser.toggleLine(
+            lines = lines,
+            lineIndex = 0,
+            enableTasksPlugin = true,
+            today = today,
+        )
+
+        assertEquals(2, result.size)
+        assertEquals(
+            "- [ ] Daily habit ➕ 2024-03-15 📅 2024-03-15 🔁 every day",
+            result[0],
+        )
+    }
+
+    @Test
+    fun toggleLine_recurring_when_done_uses_today_as_base() {
+        val today = LocalDate.of(2024, 3, 20) // Wednesday; task was late
+        val lines = listOf(
+            "- [ ] Catch-up 📅 2024-03-10 🔁 every week when done",
+        )
+
+        val result = MarkdownParser.toggleLine(
+            lines = lines,
+            lineIndex = 0,
+            enableTasksPlugin = true,
+            today = today,
+        )
+
+        assertEquals(2, result.size)
+        assertEquals("- [ ] Catch-up 📅 2024-03-27 🔁 every week when done", result[0])
+    }
+
+    @Test
+    fun toggleLine_non_recurring_task_not_affected_by_recurrence_logic() {
+        val today = LocalDate.of(2024, 3, 15)
+        val lines = listOf(
+            "- [ ] Simple task 📅 2024-03-14",
+        )
+
+        val result = MarkdownParser.toggleLine(
+            lines = lines,
+            lineIndex = 0,
+            enableTasksPlugin = true,
+            today = today,
+        )
+
+        assertEquals(1, result.size)
+        assertEquals("- [x] Simple task 📅 2024-03-14 ✅ 2024-03-15", result[0])
+    }
+
+    @Test
+    fun toggleLine_plugin_disabled_ignores_recurrence_field() {
+        val today = LocalDate.of(2024, 3, 15)
+        val lines = listOf(
+            "- [ ] Daily 📅 2024-03-14 🔁 every day",
+        )
+
+        val result = MarkdownParser.toggleLine(
+            lines = lines,
+            lineIndex = 0,
+            enableTasksPlugin = false,
+            today = today,
+        )
+
+        assertEquals(1, result.size)
+        assertEquals("- [x] Daily 📅 2024-03-14 🔁 every day", result[0])
+    }
+
+    @Test
+    fun toggleLine_unchecking_recurring_done_task_removes_done_date_only() {
+        val today = LocalDate.of(2024, 3, 16)
+        val lines = listOf(
+            "- [x] Daily 📅 2024-03-15 🔁 every day ✅ 2024-03-15",
+        )
+
+        val result = MarkdownParser.toggleLine(
+            lines = lines,
+            lineIndex = 0,
+            enableTasksPlugin = true,
+            today = today,
+        )
+
+        assertEquals(1, result.size)
+        assertEquals("- [ ] Daily 📅 2024-03-15 🔁 every day", result[0])
+    }
+
+    @Test
+    fun toggleLine_recurring_with_indented_task_preserves_indent() {
+        val today = LocalDate.of(2024, 3, 15)
+        val lines = listOf(
+            "  - [ ] Sub-task 📅 2024-03-14 🔁 every day",
+        )
+
+        val result = MarkdownParser.toggleLine(
+            lines = lines,
+            lineIndex = 0,
+            enableTasksPlugin = true,
+            today = today,
+        )
+
+        assertEquals(2, result.size)
+        assertEquals("  - [ ] Sub-task 📅 2024-03-15 🔁 every day", result[0])
+        assertEquals("  - [x] Sub-task 📅 2024-03-14 🔁 every day ✅ 2024-03-15", result[1])
+    }
+
+    @Test
+    fun toggleLine_recurring_multi_date_preserves_offsets() {
+        val today = LocalDate.of(2024, 3, 15)
+        val lines = listOf(
+            "- [ ] Multi-date 🛫 2024-03-15 ⏳ 2024-03-18 📅 2024-03-20 🔁 every week",
+        )
+
+        val result = MarkdownParser.toggleLine(
+            lines = lines,
+            lineIndex = 0,
+            enableTasksPlugin = true,
+            today = today,
+        )
+
+        assertEquals(2, result.size)
+        assertEquals(
+            "- [ ] Multi-date 🛫 2024-03-22 ⏳ 2024-03-25 📅 2024-03-27 🔁 every week",
+            result[0],
+        )
+    }
 }
