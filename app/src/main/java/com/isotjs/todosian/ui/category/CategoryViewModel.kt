@@ -178,6 +178,44 @@ class CategoryViewModel(
         }
     }
 
+    fun addSubTodo(
+        parent: Todo,
+        text: String,
+        meta: MarkdownParser.TasksMeta?,
+        enableTasksPluginSupport: Boolean,
+    ) {
+        viewModelScope.launch {
+            val previousLines = _uiState.value.lines
+            val newLines = MarkdownParser.addSubTodo(
+                lines = previousLines,
+                parentLineIndex = parent.lineIndex,
+                text = text,
+                meta = meta,
+                enableTasksPlugin = enableTasksPluginSupport,
+            )
+            if (newLines == null) {
+                _events.emit(Event.ShowMessage(R.string.error_read_failed))
+                refreshFromDisk(showLoading = false)
+                return@launch
+            }
+
+            applyLines(newLines)
+
+            inFlightWrites.incrementAndGet()
+            try {
+                val write = fileRepository.writeLines(categoryUri, newLines)
+                if (write.isFailure) {
+                    if (_uiState.value.lines == newLines) {
+                        applyLines(previousLines)
+                    }
+                    _events.emit(Event.ShowMessage(R.string.error_write_failed))
+                }
+            } finally {
+                onWriteFinishedMaybeRefresh()
+            }
+        }
+    }
+
     fun editTodo(
         todo: Todo,
         newText: String,
@@ -224,7 +262,7 @@ class CategoryViewModel(
     fun deleteTodo(todo: Todo) {
         viewModelScope.launch {
             val previousLines = _uiState.value.lines
-            val newLines = MarkdownParser.tryDeleteTodo(previousLines, todo.lineIndex)
+            val newLines = MarkdownParser.tryDeleteTodoWithSubtasks(previousLines, todo.lineIndex)
             if (newLines == null) {
                 _events.emit(Event.ShowMessage(R.string.error_read_failed))
                 refreshFromDisk(showLoading = false)
@@ -250,8 +288,12 @@ class CategoryViewModel(
 
     fun moveTodo(todo: Todo, targetUri: Uri) {
         viewModelScope.launch {
+            if (todo.indentLevel > 0) {
+                _events.emit(Event.ShowMessage(R.string.category_move_subtask_disabled))
+                return@launch
+            }
             val previousLines = _uiState.value.lines
-            val newLines = MarkdownParser.tryDeleteTodo(previousLines, todo.lineIndex)
+            val newLines = MarkdownParser.tryDeleteTodoWithSubtasks(previousLines, todo.lineIndex)
             if (newLines == null) {
                 _events.emit(Event.ShowMessage(R.string.error_read_failed))
                 refreshFromDisk(showLoading = false)

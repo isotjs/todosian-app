@@ -6,7 +6,7 @@ import java.time.LocalDate
 import java.util.UUID
 
 object MarkdownParser {
-    private val todoRegex = Regex("""^- \[(x| )\] (.*)$""")
+    private val todoRegex = Regex("""^([ \t]*)- \[(x| )\] (.*)$""")
 
     private val dueSuffixRegex = Regex("""\s📅\s(\d{4}-\d{2}-\d{2})\s*$""")
     private val startSuffixRegex = Regex("""\s🛫\s(\d{4}-\d{2}-\d{2})\s*$""")
@@ -24,8 +24,9 @@ object MarkdownParser {
     fun parse(lines: List<String>): List<Todo> {
         return lines.mapIndexedNotNull { index, line ->
             val match = todoRegex.matchEntire(line) ?: return@mapIndexedNotNull null
-            val isDone = match.groupValues[1] == "x"
-            val remainder = match.groupValues[2]
+            val indentPrefix = match.groupValues[1]
+            val isDone = match.groupValues[2] == "x"
+            val remainder = match.groupValues[3]
 
             val parsed = parseRemainder(remainder)
             Todo(
@@ -33,6 +34,8 @@ object MarkdownParser {
                 text = parsed.mainText,
                 isDone = isDone,
                 lineIndex = index,
+                indentPrefix = indentPrefix,
+                indentLevel = indentLevel(indentPrefix),
                 dueDate = parsed.meta.dueDate,
                 startDate = parsed.meta.startDate,
                 scheduledDate = parsed.meta.scheduledDate,
@@ -54,8 +57,9 @@ object MarkdownParser {
         val line = lines[lineIndex]
         val match = todoRegex.matchEntire(line) ?: return lines
 
-        val isDone = match.groupValues[1] == "x"
-        val remainder = match.groupValues[2]
+        val indentPrefix = match.groupValues[1]
+        val isDone = match.groupValues[2] == "x"
+        val remainder = match.groupValues[3]
         val newMark = if (isDone) " " else "x"
 
         val newRemainder = if (!enableTasksPlugin) {
@@ -69,7 +73,7 @@ object MarkdownParser {
             }
         }
 
-        val newLine = "- [$newMark] ${newRemainder.trimEnd()}"
+        val newLine = "$indentPrefix- [$newMark] ${newRemainder.trimEnd()}"
         return lines.toMutableList().apply {
             this[lineIndex] = newLine
         }
@@ -95,23 +99,56 @@ object MarkdownParser {
         val cleaned = text.trim()
         if (cleaned.isEmpty()) return lines
 
-        val resolvedMeta = if (enableTasksPlugin) {
-            (meta ?: TasksMeta()).let { current ->
-                if (current.createdDate == null) current.copy(createdDate = todayString()) else current
-            }
-        } else {
-            null
-        }
-
-        val newLine = buildString {
-            append("- [ ] ")
-            append(cleaned)
-            val suffix = resolvedMeta?.toSuffixString().orEmpty()
-            if (suffix.isNotEmpty()) append(suffix)
-        }
+        val newLine = buildTodoLine(
+            text = cleaned,
+            meta = meta,
+            enableTasksPlugin = enableTasksPlugin,
+            indentPrefix = "",
+        )
 
         if (lines.isEmpty()) return listOf(newLine)
         return lines.toMutableList().apply { add(newLine) }
+    }
+
+    fun addSubTodo(
+        lines: List<String>,
+        parentLineIndex: Int,
+        text: String,
+        meta: TasksMeta? = null,
+        enableTasksPlugin: Boolean = false,
+    ): List<String>? {
+        val cleaned = text.trim()
+        if (cleaned.isEmpty()) return null
+        if (parentLineIndex !in lines.indices) return null
+
+        val parentLine = lines[parentLineIndex]
+        val match = todoRegex.matchEntire(parentLine) ?: return null
+        val parentIndentPrefix = match.groupValues[1]
+        val parentIndentLevel = indentLevel(parentIndentPrefix)
+
+        val indentUnit = inferIndentUnit(parentIndentPrefix)
+        val newIndentPrefix = parentIndentPrefix + indentUnit
+
+        val newLine = buildTodoLine(
+            text = cleaned,
+            meta = meta,
+            enableTasksPlugin = enableTasksPlugin,
+            indentPrefix = newIndentPrefix,
+        )
+
+        var insertIndex = parentLineIndex + 1
+        while (insertIndex < lines.size) {
+            val nextLine = lines[insertIndex]
+            val nextMatch = todoRegex.matchEntire(nextLine) ?: break
+            val nextIndent = nextMatch.groupValues[1]
+            if (indentLevel(nextIndent) > parentIndentLevel) {
+                insertIndex++
+            } else {
+                break
+            }
+        }
+
+        return lines.toMutableList().apply { add(insertIndex, newLine) }
     }
 
     fun deleteTodo(lines: List<String>, lineIndex: Int): List<String> {
@@ -126,6 +163,43 @@ object MarkdownParser {
         return deleteTodo(lines, lineIndex)
     }
 
+    fun tryDeleteTodoWithSubtasks(lines: List<String>, lineIndex: Int): List<String>? {
+        if (lineIndex !in lines.indices) return null
+        val line = lines[lineIndex]
+        val match = todoRegex.matchEntire(line) ?: return null
+        val parentIndent = indentLevel(match.groupValues[1])
+
+        var endIndex = lineIndex + 1
+        while (endIndex < lines.size) {
+            val nextLine = lines[endIndex]
+            val nextMatch = todoRegex.matchEntire(nextLine) ?: break
+            val nextIndent = indentLevel(nextMatch.groupValues[1])
+            if (nextIndent > parentIndent) {
+                endIndex++
+            } else {
+                break
+            }
+        }
+
+        return lines.toMutableList().apply {
+            subList(lineIndex, endIndex).clear()
+        }
+    }
+
+    fun hasSubtasks(lines: List<String>, lineIndex: Int): Boolean {
+        if (lineIndex !in lines.indices) return false
+        val line = lines[lineIndex]
+        val match = todoRegex.matchEntire(line) ?: return false
+        val parentIndent = indentLevel(match.groupValues[1])
+
+        val nextIndex = lineIndex + 1
+        if (nextIndex !in lines.indices) return false
+        val nextLine = lines[nextIndex]
+        val nextMatch = todoRegex.matchEntire(nextLine) ?: return false
+        val nextIndent = indentLevel(nextMatch.groupValues[1])
+        return nextIndent > parentIndent
+    }
+
     fun editTodoText(
         lines: List<String>,
         lineIndex: Int,
@@ -137,8 +211,9 @@ object MarkdownParser {
 
         val line = lines[lineIndex]
         val match = todoRegex.matchEntire(line) ?: return lines
-        val mark = match.groupValues[1]
-        val remainder = match.groupValues[2]
+        val indentPrefix = match.groupValues[1]
+        val mark = match.groupValues[2]
+        val remainder = match.groupValues[3]
         val parsed = parseRemainder(remainder)
 
         val newRemainder = buildString {
@@ -146,7 +221,7 @@ object MarkdownParser {
             if (parsed.suffixRaw.isNotEmpty()) append(parsed.suffixRaw)
         }
 
-        val newLine = "- [$mark] ${newRemainder.trimEnd()}"
+        val newLine = "$indentPrefix- [$mark] ${newRemainder.trimEnd()}"
         return lines.toMutableList().apply { this[lineIndex] = newLine }
     }
 
@@ -184,10 +259,26 @@ object MarkdownParser {
     ): Pair<List<String>, List<String>>? {
         if (lineIndex !in sourceLines.indices) return null
         val line = sourceLines[lineIndex]
-        if (!isTodoLine(line)) return null
+        val match = todoRegex.matchEntire(line) ?: return null
+        val parentIndent = indentLevel(match.groupValues[1])
 
-        val newSourceLines = sourceLines.toMutableList().apply { removeAt(lineIndex) }
-        val newTargetLines = targetLines.toMutableList().apply { add(line) }
+        var endIndex = lineIndex + 1
+        while (endIndex < sourceLines.size) {
+            val nextLine = sourceLines[endIndex]
+            val nextMatch = todoRegex.matchEntire(nextLine) ?: break
+            val nextIndent = indentLevel(nextMatch.groupValues[1])
+            if (nextIndent > parentIndent) {
+                endIndex++
+            } else {
+                break
+            }
+        }
+
+        val block = sourceLines.subList(lineIndex, endIndex)
+        val newSourceLines = sourceLines.toMutableList().apply {
+            subList(lineIndex, endIndex).clear()
+        }
+        val newTargetLines = targetLines.toMutableList().apply { addAll(block) }
         return newSourceLines to newTargetLines
     }
 
@@ -204,10 +295,12 @@ object MarkdownParser {
 
         val line = lines[lineIndex]
         val match = todoRegex.matchEntire(line) ?: return lines
-        val mark = match.groupValues[1]
+        val indentPrefix = match.groupValues[1]
+        val mark = match.groupValues[2]
 
         val resolvedMeta = if (enableTasksPlugin) meta else null
         val newLine = buildString {
+            append(indentPrefix)
             append("- [")
             append(mark)
             append("] ")
@@ -220,6 +313,42 @@ object MarkdownParser {
     }
 
     private fun todayString(): String = LocalDate.now().toString()
+
+    private fun buildTodoLine(
+        text: String,
+        meta: TasksMeta?,
+        enableTasksPlugin: Boolean,
+        indentPrefix: String,
+    ): String {
+        val resolvedMeta = if (enableTasksPlugin) {
+            (meta ?: TasksMeta()).let { current ->
+                if (current.createdDate == null) current.copy(createdDate = todayString()) else current
+            }
+        } else {
+            null
+        }
+
+        return buildString {
+            append(indentPrefix)
+            append("- [ ] ")
+            append(text)
+            val suffix = resolvedMeta?.toSuffixString().orEmpty()
+            if (suffix.isNotEmpty()) append(suffix)
+        }
+    }
+
+    private fun indentLevel(prefix: String): Int {
+        if (prefix.isEmpty()) return 0
+        var width = 0
+        for (char in prefix) {
+            width += if (char == '\t') 4 else 1
+        }
+        return (width / 2).coerceAtLeast(0)
+    }
+
+    private fun inferIndentUnit(prefix: String): String {
+        return if (prefix.contains('\t')) "\t" else "  "
+    }
 
     private fun removeCompletionDate(remainder: String): String {
         val removed = remainder.replace(completionAnywhereRegex, "")

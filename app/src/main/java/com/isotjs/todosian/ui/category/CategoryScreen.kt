@@ -37,6 +37,7 @@ import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.SubdirectoryArrowRight
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -136,7 +137,9 @@ fun CategoryScreen(
     var sheetMode by remember { mutableStateOf<TodoSheetMode?>(null) }
     var sheetText by remember { mutableStateOf("") }
     var sheetMeta by remember { mutableStateOf(MarkdownParser.TasksMeta()) }
+    var sheetParentTodo by remember { mutableStateOf<Todo?>(null) }
     var deleteTodoTarget by remember { mutableStateOf<Todo?>(null) }
+    var deleteTodoHasSubtasks by remember { mutableStateOf(false) }
     var moveTodoTarget by remember { mutableStateOf<Todo?>(null) }
     var showCopyOption by remember { mutableStateOf(false) }
 
@@ -146,18 +149,21 @@ fun CategoryScreen(
                 sheetMode = null
                 sheetText = ""
                 sheetMeta = MarkdownParser.TasksMeta()
+                sheetParentTodo = null
             },
             sheetState = todoSheetState,
         ) {
             val titleRes = when (sheetMode) {
                 TodoSheetMode.Add -> R.string.category_add_todo_title
                 is TodoSheetMode.Edit -> R.string.category_edit_todo_title
+                TodoSheetMode.AddSubtask -> R.string.category_add_subtask_title
                 null -> R.string.category_add_todo_title
             }
 
             val hintRes = when (sheetMode) {
                 TodoSheetMode.Add -> R.string.category_add_todo_hint
                 is TodoSheetMode.Edit -> R.string.category_edit_todo_hint
+                TodoSheetMode.AddSubtask -> R.string.category_add_subtask_hint
                 null -> R.string.category_add_todo_hint
             }
 
@@ -202,6 +208,7 @@ fun CategoryScreen(
                                 sheetMode = null
                                 sheetText = ""
                                 sheetMeta = MarkdownParser.TasksMeta()
+                                sheetParentTodo = null
                             }
                         },
                     ) {
@@ -223,6 +230,18 @@ fun CategoryScreen(
                                     enableTasksPluginSupport = settings.enableTasksPluginSupport,
                                 )
 
+                                TodoSheetMode.AddSubtask -> {
+                                    val parent = sheetParentTodo
+                                    if (parent != null) {
+                                        viewModel.addSubTodo(
+                                            parent = parent,
+                                            text = sheetText,
+                                            meta = if (settings.enableTasksPluginSupport) sheetMeta else null,
+                                            enableTasksPluginSupport = settings.enableTasksPluginSupport,
+                                        )
+                                    }
+                                }
+
                                 null -> Unit
                             }
                             scope.launch {
@@ -230,6 +249,7 @@ fun CategoryScreen(
                                 sheetMode = null
                                 sheetText = ""
                                 sheetMeta = MarkdownParser.TasksMeta()
+                                sheetParentTodo = null
                             }
                         },
                         enabled = sheetText.trim().isNotEmpty(),
@@ -242,10 +262,15 @@ fun CategoryScreen(
     }
 
     if (deleteTodoTarget != null) {
+        val deleteBodyRes = if (deleteTodoHasSubtasks) {
+            R.string.category_delete_todo_body_with_subtasks
+        } else {
+            R.string.category_delete_todo_body
+        }
         AlertDialog(
             onDismissRequest = { deleteTodoTarget = null },
             title = { Text(text = stringResource(R.string.category_delete_todo_title)) },
-            text = { Text(text = stringResource(R.string.category_delete_todo_body)) },
+            text = { Text(text = stringResource(deleteBodyRes)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -254,13 +279,17 @@ fun CategoryScreen(
                             viewModel.deleteTodo(target)
                         }
                         deleteTodoTarget = null
+                        deleteTodoHasSubtasks = false
                     },
                 ) {
                     Text(text = stringResource(R.string.category_delete_todo_confirm))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { deleteTodoTarget = null }) {
+                TextButton(onClick = {
+                    deleteTodoTarget = null
+                    deleteTodoHasSubtasks = false
+                }) {
                     Text(text = stringResource(R.string.action_cancel))
                 }
             },
@@ -470,7 +499,20 @@ fun CategoryScreen(
                                 recurrence = todo.recurrence,
                             )
                         },
-                        onRequestDelete = { deleteTodoTarget = todo },
+                        onAddSubtask = {
+                            sheetMode = TodoSheetMode.AddSubtask
+                            sheetParentTodo = todo
+                            sheetText = ""
+                            sheetMeta = if (settings.enableTasksPluginSupport) {
+                                MarkdownParser.TasksMeta(createdDate = LocalDate.now().toString())
+                            } else {
+                                MarkdownParser.TasksMeta()
+                            }
+                        },
+                        onRequestDelete = {
+                            deleteTodoTarget = todo
+                            deleteTodoHasSubtasks = MarkdownParser.hasSubtasks(uiState.lines, todo.lineIndex)
+                        },
                         onRequestMove = { moveTodoTarget = todo },
                         modifier = Modifier.animateItem(
                             fadeInSpec = tween(durationMillis = 180),
@@ -510,7 +552,20 @@ fun CategoryScreen(
                                 recurrence = todo.recurrence,
                             )
                         },
-                        onRequestDelete = { deleteTodoTarget = todo },
+                        onAddSubtask = {
+                            sheetMode = TodoSheetMode.AddSubtask
+                            sheetParentTodo = todo
+                            sheetText = ""
+                            sheetMeta = if (settings.enableTasksPluginSupport) {
+                                MarkdownParser.TasksMeta(createdDate = LocalDate.now().toString())
+                            } else {
+                                MarkdownParser.TasksMeta()
+                            }
+                        },
+                        onRequestDelete = {
+                            deleteTodoTarget = todo
+                            deleteTodoHasSubtasks = MarkdownParser.hasSubtasks(uiState.lines, todo.lineIndex)
+                        },
                         onRequestMove = { moveTodoTarget = todo },
                         modifier = Modifier.animateItem(
                             fadeInSpec = tween(durationMillis = 180),
@@ -548,7 +603,20 @@ fun CategoryScreen(
                                 recurrence = todo.recurrence,
                             )
                         },
-                        onRequestDelete = { deleteTodoTarget = todo },
+                        onAddSubtask = {
+                            sheetMode = TodoSheetMode.AddSubtask
+                            sheetParentTodo = todo
+                            sheetText = ""
+                            sheetMeta = if (settings.enableTasksPluginSupport) {
+                                MarkdownParser.TasksMeta(createdDate = LocalDate.now().toString())
+                            } else {
+                                MarkdownParser.TasksMeta()
+                            }
+                        },
+                        onRequestDelete = {
+                            deleteTodoTarget = todo
+                            deleteTodoHasSubtasks = MarkdownParser.hasSubtasks(uiState.lines, todo.lineIndex)
+                        },
                         onRequestMove = { moveTodoTarget = todo },
                         modifier = Modifier.animateItem(
                             fadeInSpec = tween(durationMillis = 180),
@@ -575,10 +643,12 @@ private fun TodoRow(
     useEmojisInUi: Boolean,
     onToggle: () -> Unit,
     onEdit: () -> Unit,
+    onAddSubtask: () -> Unit,
     onRequestDelete: () -> Unit,
     onRequestMove: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val indentPadding = (todo.indentLevel * 12).coerceAtMost(48).dp
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
             when (value) {
@@ -587,7 +657,9 @@ private fun TodoRow(
                     false
                 }
                 SwipeToDismissBoxValue.StartToEnd -> {
-                    onRequestMove()
+                    if (todo.indentLevel == 0) {
+                        onRequestMove()
+                    }
                     false
                 }
                 else -> false
@@ -596,9 +668,9 @@ private fun TodoRow(
     )
 
     SwipeToDismissBox(
-        modifier = modifier,
+        modifier = modifier.padding(start = indentPadding),
         state = dismissState,
-        enableDismissFromStartToEnd = true,
+        enableDismissFromStartToEnd = todo.indentLevel == 0,
         backgroundContent = {
             val backgroundColor = when (dismissState.targetValue) {
                 SwipeToDismissBoxValue.EndToStart -> MaterialTheme.colorScheme.errorContainer
@@ -713,6 +785,15 @@ private fun TodoRow(
                                 }
                             }
                         }
+                    }
+                }
+                if (todo.indentLevel < 2) {
+                    IconButton(onClick = onAddSubtask) {
+                        Icon(
+                            imageVector = Icons.Outlined.SubdirectoryArrowRight,
+                            contentDescription = stringResource(R.string.cd_add_subtask),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                 }
             }
@@ -1119,6 +1200,8 @@ private sealed interface TodoSheetMode {
     data object Add : TodoSheetMode
 
     data class Edit(val todo: Todo) : TodoSheetMode
+
+    data object AddSubtask : TodoSheetMode
 }
 
 private class CategoryViewModelFactory(

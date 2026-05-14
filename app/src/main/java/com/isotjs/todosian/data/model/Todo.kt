@@ -14,6 +14,8 @@ data class Todo(
     val text: String,
     val isDone: Boolean,
     val lineIndex: Int,
+    val indentPrefix: String = "",
+    val indentLevel: Int = 0,
 
     // Obsidian Tasks plugin metadata (Tasks Emoji Format)
     val dueDate: String? = null, // 📅 YYYY-MM-DD

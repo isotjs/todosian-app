@@ -21,14 +21,39 @@ class MarkdownParserTest {
         assertEquals("First", todos[0].text)
         assertEquals(false, todos[0].isDone)
         assertEquals(1, todos[0].lineIndex)
+        assertEquals("", todos[0].indentPrefix)
+        assertEquals(0, todos[0].indentLevel)
 
         assertEquals("Done one", todos[1].text)
         assertEquals(true, todos[1].isDone)
         assertEquals(3, todos[1].lineIndex)
+        assertEquals("", todos[1].indentPrefix)
+        assertEquals(0, todos[1].indentLevel)
 
         assertEquals("Second", todos[2].text)
         assertEquals(false, todos[2].isDone)
         assertEquals(4, todos[2].lineIndex)
+        assertEquals("", todos[2].indentPrefix)
+        assertEquals(0, todos[2].indentLevel)
+    }
+
+    @Test
+    fun parse_captures_indented_todo_lines() {
+        val lines = listOf(
+            "- [ ] Parent",
+            "  - [ ] Child",
+            "\t- [x] Tabbed child",
+        )
+
+        val todos = MarkdownParser.parse(lines)
+
+        assertEquals(3, todos.size)
+        assertEquals("", todos[0].indentPrefix)
+        assertEquals(0, todos[0].indentLevel)
+        assertEquals("  ", todos[1].indentPrefix)
+        assertEquals(1, todos[1].indentLevel)
+        assertEquals("\t", todos[2].indentPrefix)
+        assertEquals(2, todos[2].indentLevel)
     }
 
     @Test
@@ -47,6 +72,17 @@ class MarkdownParserTest {
     }
 
     @Test
+    fun toggleLine_preserves_indent_prefix() {
+        val lines = listOf(
+            "  - [ ] Task",
+        )
+
+        val toggled = MarkdownParser.toggleLine(lines, lineIndex = 0, enableTasksPlugin = false)
+
+        assertEquals("  - [x] Task", toggled[0])
+    }
+
+    @Test
     fun addTodo_appends_todo_line() {
         val lines = listOf(
             "# Notes",
@@ -59,6 +95,47 @@ class MarkdownParserTest {
         assertEquals("# Notes", updated[0])
         assertEquals("Some text", updated[1])
         assertEquals("- [ ] New thing", updated[2])
+    }
+
+    @Test
+    fun addSubTodo_inserts_after_parent_block() {
+        val lines = listOf(
+            "- [ ] Parent",
+            "  - [ ] Child",
+            "- [ ] Sibling",
+        )
+
+        val updated = MarkdownParser.addSubTodo(
+            lines = lines,
+            parentLineIndex = 0,
+            text = "New child",
+        ) ?: error("Expected subtask insert")
+
+        assertEquals(
+            listOf(
+                "- [ ] Parent",
+                "  - [ ] Child",
+                "  - [ ] New child",
+                "- [ ] Sibling",
+            ),
+            updated,
+        )
+    }
+
+    @Test
+    fun addSubTodo_uses_parent_indent_unit() {
+        val lines = listOf(
+            "\t- [ ] Parent",
+            "\t\t- [ ] Child",
+        )
+
+        val updated = MarkdownParser.addSubTodo(
+            lines = lines,
+            parentLineIndex = 0,
+            text = "Another",
+        ) ?: error("Expected subtask insert")
+
+        assertEquals("\t\t- [ ] Another", updated[2])
     }
 
     @Test
@@ -82,6 +159,16 @@ class MarkdownParserTest {
 
         val updated = MarkdownParser.editTodoText(lines, lineIndex = 0, newText = "New")
         assertEquals(listOf("- [x] New"), updated)
+    }
+
+    @Test
+    fun editTodoText_preserves_indent_prefix() {
+        val lines = listOf(
+            "    - [x] Old",
+        )
+
+        val updated = MarkdownParser.editTodoText(lines, lineIndex = 0, newText = "New")
+        assertEquals(listOf("    - [x] New"), updated)
     }
 
     @Test
@@ -170,6 +257,26 @@ class MarkdownParserTest {
     }
 
     @Test
+    fun tryMoveTodoLine_moves_block_with_subtasks() {
+        val source = listOf(
+            "- [ ] Parent",
+            "  - [ ] Child",
+            "- [ ] Sibling",
+        )
+        val target = listOf("Intro")
+
+        val result = MarkdownParser.tryMoveTodoLine(
+            sourceLines = source,
+            lineIndex = 0,
+            targetLines = target,
+        )
+
+        val (newSource, newTarget) = result ?: error("Expected move to succeed")
+        assertEquals(listOf("- [ ] Sibling"), newSource)
+        assertEquals(listOf("Intro", "- [ ] Parent", "  - [ ] Child"), newTarget)
+    }
+
+    @Test
     fun tryCopyTodoLine_keeps_source_intact_and_appends_to_target() {
         val source = listOf(
             "- [ ] Copy me",
@@ -199,5 +306,31 @@ class MarkdownParserTest {
         )
 
         assertEquals(null, result)
+    }
+
+    @Test
+    fun tryDeleteTodoWithSubtasks_removes_nested_block() {
+        val lines = listOf(
+            "- [ ] Parent",
+            "  - [ ] Child",
+            "  - [ ] Child two",
+            "- [ ] Sibling",
+        )
+
+        val updated = MarkdownParser.tryDeleteTodoWithSubtasks(lines, lineIndex = 0)
+            ?: error("Expected delete to succeed")
+
+        assertEquals(listOf("- [ ] Sibling"), updated)
+    }
+
+    @Test
+    fun hasSubtasks_returns_true_when_next_is_more_indented() {
+        val lines = listOf(
+            "- [ ] Parent",
+            "  - [ ] Child",
+        )
+
+        assertEquals(true, MarkdownParser.hasSubtasks(lines, lineIndex = 0))
+        assertEquals(false, MarkdownParser.hasSubtasks(lines, lineIndex = 1))
     }
 }
