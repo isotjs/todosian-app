@@ -164,6 +164,33 @@ object MarkdownParser {
         return editTodoText(lines, lineIndex, cleaned)
     }
 
+    fun tryCopyTodoLine(
+        sourceLines: List<String>,
+        lineIndex: Int,
+        targetLines: List<String>,
+    ): Pair<List<String>, List<String>>? {
+        if (lineIndex !in sourceLines.indices) return null
+        val line = sourceLines[lineIndex]
+        if (!isTodoLine(line)) return null
+
+        val newTargetLines = targetLines.toMutableList().apply { add(line) }
+        return sourceLines to newTargetLines
+    }
+
+    fun tryMoveTodoLine(
+        sourceLines: List<String>,
+        lineIndex: Int,
+        targetLines: List<String>,
+    ): Pair<List<String>, List<String>>? {
+        if (lineIndex !in sourceLines.indices) return null
+        val line = sourceLines[lineIndex]
+        if (!isTodoLine(line)) return null
+
+        val newSourceLines = sourceLines.toMutableList().apply { removeAt(lineIndex) }
+        val newTargetLines = targetLines.toMutableList().apply { add(line) }
+        return newSourceLines to newTargetLines
+    }
+
     fun editTodo(
         lines: List<String>,
         lineIndex: Int,

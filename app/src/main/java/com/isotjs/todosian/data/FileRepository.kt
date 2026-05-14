@@ -46,6 +46,10 @@ interface FileRepository {
 
     suspend fun deleteCategory(categoryUri: Uri): Result<Unit>
 
+    suspend fun moveTodoLine(sourceUri: Uri, targetUri: Uri, lineIndex: Int): Result<Unit>
+
+    suspend fun copyTodoLine(sourceUri: Uri, targetUri: Uri, lineIndex: Int): Result<Unit>
+
     fun hasPersistedReadWritePermission(uri: Uri): Boolean
 
     suspend fun countMarkdownFiles(folderUri: Uri): Result<Int>
@@ -151,14 +155,7 @@ class SafFileRepository(
     override suspend fun writeLines(uri: Uri, lines: List<String>): Result<Unit> {
         return withContext(Dispatchers.IO) {
             runCatching {
-                appContext.contentResolver.openOutputStream(uri, "rwt")?.use { out ->
-                    out.bufferedWriter().use { writer ->
-                        lines.forEachIndexed { index, line ->
-                            if (index > 0) writer.newLine()
-                            writer.write(line)
-                        }
-                    }
-                } ?: throw IllegalStateException("Unable to open output stream")
+                writeLinesInternal(uri, lines)
             }
         }
     }
@@ -208,6 +205,39 @@ class SafFileRepository(
                     ?: throw IllegalStateException("Invalid file URI")
                 val ok = file.delete()
                 if (!ok) throw IllegalStateException("Unable to delete file")
+            }
+        }
+    }
+
+    override suspend fun moveTodoLine(sourceUri: Uri, targetUri: Uri, lineIndex: Int): Result<Unit> {
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                val sourceLines = readLinesInternal(sourceUri)
+                val targetLines = readLinesInternal(targetUri)
+                val updated = MarkdownParser.tryMoveTodoLine(
+                    sourceLines = sourceLines,
+                    lineIndex = lineIndex,
+                    targetLines = targetLines,
+                ) ?: throw IllegalStateException("Invalid todo line")
+
+                writeLinesInternal(sourceUri, updated.first)
+                writeLinesInternal(targetUri, updated.second)
+            }
+        }
+    }
+
+    override suspend fun copyTodoLine(sourceUri: Uri, targetUri: Uri, lineIndex: Int): Result<Unit> {
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                val sourceLines = readLinesInternal(sourceUri)
+                val targetLines = readLinesInternal(targetUri)
+                val updated = MarkdownParser.tryCopyTodoLine(
+                    sourceLines = sourceLines,
+                    lineIndex = lineIndex,
+                    targetLines = targetLines,
+                ) ?: throw IllegalStateException("Invalid todo line")
+
+                writeLinesInternal(targetUri, updated.second)
             }
         }
     }
@@ -376,5 +406,16 @@ class SafFileRepository(
             return input.bufferedReader().readLines()
         }
         throw IllegalStateException("Unable to open input stream")
+    }
+
+    private fun writeLinesInternal(uri: Uri, lines: List<String>) {
+        appContext.contentResolver.openOutputStream(uri, "rwt")?.use { out ->
+            out.bufferedWriter().use { writer ->
+                lines.forEachIndexed { index, line ->
+                    if (index > 0) writer.newLine()
+                    writer.write(line)
+                }
+            }
+        } ?: throw IllegalStateException("Unable to open output stream")
     }
 }

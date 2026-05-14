@@ -27,6 +27,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.AddCircle
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Event
@@ -34,6 +35,8 @@ import androidx.compose.material.icons.outlined.FlightTakeoff
 import androidx.compose.material.icons.outlined.Repeat
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material.icons.outlined.Folder
+import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -50,6 +53,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -88,7 +92,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.ime
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import java.time.LocalDate
@@ -128,11 +131,14 @@ fun CategoryScreen(
 
     val scope = rememberCoroutineScope()
     val todoSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val moveSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     var sheetMode by remember { mutableStateOf<TodoSheetMode?>(null) }
     var sheetText by remember { mutableStateOf("") }
     var sheetMeta by remember { mutableStateOf(MarkdownParser.TasksMeta()) }
     var deleteTodoTarget by remember { mutableStateOf<Todo?>(null) }
+    var moveTodoTarget by remember { mutableStateOf<Todo?>(null) }
+    var showCopyOption by remember { mutableStateOf(false) }
 
     if (sheetMode != null) {
         ModalBottomSheet(
@@ -261,6 +267,100 @@ fun CategoryScreen(
         )
     }
 
+    if (moveTodoTarget != null) {
+        ModalBottomSheet(
+            onDismissRequest = {
+                moveTodoTarget = null
+                showCopyOption = false
+            },
+            sheetState = moveSheetState,
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 16.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.category_move_title),
+                    style = MaterialTheme.typography.titleLarge,
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = stringResource(R.string.category_move_body),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                val targets = uiState.moveTargets
+                if (targets.isEmpty()) {
+                    Text(
+                        text = stringResource(R.string.category_move_empty),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else {
+                    targets.forEach { target ->
+                        ListItem(
+                            headlineContent = { Text(text = target.title) },
+                            leadingContent = {
+                                Icon(
+                                    imageVector = Icons.Outlined.Folder,
+                                    contentDescription = null,
+                                )
+                            },
+                            modifier = Modifier.clickable {
+                                val todo = moveTodoTarget
+                                if (todo != null) {
+                                    viewModel.moveTodo(todo, target.uri)
+                                }
+                                moveTodoTarget = null
+                                showCopyOption = false
+                            },
+                        )
+                    }
+                }
+
+                if (targets.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    TextButton(onClick = { showCopyOption = !showCopyOption }) {
+                        Text(
+                            text = if (showCopyOption) {
+                                stringResource(R.string.category_copy_hide)
+                            } else {
+                                stringResource(R.string.category_copy_show)
+                            },
+                        )
+                    }
+
+                    if (showCopyOption) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        targets.forEach { target ->
+                            ListItem(
+                                headlineContent = { Text(text = target.title) },
+                                leadingContent = {
+                                    Icon(
+                                        imageVector = Icons.Outlined.ContentCopy,
+                                        contentDescription = null,
+                                    )
+                                },
+                                modifier = Modifier.clickable {
+                                    val todo = moveTodoTarget
+                                    if (todo != null) {
+                                        viewModel.copyTodo(todo, target.uri)
+                                    }
+                                    moveTodoTarget = null
+                                    showCopyOption = false
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -371,6 +471,7 @@ fun CategoryScreen(
                             )
                         },
                         onRequestDelete = { deleteTodoTarget = todo },
+                        onRequestMove = { moveTodoTarget = todo },
                         modifier = Modifier.animateItem(
                             fadeInSpec = tween(durationMillis = 180),
                             placementSpec = spring(
@@ -410,6 +511,7 @@ fun CategoryScreen(
                             )
                         },
                         onRequestDelete = { deleteTodoTarget = todo },
+                        onRequestMove = { moveTodoTarget = todo },
                         modifier = Modifier.animateItem(
                             fadeInSpec = tween(durationMillis = 180),
                             placementSpec = spring(
@@ -447,6 +549,7 @@ fun CategoryScreen(
                             )
                         },
                         onRequestDelete = { deleteTodoTarget = todo },
+                        onRequestMove = { moveTodoTarget = todo },
                         modifier = Modifier.animateItem(
                             fadeInSpec = tween(durationMillis = 180),
                             placementSpec = spring(
@@ -473,15 +576,21 @@ private fun TodoRow(
     onToggle: () -> Unit,
     onEdit: () -> Unit,
     onRequestDelete: () -> Unit,
+    onRequestMove: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
-            if (value == SwipeToDismissBoxValue.EndToStart) {
-                onRequestDelete()
-                false
-            } else {
-                false
+            when (value) {
+                SwipeToDismissBoxValue.EndToStart -> {
+                    onRequestDelete()
+                    false
+                }
+                SwipeToDismissBoxValue.StartToEnd -> {
+                    onRequestMove()
+                    false
+                }
+                else -> false
             }
         },
     )
@@ -489,22 +598,46 @@ private fun TodoRow(
     SwipeToDismissBox(
         modifier = modifier,
         state = dismissState,
-        enableDismissFromStartToEnd = false,
+        enableDismissFromStartToEnd = true,
         backgroundContent = {
+            val backgroundColor = when (dismissState.targetValue) {
+                SwipeToDismissBoxValue.EndToStart -> MaterialTheme.colorScheme.errorContainer
+                SwipeToDismissBoxValue.StartToEnd -> MaterialTheme.colorScheme.secondaryContainer
+                else -> MaterialTheme.colorScheme.surfaceContainer
+            }
+            val icon = when (dismissState.targetValue) {
+                SwipeToDismissBoxValue.EndToStart -> Icons.Filled.Delete
+                SwipeToDismissBoxValue.StartToEnd -> Icons.AutoMirrored.Outlined.ArrowForward
+                else -> Icons.Filled.Delete
+            }
+            val contentColor = when (dismissState.targetValue) {
+                SwipeToDismissBoxValue.EndToStart -> MaterialTheme.colorScheme.onErrorContainer
+                SwipeToDismissBoxValue.StartToEnd -> MaterialTheme.colorScheme.onSecondaryContainer
+                else -> MaterialTheme.colorScheme.onSurfaceVariant
+            }
+            val alignment = when (dismissState.targetValue) {
+                SwipeToDismissBoxValue.EndToStart -> Alignment.CenterEnd
+                SwipeToDismissBoxValue.StartToEnd -> Alignment.CenterStart
+                else -> Alignment.CenterEnd
+            }
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(
-                        color = MaterialTheme.colorScheme.errorContainer,
+                        color = backgroundColor,
                         shape = RoundedCornerShape(16.dp),
                     )
                     .padding(horizontal = 16.dp),
-                contentAlignment = Alignment.CenterEnd,
+                contentAlignment = alignment,
             ) {
                 Icon(
-                    imageVector = Icons.Filled.Delete,
-                    contentDescription = stringResource(R.string.cd_delete),
-                    tint = MaterialTheme.colorScheme.onErrorContainer,
+                    imageVector = icon,
+                    contentDescription = if (dismissState.targetValue == SwipeToDismissBoxValue.StartToEnd) {
+                        stringResource(R.string.category_move_title)
+                    } else {
+                        stringResource(R.string.cd_delete)
+                    },
+                    tint = contentColor,
                 )
             }
         },

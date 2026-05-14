@@ -145,4 +145,59 @@ class MarkdownParserTest {
 
         assertEquals(listOf("- [ ] New thing ➕ $today"), updated)
     }
+
+    @Test
+    fun tryMoveTodoLine_moves_only_todo_line_and_preserves_target() {
+        val source = listOf(
+            "# Header",
+            "- [ ] Move me",
+            "Keep",
+        )
+        val target = listOf(
+            "Intro",
+            "- [x] Existing",
+        )
+
+        val result = MarkdownParser.tryMoveTodoLine(
+            sourceLines = source,
+            lineIndex = 1,
+            targetLines = target,
+        )
+
+        val (newSource, newTarget) = result ?: error("Expected move to succeed")
+        assertEquals(listOf("# Header", "Keep"), newSource)
+        assertEquals(listOf("Intro", "- [x] Existing", "- [ ] Move me"), newTarget)
+    }
+
+    @Test
+    fun tryCopyTodoLine_keeps_source_intact_and_appends_to_target() {
+        val source = listOf(
+            "- [ ] Copy me",
+        )
+        val target = listOf("Other")
+
+        val result = MarkdownParser.tryCopyTodoLine(
+            sourceLines = source,
+            lineIndex = 0,
+            targetLines = target,
+        )
+
+        val (newSource, newTarget) = result ?: error("Expected copy to succeed")
+        assertEquals(listOf("- [ ] Copy me"), newSource)
+        assertEquals(listOf("Other", "- [ ] Copy me"), newTarget)
+    }
+
+    @Test
+    fun tryMoveTodoLine_returns_null_for_non_todo_source() {
+        val source = listOf("Not a todo")
+        val target = listOf("- [ ] Valid")
+
+        val result = MarkdownParser.tryMoveTodoLine(
+            sourceLines = source,
+            lineIndex = 0,
+            targetLines = target,
+        )
+
+        assertEquals(null, result)
+    }
 }

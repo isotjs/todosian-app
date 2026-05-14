@@ -27,6 +27,12 @@ data class CategoryUiState(
     val activeTodos: List<Todo> = emptyList(),
     val completedTodos: List<Todo> = emptyList(),
     val lines: List<String> = emptyList(),
+    val moveTargets: List<MoveTarget> = emptyList(),
+)
+
+data class MoveTarget(
+    val title: String,
+    val uri: Uri,
 )
 
 class CategoryViewModel(
@@ -92,12 +98,19 @@ class CategoryViewModel(
             val todos = MarkdownParser.parse(lines)
             val (completed, active) = todos.partition { it.isDone }
 
+            val targets = fileRepository.getCategories()
+                .getOrElse { emptyList() }
+                .filterNot { it.uri == categoryUri }
+                .map { MoveTarget(title = it.displayName, uri = it.uri) }
+                .sortedBy { it.title.lowercase() }
+
             _uiState.value = CategoryUiState(
                 isLoading = false,
                 title = title,
                 activeTodos = active.sortedBy { it.lineIndex },
                 completedTodos = completed.sortedBy { it.lineIndex },
                 lines = lines,
+                moveTargets = targets,
             )
         }
     }
@@ -235,6 +248,51 @@ class CategoryViewModel(
         }
     }
 
+    fun moveTodo(todo: Todo, targetUri: Uri) {
+        viewModelScope.launch {
+            val previousLines = _uiState.value.lines
+            val newLines = MarkdownParser.tryDeleteTodo(previousLines, todo.lineIndex)
+            if (newLines == null) {
+                _events.emit(Event.ShowMessage(R.string.error_read_failed))
+                refreshFromDisk(showLoading = false)
+                return@launch
+            }
+
+            applyLines(newLines)
+
+            inFlightWrites.incrementAndGet()
+            try {
+                val result = fileRepository.moveTodoLine(categoryUri, targetUri, todo.lineIndex)
+                if (result.isFailure) {
+                    if (_uiState.value.lines == newLines) {
+                        applyLines(previousLines)
+                    }
+                    _events.emit(Event.ShowMessage(R.string.error_write_failed))
+                } else {
+                    _events.emit(Event.ShowMessage(R.string.category_move_success))
+                }
+            } finally {
+                onWriteFinishedMaybeRefresh()
+            }
+        }
+    }
+
+    fun copyTodo(todo: Todo, targetUri: Uri) {
+        viewModelScope.launch {
+            inFlightWrites.incrementAndGet()
+            try {
+                val result = fileRepository.copyTodoLine(categoryUri, targetUri, todo.lineIndex)
+                if (result.isFailure) {
+                    _events.emit(Event.ShowMessage(R.string.error_write_failed))
+                } else {
+                    _events.emit(Event.ShowMessage(R.string.category_copy_success))
+                }
+            } finally {
+                onWriteFinishedMaybeRefresh()
+            }
+        }
+    }
+
     private fun onWriteFinishedMaybeRefresh() {
         val remaining = inFlightWrites.decrementAndGet().coerceAtLeast(0)
         if (remaining == 0 && pendingRefreshFromObserver.getAndSet(false)) {
@@ -249,6 +307,7 @@ class CategoryViewModel(
             activeTodos = active.sortedBy { it.lineIndex },
             completedTodos = completed.sortedBy { it.lineIndex },
             lines = lines,
+            moveTargets = _uiState.value.moveTargets,
         )
     }
 
