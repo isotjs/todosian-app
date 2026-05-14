@@ -49,6 +49,7 @@ import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -100,6 +101,10 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.ui.focus.onFocusEvent
 import java.time.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -158,6 +163,9 @@ fun CategoryScreen(
             },
             sheetState = todoSheetState,
         ) {
+            val scrollState = rememberScrollState()
+            val todoTextBringIntoView = remember { BringIntoViewRequester() }
+            val recurrenceBringIntoView = remember { BringIntoViewRequester() }
             val titleRes = when (sheetMode) {
                 TodoSheetMode.Add -> R.string.category_add_todo_title
                 is TodoSheetMode.Edit -> R.string.category_edit_todo_title
@@ -177,7 +185,8 @@ fun CategoryScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
                     .windowInsetsPadding(WindowInsets.ime)
-                    .padding(bottom = 16.dp),
+                    .padding(bottom = 16.dp)
+                    .verticalScroll(scrollState),
             ) {
                 Text(
                     text = stringResource(titleRes),
@@ -189,7 +198,14 @@ fun CategoryScreen(
                     onValueChange = { sheetText = it },
                     singleLine = true,
                     label = { Text(text = stringResource(hintRes)) },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .bringIntoViewRequester(todoTextBringIntoView)
+                        .onFocusEvent { focusState ->
+                            if (focusState.isFocused) {
+                                scope.launch { todoTextBringIntoView.bringIntoView() }
+                            }
+                        },
                 )
 
                 if (settings.enableTasksPluginSupport) {
@@ -199,6 +215,13 @@ fun CategoryScreen(
                         meta = sheetMeta,
                         onMetaChange = { sheetMeta = it },
                         useEmojisInUi = settings.tasksPluginUseEmojisInUi,
+                        recurrenceModifier = Modifier
+                            .bringIntoViewRequester(recurrenceBringIntoView)
+                            .onFocusEvent { focusState ->
+                                if (focusState.isFocused) {
+                                    scope.launch { recurrenceBringIntoView.bringIntoView() }
+                                }
+                            },
                     )
                 }
                 Spacer(modifier = Modifier.height(16.dp))
@@ -835,6 +858,7 @@ private fun TasksMetaEditor(
     meta: MarkdownParser.TasksMeta,
     onMetaChange: (MarkdownParser.TasksMeta) -> Unit,
     useEmojisInUi: Boolean,
+    recurrenceModifier: Modifier = Modifier,
     modifier: Modifier = Modifier,
 ) {
     val isAdd = mode is TodoSheetMode.Add
@@ -919,7 +943,7 @@ private fun TasksMetaEditor(
                     },
                 )
             },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = recurrenceModifier.fillMaxWidth(),
         )
     }
 }
@@ -995,6 +1019,12 @@ private fun PriorityMetaRow(
             .fillMaxWidth()
             .horizontalScroll(scroll),
     ) {
+        val lowestColor = colorResource(R.color.priority_lowest)
+        val lowColor = colorResource(R.color.priority_low)
+        val mediumColor = colorResource(R.color.priority_medium)
+        val highColor = colorResource(R.color.priority_high)
+        val highestColor = colorResource(R.color.priority_highest)
+
         Text(
             text = stringResource(R.string.category_tasks_priority),
             style = MaterialTheme.typography.bodyMedium,
@@ -1015,6 +1045,7 @@ private fun PriorityMetaRow(
             },
             onClick = { onChange(TasksPriority.LOWEST) },
             icon = if (useEmojisInUi) null else Icons.Outlined.Star,
+            iconTint = lowestColor,
         )
         PriorityChip(
             selected = value == TasksPriority.LOW,
@@ -1025,6 +1056,7 @@ private fun PriorityMetaRow(
             },
             onClick = { onChange(TasksPriority.LOW) },
             icon = if (useEmojisInUi) null else Icons.Outlined.Star,
+            iconTint = lowColor,
         )
         PriorityChip(
             selected = value == TasksPriority.MEDIUM,
@@ -1035,6 +1067,7 @@ private fun PriorityMetaRow(
             },
             onClick = { onChange(TasksPriority.MEDIUM) },
             icon = if (useEmojisInUi) null else Icons.Outlined.Star,
+            iconTint = mediumColor,
         )
         PriorityChip(
             selected = value == TasksPriority.HIGH,
@@ -1045,6 +1078,7 @@ private fun PriorityMetaRow(
             },
             onClick = { onChange(TasksPriority.HIGH) },
             icon = if (useEmojisInUi) null else Icons.Outlined.Star,
+            iconTint = highColor,
         )
         PriorityChip(
             selected = value == TasksPriority.HIGHEST,
@@ -1055,6 +1089,7 @@ private fun PriorityMetaRow(
             },
             onClick = { onChange(TasksPriority.HIGHEST) },
             icon = if (useEmojisInUi) null else Icons.Outlined.Star,
+            iconTint = highestColor,
         )
     }
 }
@@ -1065,6 +1100,7 @@ private fun PriorityChip(
     label: String,
     onClick: () -> Unit,
     icon: ImageVector?,
+    iconTint: Color? = null,
 ) {
     FilterChip(
         selected = selected,
@@ -1075,6 +1111,7 @@ private fun PriorityChip(
                     imageVector = image,
                     contentDescription = null,
                     modifier = Modifier.size(18.dp),
+                    tint = iconTint ?: LocalContentColor.current,
                 )
             }
         },
