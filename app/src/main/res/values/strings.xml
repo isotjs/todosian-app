@@ -109,7 +109,6 @@
     <!-- Common actions -->
     <string name="action_save">Save</string>
     <string name="action_cancel">Cancel</string>
-    <string name="action_retry">Retry</string>
     <string name="action_set">Set</string>
     <string name="action_clear">Clear</string>
 
@@ -130,14 +129,12 @@
 
     <!-- Settings -->
     <string name="settings_title">Settings</string>
-    <string name="settings_change">Change</string>
 
     <string name="settings_storage">Storage</string>
     <string name="settings_folder">Selected folder</string>
     <string name="settings_no_folder">No folder selected</string>
     <string name="settings_change_folder">Change folder</string>
     <string name="settings_change_folder_subtitle">Choose a different Obsidian todo folder.</string>
-    <string name="settings_change_folder_action">Choose folder</string>
     <string name="settings_recheck_access">Re-check access</string>
     <string name="settings_reset_folder">Reset folder</string>
     <string name="settings_reset_folder_title">Reset folder selection?</string>
