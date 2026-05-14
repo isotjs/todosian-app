@@ -70,6 +70,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.stringResource
@@ -718,6 +719,7 @@ private fun TodoRow(
             }
         },
         content = {
+            val rowShape = RoundedCornerShape(16.dp)
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -725,8 +727,9 @@ private fun TodoRow(
                     .fillMaxWidth()
                     .background(
                         color = MaterialTheme.colorScheme.surfaceContainer,
-                        shape = RoundedCornerShape(16.dp),
+                        shape = rowShape,
                     )
+                    .clip(rowShape)
                     .clickable(onClick = onEdit)
                     .padding(horizontal = 12.dp, vertical = 10.dp),
             ) {
