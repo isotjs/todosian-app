@@ -1,0 +1,18 @@
+Version 1.6 brings powerful new task management features and UI improvements.
+
+New Features:
+• Daily Focus Mode - Set a daily focus banner in settings to stay organized
+• Move & Copy Tasks - Easily reorganize tasks across categories
+• Subtasks with Indentation - Create hierarchical task structures
+• Task Recurrence - Set recurring tasks with flexible recurrence rules
+• Colored Priority Indicators - Visual priority levels for tasks (🔺 highest to ⏬ lowest)
+
+Improvements:
+• Enhanced category screen with better scroll support
+• Improved UI with rounded corners and polished styling
+• Better resource organization and refactoring
+
+Under the hood:
+• Improved notification string handling
+• Better URI handling for file operations
+• New RecurrenceEngine for task recurrence support
