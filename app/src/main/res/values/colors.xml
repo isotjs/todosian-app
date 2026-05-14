@@ -8,6 +8,12 @@
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 
+    <color name="priority_lowest">#E2E8F0</color>
+    <color name="priority_low">#BFDBFE</color>
+    <color name="priority_medium">#FDE68A</color>
+    <color name="priority_high">#FDBA74</color>
+    <color name="priority_highest">#FCA5A5</color>
+
     <!-- Used by the Activity window before Compose draws (avoids flash). -->
     <color name="window_background">#FFFFFBFE</color>
 </resources>

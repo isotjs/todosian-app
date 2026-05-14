@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -44,6 +45,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -69,10 +71,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -743,12 +747,25 @@ private fun TodoRow(
                         animationSpec = tween(300),
                         label = "todo-text-color",
                     )
-                    Text(
-                        text = todo.text,
-                        style = MaterialTheme.typography.bodyLarge,
-                        textDecoration = if (todo.isDone) TextDecoration.LineThrough else TextDecoration.None,
-                        color = textColor,
-                    )
+                    val priorityColor = priorityColorFor(todo.priority)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        if (priorityColor != null) {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .background(color = priorityColor, shape = CircleShape),
+                            )
+                        }
+                        Text(
+                            text = todo.text,
+                            style = MaterialTheme.typography.bodyLarge,
+                            textDecoration = if (todo.isDone) TextDecoration.LineThrough else TextDecoration.None,
+                            color = textColor,
+                        )
+                    }
 
                     if (enableTasksPluginSupport) {
                         val chips = buildTasksMetaChips(todo = todo, useEmojisInUi = useEmojisInUi)
@@ -761,9 +778,17 @@ private fun TodoRow(
                                     .horizontalScroll(rememberScrollState()),
                             ) {
                                 chips.forEach { chip ->
+                                    val chipColors = chip.color?.let { color ->
+                                        AssistChipDefaults.assistChipColors(
+                                            containerColor = color,
+                                            labelColor = MaterialTheme.colorScheme.onSurface,
+                                            leadingIconContentColor = MaterialTheme.colorScheme.onSurface,
+                                        )
+                                    }
                                     androidx.compose.material3.AssistChip(
                                         onClick = {},
                                         enabled = false,
+                                        colors = chipColors ?: AssistChipDefaults.assistChipColors(),
                                         leadingIcon = chip.icon?.let { icon ->
                                             {
                                                 Icon(
@@ -1080,16 +1105,14 @@ private fun showDatePicker(
 private data class TasksMetaChipUi(
     val label: String,
     val icon: ImageVector?,
+    val color: Color? = null,
 )
 
 private fun sortTodos(todos: List<Todo>, sort: TodoSort): List<Todo> {
     return when (sort) {
         TodoSort.FILE_ORDER -> todos.sortedBy { it.lineIndex }
         TodoSort.PRIORITY_HIGH_TO_LOW ->
-            todos.sortedWith(
-                compareByDescending<Todo> { priorityRank(it.priority) }
-                    .thenBy { it.lineIndex },
-            )
+            sortTodosByPriorityKeepingSubtasks(todos)
 
         TodoSort.CREATED_DATE_NEWEST_FIRST ->
             todos.sortedWith(
@@ -1105,6 +1128,53 @@ private fun sortTodos(todos: List<Todo>, sort: TodoSort): List<Todo> {
                     .thenBy { it.lineIndex },
             )
     }
+}
+
+private data class TodoGroup(
+    val parent: Todo,
+    val children: List<Todo>,
+)
+
+private fun sortTodosByPriorityKeepingSubtasks(todos: List<Todo>): List<Todo> {
+    if (todos.isEmpty()) return todos
+
+    val ordered = todos.sortedBy { it.lineIndex }
+    val groups = ArrayList<TodoGroup>()
+
+    var currentParent: Todo? = null
+    var currentChildren = ArrayList<Todo>()
+
+    fun flushGroup() {
+        val parent = currentParent
+        if (parent != null) {
+            groups.add(TodoGroup(parent = parent, children = currentChildren.toList()))
+        }
+    }
+
+    for (todo in ordered) {
+        if (todo.indentLevel == 0 || currentParent == null) {
+            flushGroup()
+            currentParent = todo
+            currentChildren = ArrayList()
+        } else {
+            currentChildren.add(todo)
+        }
+    }
+
+    flushGroup()
+
+    val sortedGroups = groups.sortedWith(
+        compareByDescending<TodoGroup> { priorityRank(it.parent.priority) }
+            .thenBy { it.parent.lineIndex },
+    )
+
+    val result = ArrayList<Todo>(ordered.size)
+    for (group in sortedGroups) {
+        result.add(group.parent)
+        result.addAll(group.children)
+    }
+
+    return result
 }
 
 private fun priorityRank(priority: TasksPriority?): Int {
@@ -1125,21 +1195,32 @@ private fun buildTasksMetaChips(
 ): List<TasksMetaChipUi> {
     val chips = ArrayList<TasksMetaChipUi>(8)
 
-    todo.createdDate?.let { value ->
-        val label = if (useEmojisInUi) {
-            stringResource(R.string.category_tasks_chip_created, value)
-        } else {
-            stringResource(R.string.category_tasks_chip_created_label, value)
+    val prio = todo.priority
+    if (prio != null && prio != TasksPriority.NONE) {
+        val label = when (prio) {
+            TasksPriority.LOWEST -> if (useEmojisInUi) stringResource(R.string.category_tasks_priority_lowest) else stringResource(R.string.category_tasks_priority_lowest_label)
+            TasksPriority.LOW -> if (useEmojisInUi) stringResource(R.string.category_tasks_priority_low) else stringResource(R.string.category_tasks_priority_low_label)
+            TasksPriority.MEDIUM -> if (useEmojisInUi) stringResource(R.string.category_tasks_priority_medium) else stringResource(R.string.category_tasks_priority_medium_label)
+            TasksPriority.HIGH -> if (useEmojisInUi) stringResource(R.string.category_tasks_priority_high) else stringResource(R.string.category_tasks_priority_high_label)
+            TasksPriority.HIGHEST -> if (useEmojisInUi) stringResource(R.string.category_tasks_priority_highest) else stringResource(R.string.category_tasks_priority_highest_label)
+            TasksPriority.NONE -> ""
         }
-        chips.add(TasksMetaChipUi(label = label, icon = if (useEmojisInUi) null else Icons.Outlined.AddCircle))
+        chips.add(
+            TasksMetaChipUi(
+                label = label,
+                icon = if (useEmojisInUi) null else Icons.Outlined.Star,
+                color = priorityColorFor(prio),
+            ),
+        )
     }
-    todo.startDate?.let { value ->
+
+    todo.dueDate?.let { value ->
         val label = if (useEmojisInUi) {
-            stringResource(R.string.category_tasks_chip_start, value)
+            stringResource(R.string.category_tasks_chip_due, value)
         } else {
-            stringResource(R.string.category_tasks_chip_start_label, value)
+            stringResource(R.string.category_tasks_chip_due_label, value)
         }
-        chips.add(TasksMetaChipUi(label = label, icon = if (useEmojisInUi) null else Icons.Outlined.FlightTakeoff))
+        chips.add(TasksMetaChipUi(label = label, icon = if (useEmojisInUi) null else Icons.Outlined.Event))
     }
     todo.scheduledDate?.let { value ->
         val label = if (useEmojisInUi) {
@@ -1149,13 +1230,21 @@ private fun buildTasksMetaChips(
         }
         chips.add(TasksMetaChipUi(label = label, icon = if (useEmojisInUi) null else Icons.Outlined.Schedule))
     }
-    todo.dueDate?.let { value ->
+    todo.startDate?.let { value ->
         val label = if (useEmojisInUi) {
-            stringResource(R.string.category_tasks_chip_due, value)
+            stringResource(R.string.category_tasks_chip_start, value)
         } else {
-            stringResource(R.string.category_tasks_chip_due_label, value)
+            stringResource(R.string.category_tasks_chip_start_label, value)
         }
-        chips.add(TasksMetaChipUi(label = label, icon = if (useEmojisInUi) null else Icons.Outlined.Event))
+        chips.add(TasksMetaChipUi(label = label, icon = if (useEmojisInUi) null else Icons.Outlined.FlightTakeoff))
+    }
+    todo.createdDate?.let { value ->
+        val label = if (useEmojisInUi) {
+            stringResource(R.string.category_tasks_chip_created, value)
+        } else {
+            stringResource(R.string.category_tasks_chip_created_label, value)
+        }
+        chips.add(TasksMetaChipUi(label = label, icon = if (useEmojisInUi) null else Icons.Outlined.AddCircle))
     }
     todo.completionDate?.let { value ->
         val label = if (useEmojisInUi) {
@@ -1175,24 +1264,6 @@ private fun buildTasksMetaChips(
         chips.add(TasksMetaChipUi(label = label, icon = if (useEmojisInUi) null else Icons.Outlined.Repeat))
     }
 
-    val prio = todo.priority
-    if (prio != null && prio != TasksPriority.NONE) {
-        val label = when (prio) {
-            TasksPriority.LOWEST -> if (useEmojisInUi) stringResource(R.string.category_tasks_priority_lowest) else stringResource(R.string.category_tasks_priority_lowest_label)
-            TasksPriority.LOW -> if (useEmojisInUi) stringResource(R.string.category_tasks_priority_low) else stringResource(R.string.category_tasks_priority_low_label)
-            TasksPriority.MEDIUM -> if (useEmojisInUi) stringResource(R.string.category_tasks_priority_medium) else stringResource(R.string.category_tasks_priority_medium_label)
-            TasksPriority.HIGH -> if (useEmojisInUi) stringResource(R.string.category_tasks_priority_high) else stringResource(R.string.category_tasks_priority_high_label)
-            TasksPriority.HIGHEST -> if (useEmojisInUi) stringResource(R.string.category_tasks_priority_highest) else stringResource(R.string.category_tasks_priority_highest_label)
-            TasksPriority.NONE -> ""
-        }
-        chips.add(
-            TasksMetaChipUi(
-                label = label,
-                icon = if (useEmojisInUi) null else Icons.Outlined.Star,
-            ),
-        )
-    }
-
     return chips.filter { it.label.isNotBlank() }
 }
 
@@ -1202,6 +1273,18 @@ private sealed interface TodoSheetMode {
     data class Edit(val todo: Todo) : TodoSheetMode
 
     data object AddSubtask : TodoSheetMode
+}
+
+@Composable
+private fun priorityColorFor(priority: TasksPriority?): Color? {
+    return when (priority) {
+        TasksPriority.LOWEST -> colorResource(R.color.priority_lowest)
+        TasksPriority.LOW -> colorResource(R.color.priority_low)
+        TasksPriority.MEDIUM -> colorResource(R.color.priority_medium)
+        TasksPriority.HIGH -> colorResource(R.color.priority_high)
+        TasksPriority.HIGHEST -> colorResource(R.color.priority_highest)
+        TasksPriority.NONE, null -> null
+    }
 }
 
 private class CategoryViewModelFactory(
