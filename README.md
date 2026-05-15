@@ -73,6 +73,7 @@ or just download the latest official release on
   <tr>
     <th align="center">F-Droid</th>
     <th align="center">GitHub</th>
+    <th align="center">OpenAPK</th>
   </tr>
   <tr>
     <td align="center">
@@ -83,6 +84,11 @@ or just download the latest official release on
     <td align="center">
       <a href="https://github.com/isotjs/todosian-app/releases/latest">
         <img src="https://github.com/machiav3lli/oandbackupx/blob/034b226cea5c1b30eb4f6a6f313e4dadcbb0ece4/badge_github.png?raw=true" alt="Download from GitHub" height="75">
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://www.openapk.net/todosian-obsidian-markdown-todos/com.isotjs.todosian/">
+        <img src="https://www.openapk.net/images/openapk-badge.png" alt="Download from OpenAPK" height="75">
       </a>
     </td>
   </tr>
