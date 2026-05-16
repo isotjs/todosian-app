@@ -1,5 +1,7 @@
 # Todosian
 
+[![Github All Releases](https://img.shields.io/github/downloads/isotjs/todosian-app/total.svg)](https://github.com/isotjs/todosian-app/releases)
+
 Todosian is an Android app for managing todo lists stored as Markdown files inside your Obsidian vault.
 
 It is designed to work with a folder that is synced to your phone (for example via Syncthing). The app reads and writes the Markdown files directly; it does not import your data into a database.
