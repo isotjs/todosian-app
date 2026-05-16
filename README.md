@@ -10,6 +10,15 @@ Todosian is an Android app for managing todo lists stored as Markdown files insi
 
 It is designed to work with a folder that is synced to your phone (for example via Syncthing). The app reads and writes the Markdown files directly; it does not import your data into a database.
 
+<h2 align="center">Screenshots</h2>
+
+<div align="center">
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1.jpeg" alt="Screenshot 1" width="200">
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/2.jpeg" alt="Screenshot 2" width="200">
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/3.jpeg" alt="Screenshot 3" width="200">
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/4.jpeg" alt="Screenshot 4" width="200">
+</div>
+
 <h2 align="center">Features</h2>
 
 - Folder-based setup using Android Storage Access Framework (SAF) with persisted permissions.
