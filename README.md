@@ -1,12 +1,16 @@
-# Todosian
+<h1 align="center">Todosian</h1>
 
-[![Github All Releases](https://img.shields.io/github/downloads/isotjs/todosian-app/total.svg)](https://github.com/isotjs/todosian-app/releases)
+<p align="center">
+  <a href="https://github.com/isotjs/todosian-app/releases/latest"><img src="https://img.shields.io/github/v/release/isotjs/todosian-app?label=release&color=6A40F9" alt="Release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-5030C0" alt="License"></a>
+  <a href="https://github.com/isotjs/todosian-app/releases"><img src="https://img.shields.io/github/downloads/isotjs/todosian-app/total?color=8B5CF6" alt="Downloads"></a>
+</p>
 
 Todosian is an Android app for managing todo lists stored as Markdown files inside your Obsidian vault.
 
 It is designed to work with a folder that is synced to your phone (for example via Syncthing). The app reads and writes the Markdown files directly; it does not import your data into a database.
 
-## Features
+<h2 align="center">Features</h2>
 
 - Folder-based setup using Android Storage Access Framework (SAF) with persisted permissions.
 - Each Markdown file becomes a category.
@@ -15,7 +19,7 @@ It is designed to work with a folder that is synced to your phone (for example v
 - (Optional) Support for Obsidian Tasks plugin metadata (dates, priority, recurrence).
 - Material 3 UI, dynamic color (Android 12+).
 
-## Supported Markdown
+<h2 align="center">Supported Markdown</h2>
 
 Todos are parsed from lines that match:
 
@@ -39,13 +43,13 @@ Recognized suffix tokens:
 
 Non-todo lines are preserved. The app only edits the specific todo lines you change.
 
-## Usage
+<h2 align="center">Usage</h2>
 
 1. Sync (or copy) your Obsidian todo folder to your Android device (Syncthing works well).
 2. Open Todosian and select that folder when prompted.
 3. Tap a category (a `.md` file) to manage its todos. 
 
-## Download Now
+<h2 align="center">Download Now</h2>
 
 <div align="center">
 <table>
@@ -74,18 +78,18 @@ Non-todo lines are preserved. The app only edits the specific todo lines you cha
 </table>
 </div>
 
-## Privacy
+<h2 align="center">Privacy</h2>
 
 Todosian only accesses the folder you pick. There is no account, no analytics, and no network sync built into the app.
 
-## Contributing
+<h2 align="center">Contributing</h2>
 
 Issues and pull requests are welcome.
 
 - Keep changes aligned with the “files are the source of truth” principle.
 - Prefer small, testable logic (e.g. Markdown parsing) with unit tests.
 
-## AI Usage & Disclaimer
+<h2 align="center">AI Usage &amp; Disclaimer</h2>
 
 This application was heavily co-developed with an AI agent to test their ability to code an Native Kotlin app from scratch(as they did). While the codebase has been strictly audited for performance, privacy, and security standards, it is provided "as is" without warranties of any kind. 
 
@@ -93,6 +97,6 @@ This application was heavily co-developed with an AI agent to test their ability
 
 **Trademark Disclaimer:** Todosian is an independent, open-source application and is not affiliated with, endorsed by, or sponsored by Obsidian or the developers of the Obsidian Tasks plugin.
 
-## License
+<h2 align="center">License</h2>
 
 Licensed under the Apache License 2.0. See [LICENSE](LICENSE).
