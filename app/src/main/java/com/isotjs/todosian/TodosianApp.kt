@@ -2,7 +2,6 @@ package com.isotjs.todosian
 
 import android.net.Uri
 import androidx.core.net.toUri
-import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -25,7 +24,6 @@ import com.isotjs.todosian.ui.home.HomeScreen
 import com.isotjs.todosian.ui.onboarding.OnboardingScreen
 import com.isotjs.todosian.ui.settings.SettingsScreen
 
-@OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun TodosianApp(
     fileRepository: FileRepository,
