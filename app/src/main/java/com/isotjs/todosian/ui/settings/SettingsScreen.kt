@@ -55,6 +55,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -96,6 +97,7 @@ fun SettingsScreen(
     val storageState by viewModel.storageState.collectAsStateWithLifecycle()
 
     val context = LocalContext.current
+    val resources = LocalResources.current
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = androidx.compose.runtime.rememberCoroutineScope()
 
@@ -105,7 +107,7 @@ fun SettingsScreen(
         if (!granted) {
             scope.launch {
                 snackbarHostState.showSnackbar(
-                    message = context.getString(R.string.settings_notification_permission_denied),
+                    message = resources.getString(R.string.settings_notification_permission_denied),
                 )
             }
         }
@@ -115,7 +117,7 @@ fun SettingsScreen(
         viewModel.events.collectLatest { event ->
             when (event) {
                 is SettingsViewModel.Event.ShowMessage ->
-                    snackbarHostState.showSnackbar(context.getString(event.messageResId))
+                    snackbarHostState.showSnackbar(resources.getString(event.messageResId))
                 SettingsViewModel.Event.RequireOnboarding -> onRequireOnboarding()
             }
         }
