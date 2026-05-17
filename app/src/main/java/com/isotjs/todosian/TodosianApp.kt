@@ -2,7 +2,6 @@ package com.isotjs.todosian
 
 import android.net.Uri
 import androidx.core.net.toUri
-import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -20,11 +19,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.isotjs.todosian.data.FileRepository
 import com.isotjs.todosian.data.settings.AppSettingsRepository
 import com.isotjs.todosian.ui.category.CategoryScreen
+import com.isotjs.todosian.ui.dailyfocus.DailyFocusScreen
 import com.isotjs.todosian.ui.home.HomeScreen
 import com.isotjs.todosian.ui.onboarding.OnboardingScreen
 import com.isotjs.todosian.ui.settings.SettingsScreen
 
-@OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun TodosianApp(
     fileRepository: FileRepository,
@@ -90,6 +89,9 @@ fun TodosianApp(
                 onOpenSettings = {
                     navController.navigate(Routes.Settings)
                 },
+                onOpenDailyFocus = {
+                    navController.navigate(Routes.DailyFocus)
+                },
                 refreshSignal = refreshSignal,
                 onRequireOnboarding = {
                     navController.navigate(Routes.Onboarding) {
@@ -141,6 +143,14 @@ fun TodosianApp(
                 },
             )
         }
+
+        composable(Routes.DailyFocus) {
+            DailyFocusScreen(
+                fileRepository = fileRepository,
+                appSettingsRepository = appSettingsRepository,
+                onBack = { navController.popBackStack() },
+            )
+        }
     }
 }
 
@@ -150,6 +160,7 @@ object Routes {
     const val Onboarding = "onboarding"
     const val Home = "home"
     const val Settings = "settings"
+    const val DailyFocus = "daily_focus"
 
     const val ARG_CATEGORY_URI = "categoryUri"
     const val Category = "category/{$ARG_CATEGORY_URI}"
