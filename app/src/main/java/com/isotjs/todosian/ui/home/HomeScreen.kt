@@ -94,6 +94,7 @@ fun HomeScreen(
     appSettingsRepository: AppSettingsRepository,
     onOpenCategory: (android.net.Uri) -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenDailyFocus: () -> Unit,
     refreshSignal: Long,
     onRequireOnboarding: () -> Unit,
     modifier: Modifier = Modifier,
@@ -379,6 +380,7 @@ fun HomeScreen(
                                 DailyFocusBanner(
                                     remaining = uiState.remainingFor(settings.dailyFocusMode),
                                     mode = settings.dailyFocusMode,
+                                    onClick = onOpenDailyFocus,
                                 )
                                 Spacer(modifier = Modifier.height(16.dp))
                             }
@@ -401,6 +403,7 @@ fun HomeScreen(
                                 DailyFocusBanner(
                                     remaining = uiState.remainingFor(settings.dailyFocusMode),
                                     mode = settings.dailyFocusMode,
+                                    onClick = onOpenDailyFocus,
                                 )
                                 Spacer(modifier = Modifier.height(16.dp))
                             }
@@ -498,9 +501,11 @@ private fun validateCategoryNameForRename(input: String): RenameCategoryValidati
 private fun DailyFocusBanner(
     remaining: Int,
     mode: DailyFocusMode,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Card(
+        onClick = onClick,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
         shape = MaterialTheme.shapes.extraLarge,
         modifier = modifier.fillMaxWidth(),

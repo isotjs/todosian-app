@@ -211,4 +211,9 @@
     <string name="settings_about">About</string>
     <string name="settings_version">App version</string>
     <string name="settings_android_sdk">Android SDK</string>
+
+    <!-- Daily Focus screen -->
+    <string name="daily_focus_screen_title">Daily focus</string>
+    <string name="daily_focus_empty_title">Nothing due right now</string>
+    <string name="daily_focus_empty_subtitle">Tasks matching your focus mode will appear here.</string>
 </resources>
