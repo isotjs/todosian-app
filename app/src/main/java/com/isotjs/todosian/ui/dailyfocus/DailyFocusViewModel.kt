@@ -7,8 +7,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.isotjs.todosian.R
 import com.isotjs.todosian.data.FileRepository
-import com.isotjs.todosian.data.model.TasksPriority
 import com.isotjs.todosian.data.model.Todo
+import com.isotjs.todosian.data.model.priorityRank
 import com.isotjs.todosian.data.settings.DailyFocusMode
 import com.isotjs.todosian.utils.MarkdownParser
 import kotlinx.coroutines.FlowPreview
@@ -292,19 +292,8 @@ private fun sortTasks(tasks: List<DailyFocusTask>): List<DailyFocusTask> {
     return tasks.sortedWith(
         compareBy<DailyFocusTask> { it.todo.dueDate == null }
             .thenBy { it.todo.dueDate ?: "" }
-            .thenByDescending { priorityRank(it.todo.priority) }
+            .thenByDescending { it.todo.priority.priorityRank() }
             .thenBy { it.categoryName.lowercase() }
             .thenBy { it.todo.lineIndex },
     )
-}
-
-private fun priorityRank(priority: TasksPriority?): Int {
-    return when (priority) {
-        TasksPriority.HIGHEST -> 5
-        TasksPriority.HIGH -> 4
-        TasksPriority.MEDIUM -> 3
-        TasksPriority.LOW -> 2
-        TasksPriority.LOWEST -> 1
-        TasksPriority.NONE, null -> 0
-    }
 }

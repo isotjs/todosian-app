@@ -64,8 +64,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.isotjs.todosian.R
 import com.isotjs.todosian.data.FileRepository
-import com.isotjs.todosian.data.model.TasksPriority
 import com.isotjs.todosian.data.model.Todo
+import com.isotjs.todosian.data.model.priorityRank
 import com.isotjs.todosian.data.settings.AppSettingsRepository
 import com.isotjs.todosian.data.settings.TodoGrouping
 import com.isotjs.todosian.data.settings.TodoSort
@@ -74,7 +74,6 @@ import com.isotjs.todosian.ui.components.TodoRow
 import com.isotjs.todosian.ui.components.TodoSheetMode
 import com.isotjs.todosian.ui.components.TodosianDimens
 import com.isotjs.todosian.ui.components.TodosianSectionHeader
-import com.isotjs.todosian.ui.components.priorityRank
 import com.isotjs.todosian.utils.MarkdownParser
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -692,7 +691,7 @@ private fun sortTodosByPriorityKeepingSubtasks(todos: List<Todo>): List<Todo> {
     flushGroup()
 
     val sortedGroups = groups.sortedWith(
-        compareByDescending<TodoGroup> { priorityRank(it.parent.priority) }
+        compareByDescending<TodoGroup> { it.parent.priority.priorityRank() }
             .thenBy { it.parent.lineIndex },
     )
 

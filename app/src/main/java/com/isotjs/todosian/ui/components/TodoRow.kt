@@ -535,17 +535,6 @@ internal data class TasksMetaChipUi(
     val color: Color? = null,
 )
 
-internal fun priorityRank(priority: TasksPriority?): Int {
-    return when (priority) {
-        TasksPriority.HIGHEST -> 5
-        TasksPriority.HIGH -> 4
-        TasksPriority.MEDIUM -> 3
-        TasksPriority.LOW -> 2
-        TasksPriority.LOWEST -> 1
-        TasksPriority.NONE, null -> 0
-    }
-}
-
 @Composable
 internal fun priorityColorFor(priority: TasksPriority?): Color? {
     return when (priority) {

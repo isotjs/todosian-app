@@ -9,6 +9,17 @@ enum class TasksPriority {
     HIGHEST,
 }
 
+fun TasksPriority?.priorityRank(): Int {
+    return when (this) {
+        TasksPriority.HIGHEST -> 5
+        TasksPriority.HIGH -> 4
+        TasksPriority.MEDIUM -> 3
+        TasksPriority.LOW -> 2
+        TasksPriority.LOWEST -> 1
+        TasksPriority.NONE, null -> 0
+    }
+}
+
 data class Todo(
     val id: String,
     val text: String,
