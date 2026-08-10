@@ -277,11 +277,12 @@ class MarkdownParserTest {
     }
 
     @Test
-    fun tryMoveTodoLine_moves_only_todo_line_and_preserves_target() {
+    fun tryMoveTodoLine_moves_notes_with_todo() {
         val source = listOf(
             "# Header",
             "- [ ] Move me",
-            "Keep",
+            "Keep with me",
+            "- [ ] Stay",
         )
         val target = listOf(
             "Intro",
@@ -295,8 +296,11 @@ class MarkdownParserTest {
         )
 
         val (newSource, newTarget) = result ?: error("Expected move to succeed")
-        assertEquals(listOf("# Header", "Keep"), newSource)
-        assertEquals(listOf("Intro", "- [x] Existing", "- [ ] Move me"), newTarget)
+        assertEquals(listOf("# Header", "- [ ] Stay"), newSource)
+        assertEquals(
+            listOf("Intro", "- [x] Existing", "- [ ] Move me", "Keep with me"),
+            newTarget,
+        )
     }
 
     @Test
@@ -317,6 +321,31 @@ class MarkdownParserTest {
         val (newSource, newTarget) = result ?: error("Expected move to succeed")
         assertEquals(listOf("- [ ] Sibling"), newSource)
         assertEquals(listOf("Intro", "- [ ] Parent", "  - [ ] Child"), newTarget)
+    }
+
+    @Test
+    fun tryMoveTodoLine_moves_notes_nested_in_block() {
+        val source = listOf(
+            "- [ ] Parent",
+            "parent note",
+            "  - [ ] Child",
+            "child note",
+            "- [ ] Sibling",
+        )
+        val target = listOf("Intro")
+
+        val result = MarkdownParser.tryMoveTodoLine(
+            sourceLines = source,
+            lineIndex = 0,
+            targetLines = target,
+        )
+
+        val (newSource, newTarget) = result ?: error("Expected move to succeed")
+        assertEquals(listOf("- [ ] Sibling"), newSource)
+        assertEquals(
+            listOf("Intro", "- [ ] Parent", "parent note", "  - [ ] Child", "child note"),
+            newTarget,
+        )
     }
 
     @Test
@@ -367,6 +396,82 @@ class MarkdownParserTest {
     }
 
     @Test
+    fun tryDeleteTodoWithSubtasks_removes_notes_under_todo() {
+        val lines = listOf(
+            "- [ ] Parent",
+            "notes under parent",
+            "  - [ ] Child",
+            "notes under child",
+            "- [ ] Sibling",
+        )
+
+        val updated = MarkdownParser.tryDeleteTodoWithSubtasks(lines, lineIndex = 0)
+            ?: error("Expected delete to succeed")
+
+        assertEquals(listOf("- [ ] Sibling"), updated)
+    }
+
+    @Test
+    fun tryDeleteTodoWithSubtasks_by_todo_deletes_only_target_among_many() {
+        val lines = listOf(
+            "- [ ] Alpha",
+            "- [ ] Beta",
+            "- [ ] Gamma",
+        )
+        val todos = MarkdownParser.parse(lines)
+        val beta = todos.first { it.text == "Beta" }
+
+        val updated = MarkdownParser.tryDeleteTodoWithSubtasks(lines, beta)
+            ?: error("Expected delete to succeed")
+
+        assertEquals(listOf("- [ ] Alpha", "- [ ] Gamma"), updated)
+    }
+
+    @Test
+    fun tryDeleteTodoWithSubtasks_by_todo_recovers_from_stale_line_index() {
+        val lines = listOf(
+            "- [ ] Alpha",
+            "- [ ] Beta",
+            "- [ ] Gamma",
+        )
+        val todos = MarkdownParser.parse(lines)
+        val afterAlpha = MarkdownParser.tryDeleteTodoWithSubtasks(lines, todos.first { it.text == "Alpha" })
+            ?: error("Expected Alpha delete")
+
+        // Stale snapshot still thinks Beta is at index 1, but after deleting Alpha that
+        // index is Gamma. Identity-based delete must remove Beta, not Gamma.
+        val staleBeta = todos.first { it.text == "Beta" }
+        assertEquals(1, staleBeta.lineIndex)
+
+        val updated = MarkdownParser.tryDeleteTodoWithSubtasks(afterAlpha, staleBeta)
+            ?: error("Expected Beta delete via identity")
+
+        assertEquals(listOf("- [ ] Gamma"), updated)
+    }
+
+    @Test
+    fun resolveTodoLineIndex_returns_null_when_ambiguous_duplicates() {
+        val lines = listOf(
+            "- [ ] Same",
+            "- [ ] Same",
+        )
+        val stale = MarkdownParser.parse(lines)[0].copy(lineIndex = 99)
+
+        assertEquals(null, MarkdownParser.resolveTodoLineIndex(lines, stale))
+    }
+
+    @Test
+    fun resolveTodoLineIndex_prefers_matching_line_index() {
+        val lines = listOf(
+            "- [ ] Same",
+            "- [ ] Same",
+        )
+        val second = MarkdownParser.parse(lines)[1]
+
+        assertEquals(1, MarkdownParser.resolveTodoLineIndex(lines, second))
+    }
+
+    @Test
     fun hasSubtasks_returns_true_when_next_is_more_indented() {
         val lines = listOf(
             "- [ ] Parent",
@@ -375,6 +480,402 @@ class MarkdownParserTest {
 
         assertEquals(true, MarkdownParser.hasSubtasks(lines, lineIndex = 0))
         assertEquals(false, MarkdownParser.hasSubtasks(lines, lineIndex = 1))
+    }
+
+    @Test
+    fun hasSubtasks_skips_notes_between_parent_and_child() {
+        val lines = listOf(
+            "- [ ] Parent",
+            "note under parent",
+            "  - [ ] Child",
+        )
+
+        assertEquals(true, MarkdownParser.hasSubtasks(lines, lineIndex = 0))
+    }
+
+    @Test
+    fun tryReorderTodoBlocks_moves_notes_with_items_and_keeps_preamble() {
+        val lines = listOf(
+            "# Header",
+            "",
+            "- [ ] A",
+            "notes for A",
+            "- [ ] B",
+            "notes for B",
+            "- [ ] C",
+        )
+
+        val updated = MarkdownParser.tryReorderTodoBlocks(
+            lines = lines,
+            orderedLineIndices = listOf(2, 4, 6),
+            fromIndex = 0,
+            toIndex = 2,
+        ) ?: error("Expected reorder to succeed")
+
+        assertEquals(
+            listOf(
+                "# Header",
+                "",
+                "- [ ] B",
+                "notes for B",
+                "- [ ] C",
+                "- [ ] A",
+                "notes for A",
+            ),
+            updated,
+        )
+    }
+
+    @Test
+    fun tryReorderTodoBlocks_preserves_items_outside_reorder_set() {
+        val lines = listOf(
+            "- [ ] A",
+            "a notes",
+            "- [x] B done",
+            "b notes",
+            "- [ ] C",
+            "c notes",
+        )
+
+        // Reorder only active items A and C (B stays between them in the file).
+        val updated = MarkdownParser.tryReorderTodoBlocks(
+            lines = lines,
+            orderedLineIndices = listOf(0, 4),
+            fromIndex = 0,
+            toIndex = 1,
+        ) ?: error("Expected reorder to succeed")
+
+        assertEquals(
+            listOf(
+                "- [ ] C",
+                "c notes",
+                "- [x] B done",
+                "b notes",
+                "- [ ] A",
+                "a notes",
+            ),
+            updated,
+        )
+    }
+
+    @Test
+    fun tryReorderTodoBlocks_moves_nested_subtasks_with_parent() {
+        val lines = listOf(
+            "- [ ] A",
+            "  - [ ] A1",
+            "  a1 notes",
+            "- [ ] B",
+            "b notes",
+        )
+
+        val updated = MarkdownParser.tryReorderTodoBlocks(
+            lines = lines,
+            orderedLineIndices = listOf(0, 3),
+            fromIndex = 0,
+            toIndex = 1,
+        ) ?: error("Expected reorder to succeed")
+
+        assertEquals(
+            listOf(
+                "- [ ] B",
+                "b notes",
+                "- [ ] A",
+                "  - [ ] A1",
+                "  a1 notes",
+            ),
+            updated,
+        )
+    }
+
+    @Test
+    fun tryApplyTodoBlockOrder_applies_full_permutation() {
+        val lines = listOf(
+            "- [ ] A",
+            "a",
+            "- [ ] B",
+            "b",
+            "- [ ] C",
+            "c",
+        )
+
+        val updated = MarkdownParser.tryApplyTodoBlockOrder(
+            lines = lines,
+            orderedLineIndices = listOf(0, 2, 4),
+            newOrderedLineIndices = listOf(4, 0, 2),
+        ) ?: error("Expected apply order to succeed")
+
+        assertEquals(
+            listOf(
+                "- [ ] C",
+                "c",
+                "- [ ] A",
+                "a",
+                "- [ ] B",
+                "b",
+            ),
+            updated,
+        )
+    }
+
+    @Test
+    fun tryMoveTodoUnderParent_reorders_siblings_under_same_parent() {
+        val lines = listOf(
+            "- [ ] Parent",
+            "  - [ ] A",
+            "  a notes",
+            "  - [ ] B",
+            "  - [ ] C",
+        )
+
+        val updated = MarkdownParser.tryMoveTodoUnderParent(
+            lines = lines,
+            todoLineIndex = 1,
+            newParentLineIndex = 0,
+            beforeSiblingLineIndex = 4,
+        ) ?: error("Expected move to succeed")
+
+        assertEquals(
+            listOf(
+                "- [ ] Parent",
+                "  - [ ] B",
+                "  - [ ] A",
+                "  a notes",
+                "  - [ ] C",
+            ),
+            updated,
+        )
+    }
+
+    @Test
+    fun tryMoveTodoUnderParent_moves_subtask_to_another_parent() {
+        val lines = listOf(
+            "- [ ] A",
+            "  - [ ] A1",
+            "  a1 notes",
+            "    - [ ] A1a",
+            "- [ ] B",
+            "  - [ ] B1",
+        )
+
+        val updated = MarkdownParser.tryMoveTodoUnderParent(
+            lines = lines,
+            todoLineIndex = 1,
+            newParentLineIndex = 4,
+            beforeSiblingLineIndex = 5,
+        ) ?: error("Expected move to succeed")
+
+        assertEquals(
+            listOf(
+                "- [ ] A",
+                "- [ ] B",
+                "  - [ ] A1",
+                "  a1 notes",
+                "    - [ ] A1a",
+                "  - [ ] B1",
+            ),
+            updated,
+        )
+    }
+
+    @Test
+    fun tryMoveTodoUnderParent_appends_when_sibling_is_null() {
+        val lines = listOf(
+            "- [ ] A",
+            "  - [ ] A1",
+            "- [ ] B",
+            "  - [ ] B1",
+        )
+
+        val updated = MarkdownParser.tryMoveTodoUnderParent(
+            lines = lines,
+            todoLineIndex = 1,
+            newParentLineIndex = 2,
+            beforeSiblingLineIndex = null,
+        ) ?: error("Expected move to succeed")
+
+        assertEquals(
+            listOf(
+                "- [ ] A",
+                "- [ ] B",
+                "  - [ ] B1",
+                "  - [ ] A1",
+            ),
+            updated,
+        )
+    }
+
+    @Test
+    fun tryMoveTodoUnderParent_appends_when_before_sibling_not_under_parent() {
+        val lines = listOf(
+            "- [ ] A",
+            "  - [ ] A1",
+            "- [ ] B",
+            "  - [ ] B1",
+        )
+
+        // beforeSibling B is not a child of A; move should still succeed by appending under A.
+        val updated = MarkdownParser.tryMoveTodoUnderParent(
+            lines = lines,
+            todoLineIndex = 3,
+            newParentLineIndex = 0,
+            beforeSiblingLineIndex = 2,
+        ) ?: error("Expected move to succeed")
+
+        assertEquals(
+            listOf(
+                "- [ ] A",
+                "  - [ ] A1",
+                "  - [ ] B1",
+                "- [ ] B",
+            ),
+            updated,
+        )
+    }
+
+    @Test
+    fun tryMoveTodoUnderParent_moves_across_parents_with_notes() {
+        val lines = listOf(
+            "- [ ] task 2",
+            "task additional text 2",
+            "  - [ ] subtask 2",
+            "sub task additional text 2",
+            "- [ ] task 4",
+            "  - [ ] subtask 1",
+        )
+
+        val updated = MarkdownParser.tryMoveTodoUnderParent(
+            lines = lines,
+            todoLineIndex = 5,
+            newParentLineIndex = 0,
+            beforeSiblingLineIndex = 2,
+        ) ?: error("Expected move to succeed")
+
+        assertEquals(
+            listOf(
+                "- [ ] task 2",
+                "task additional text 2",
+                "  - [ ] subtask 1",
+                "  - [ ] subtask 2",
+                "sub task additional text 2",
+                "- [ ] task 4",
+            ),
+            updated,
+        )
+    }
+
+    @Test
+    fun tryMoveTodoUnderParent_rejects_move_under_own_descendant() {
+        val lines = listOf(
+            "- [ ] A",
+            "  - [ ] A1",
+            "    - [ ] A1a",
+        )
+
+        val updated = MarkdownParser.tryMoveTodoUnderParent(
+            lines = lines,
+            todoLineIndex = 0,
+            newParentLineIndex = 1,
+            beforeSiblingLineIndex = null,
+        )
+
+        assertEquals(null, updated)
+    }
+
+    @Test
+    fun tryMoveTodoUnderParent_rejects_depth_mismatch() {
+        val lines = listOf(
+            "- [ ] A",
+            "  - [ ] A1",
+            "    - [ ] A1a",
+            "- [ ] B",
+        )
+
+        // Sub-subtask cannot be moved directly under a top-level task.
+        val updated = MarkdownParser.tryMoveTodoUnderParent(
+            lines = lines,
+            todoLineIndex = 2,
+            newParentLineIndex = 3,
+            beforeSiblingLineIndex = null,
+        )
+
+        assertEquals(null, updated)
+    }
+
+    @Test
+    fun tryMoveTodoUnderParent_moves_sub_subtask_under_another_subtask() {
+        val lines = listOf(
+            "- [ ] A",
+            "  - [ ] A1",
+            "    - [ ] A1a",
+            "  - [ ] A2",
+        )
+
+        val updated = MarkdownParser.tryMoveTodoUnderParent(
+            lines = lines,
+            todoLineIndex = 2,
+            newParentLineIndex = 3,
+            beforeSiblingLineIndex = null,
+        ) ?: error("Expected move to succeed")
+
+        assertEquals(
+            listOf(
+                "- [ ] A",
+                "  - [ ] A1",
+                "  - [ ] A2",
+                "    - [ ] A1a",
+            ),
+            updated,
+        )
+    }
+
+    @Test
+    fun tryMoveTodoUnderParent_uses_parent_indent_unit() {
+        val lines = listOf(
+            "\t- [ ] ParentA",
+            "\t\t- [ ] Child",
+            "\t- [ ] ParentB",
+        )
+
+        val updated = MarkdownParser.tryMoveTodoUnderParent(
+            lines = lines,
+            todoLineIndex = 1,
+            newParentLineIndex = 2,
+            beforeSiblingLineIndex = null,
+        ) ?: error("Expected move to succeed")
+
+        assertEquals(
+            listOf(
+                "\t- [ ] ParentA",
+                "\t- [ ] ParentB",
+                "\t\t- [ ] Child",
+            ),
+            updated,
+        )
+    }
+
+    @Test
+    fun addSubTodo_inserts_after_notes_under_parent() {
+        val lines = listOf(
+            "- [ ] Parent",
+            "parent notes",
+            "- [ ] Sibling",
+        )
+
+        val updated = MarkdownParser.addSubTodo(
+            lines = lines,
+            parentLineIndex = 0,
+            text = "Child",
+        ) ?: error("Expected subtask insert")
+
+        assertEquals(
+            listOf(
+                "- [ ] Parent",
+                "parent notes",
+                "  - [ ] Child",
+                "- [ ] Sibling",
+            ),
+            updated,
+        )
     }
     
     @Test

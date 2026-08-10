@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.outlined.AddCircle
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Event
@@ -45,13 +46,18 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalViewConfiguration
+import androidx.compose.ui.platform.ViewConfiguration
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextDecoration
@@ -62,6 +68,9 @@ import com.isotjs.todosian.data.model.TasksPriority
 import com.isotjs.todosian.data.model.Todo
 import com.isotjs.todosian.utils.MarkdownParser
 import java.time.LocalDate
+
+/** Shorter than the system long-press so reorder feels snappy but quick swipes still scroll. */
+private const val DragHandlePressTimeoutMs = 50L
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -77,18 +86,25 @@ fun TodoRow(
     modifier: Modifier = Modifier,
     allowMove: Boolean = onRequestMove != null,
     showSubtaskButton: Boolean = true,
+    dragHandleModifier: Modifier? = null,
+    enableSwipe: Boolean = true,
 ) {
     val indentPadding = (todo.indentLevel * 12).coerceAtMost(48).dp
+    // confirmValueChange is captured once by rememberSwipeToDismissBoxState; keep
+    // callbacks/todo current so swipe-delete/move cannot target a stale lineIndex.
+    val currentOnRequestDelete by rememberUpdatedState(onRequestDelete)
+    val currentOnRequestMove by rememberUpdatedState(onRequestMove)
+    val currentTodo by rememberUpdatedState(todo)
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
             when (value) {
                 SwipeToDismissBoxValue.EndToStart -> {
-                    onRequestDelete()
+                    currentOnRequestDelete()
                     false
                 }
                 SwipeToDismissBoxValue.StartToEnd -> {
-                    if (todo.indentLevel == 0) {
-                        onRequestMove?.invoke()
+                    if (currentTodo.indentLevel == 0) {
+                        currentOnRequestMove?.invoke()
                     }
                     false
                 }
@@ -100,7 +116,8 @@ fun TodoRow(
     SwipeToDismissBox(
         modifier = modifier.padding(start = indentPadding),
         state = dismissState,
-        enableDismissFromStartToEnd = allowMove && todo.indentLevel == 0,
+        enableDismissFromStartToEnd = enableSwipe && allowMove && todo.indentLevel == 0,
+        enableDismissFromEndToStart = enableSwipe,
         backgroundContent = {
             val backgroundColor = when (dismissState.targetValue) {
                 SwipeToDismissBoxValue.EndToStart -> MaterialTheme.colorScheme.errorContainer
@@ -247,6 +264,34 @@ fun TodoRow(
                             contentDescription = stringResource(R.string.cd_add_subtask),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
+                    }
+                }
+                if (dragHandleModifier != null) {
+                    // Non-clickable: IconButton's clickable fights drag and steals scroll.
+                    val baseViewConfiguration = LocalViewConfiguration.current
+                    val shortPressViewConfiguration = remember(baseViewConfiguration) {
+                        object : ViewConfiguration {
+                            override val longPressTimeoutMillis = DragHandlePressTimeoutMs
+                            override val doubleTapTimeoutMillis =
+                                baseViewConfiguration.doubleTapTimeoutMillis
+                            override val doubleTapMinTimeMillis =
+                                baseViewConfiguration.doubleTapMinTimeMillis
+                            override val touchSlop = baseViewConfiguration.touchSlop
+                        }
+                    }
+                    CompositionLocalProvider(
+                        LocalViewConfiguration provides shortPressViewConfiguration,
+                    ) {
+                        Box(
+                            modifier = dragHandleModifier.size(40.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.DragHandle,
+                                contentDescription = stringResource(R.string.cd_reorder_todo),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                     }
                 }
             }

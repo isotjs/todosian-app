@@ -264,12 +264,73 @@ class CategoryViewModel(
     fun deleteTodo(todo: Todo) {
         viewModelScope.launch {
             val previousLines = _uiState.value.lines
-            val newLines = MarkdownParser.tryDeleteTodoWithSubtasks(previousLines, todo.lineIndex)
+            val newLines = MarkdownParser.tryDeleteTodoWithSubtasks(previousLines, todo)
             if (newLines == null) {
                 _events.emit(Event.ShowMessage(R.string.error_read_failed))
                 refreshFromDisk(showLoading = false)
                 return@launch
             }
+
+            applyLines(newLines)
+
+            inFlightWrites.incrementAndGet()
+            try {
+                val write = fileRepository.writeLines(categoryUri, newLines)
+                if (write.isFailure) {
+                    if (_uiState.value.lines == newLines) {
+                        applyLines(previousLines)
+                    }
+                    _events.emit(Event.ShowMessage(R.string.error_write_failed))
+                }
+            } finally {
+                onWriteFinishedMaybeRefresh()
+            }
+        }
+    }
+
+    /** Reorders todo blocks; notes and nested subtasks move with each item. */
+    fun applyTodoOrder(orderedLineIndices: List<Int>, newOrderedLineIndices: List<Int>) {
+        if (orderedLineIndices == newOrderedLineIndices) return
+        applySilentLineMutation { lines ->
+            MarkdownParser.tryApplyTodoBlockOrder(
+                lines = lines,
+                orderedLineIndices = orderedLineIndices,
+                newOrderedLineIndices = newOrderedLineIndices,
+            )
+        }
+    }
+
+    /**
+     * Moves the todo block at [todoLineIndex] under [newParentLineIndex] as a direct child.
+     * When [beforeSiblingLineIndex] is null, appends after the parent's nested content.
+     */
+    fun moveTodoUnderParent(
+        todoLineIndex: Int,
+        newParentLineIndex: Int,
+        beforeSiblingLineIndex: Int? = null,
+    ) {
+        applySilentLineMutation { lines ->
+            MarkdownParser.tryMoveTodoUnderParent(
+                lines = lines,
+                todoLineIndex = todoLineIndex,
+                newParentLineIndex = newParentLineIndex,
+                beforeSiblingLineIndex = beforeSiblingLineIndex,
+            )
+        }
+    }
+
+    /**
+     * Applies a line mutation that fails closed with a silent refresh (not a read-error toast).
+     * Used for drag-reorder where null means stale indices / hierarchy mismatch.
+     */
+    private fun applySilentLineMutation(mutate: (List<String>) -> List<String>?) {
+        viewModelScope.launch {
+            val previousLines = _uiState.value.lines
+            val newLines = mutate(previousLines) ?: run {
+                refreshFromDisk(showLoading = false)
+                return@launch
+            }
+            if (newLines == previousLines) return@launch
 
             applyLines(newLines)
 
@@ -295,7 +356,13 @@ class CategoryViewModel(
                 return@launch
             }
             val previousLines = _uiState.value.lines
-            val newLines = MarkdownParser.tryDeleteTodoWithSubtasks(previousLines, todo.lineIndex)
+            val resolvedIndex = MarkdownParser.resolveTodoLineIndex(previousLines, todo)
+            if (resolvedIndex == null) {
+                _events.emit(Event.ShowMessage(R.string.error_read_failed))
+                refreshFromDisk(showLoading = false)
+                return@launch
+            }
+            val newLines = MarkdownParser.tryDeleteTodoWithSubtasks(previousLines, resolvedIndex)
             if (newLines == null) {
                 _events.emit(Event.ShowMessage(R.string.error_read_failed))
                 refreshFromDisk(showLoading = false)
@@ -306,7 +373,7 @@ class CategoryViewModel(
 
             inFlightWrites.incrementAndGet()
             try {
-                val result = fileRepository.moveTodoLine(categoryUri, targetUri, todo.lineIndex)
+                val result = fileRepository.moveTodoLine(categoryUri, targetUri, resolvedIndex)
                 if (result.isFailure) {
                     if (_uiState.value.lines == newLines) {
                         applyLines(previousLines)

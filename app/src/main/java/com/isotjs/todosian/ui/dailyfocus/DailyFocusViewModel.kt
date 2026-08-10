@@ -202,7 +202,7 @@ class DailyFocusViewModel(
     fun deleteTodo(task: DailyFocusTask) {
         viewModelScope.launch {
             val previousLines = currentLinesFor(task)
-            val newLines = MarkdownParser.tryDeleteTodoWithSubtasks(previousLines, task.todo.lineIndex)
+            val newLines = MarkdownParser.tryDeleteTodoWithSubtasks(previousLines, task.todo)
             if (newLines == null) {
                 _events.emit(Event.ShowMessage(R.string.error_read_failed))
                 refreshFromDisk(showLoading = false)

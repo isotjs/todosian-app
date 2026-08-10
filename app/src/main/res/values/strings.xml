@@ -120,6 +120,7 @@
     <string name="cd_add_subtask">Add subtask</string>
     <string name="cd_navigate_back">Navigate back</string>
     <string name="cd_delete">Delete</string>
+    <string name="cd_reorder_todo">Hold and drag to reorder</string>
 
     <!-- Errors -->
     <string name="error_folder_empty">The selected folder has no markdown (.md) files.</string>

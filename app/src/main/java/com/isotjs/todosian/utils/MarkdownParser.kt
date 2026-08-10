@@ -160,7 +160,6 @@ object MarkdownParser {
         val parentLine = lines[parentLineIndex]
         val match = todoRegex.matchEntire(parentLine) ?: return null
         val parentIndentPrefix = match.groupValues[1]
-        val parentIndentLevel = indentLevel(parentIndentPrefix)
 
         val indentUnit = inferIndentUnit(parentIndentPrefix)
         val newIndentPrefix = parentIndentPrefix + indentUnit
@@ -172,18 +171,8 @@ object MarkdownParser {
             indentPrefix = newIndentPrefix,
         )
 
-        var insertIndex = parentLineIndex + 1
-        while (insertIndex < lines.size) {
-            val nextLine = lines[insertIndex]
-            val nextMatch = todoRegex.matchEntire(nextLine) ?: break
-            val nextIndent = nextMatch.groupValues[1]
-            if (indentLevel(nextIndent) > parentIndentLevel) {
-                insertIndex++
-            } else {
-                break
-            }
-        }
-
+        // Insert after the parent's full block (notes + nested todos) so ownership stays intact.
+        val insertIndex = todoBlockEnd(lines, parentLineIndex) ?: return null
         return lines.toMutableList().apply { add(insertIndex, newLine) }
     }
 
@@ -201,25 +190,49 @@ object MarkdownParser {
 
     fun tryDeleteTodoWithSubtasks(lines: List<String>, lineIndex: Int): List<String>? {
         if (lineIndex !in lines.indices) return null
-        val line = lines[lineIndex]
-        val match = todoRegex.matchEntire(line) ?: return null
-        val parentIndent = indentLevel(match.groupValues[1])
-
-        var endIndex = lineIndex + 1
-        while (endIndex < lines.size) {
-            val nextLine = lines[endIndex]
-            val nextMatch = todoRegex.matchEntire(nextLine) ?: break
-            val nextIndent = indentLevel(nextMatch.groupValues[1])
-            if (nextIndent > parentIndent) {
-                endIndex++
-            } else {
-                break
-            }
-        }
+        if (!isTodoLine(lines[lineIndex])) return null
+        val endIndex = todoBlockEnd(lines, lineIndex) ?: return null
 
         return lines.toMutableList().apply {
             subList(lineIndex, endIndex).clear()
         }
+    }
+
+    /**
+     * Deletes [todo] by resolving its current line first.
+     * Prefers [Todo.lineIndex] when that line still matches; otherwise a unique
+     * text/done/indent match. Returns null when the target cannot be located safely.
+     */
+    fun tryDeleteTodoWithSubtasks(lines: List<String>, todo: Todo): List<String>? {
+        val lineIndex = resolveTodoLineIndex(lines, todo) ?: return null
+        return tryDeleteTodoWithSubtasks(lines, lineIndex)
+    }
+
+    /**
+     * Locates [todo] in [lines] without trusting a possibly stale [Todo.lineIndex].
+     * Returns null when missing or when multiple lines match the same identity.
+     */
+    fun resolveTodoLineIndex(lines: List<String>, todo: Todo): Int? {
+        fun matches(line: String): Boolean {
+            val match = todoRegex.matchEntire(line) ?: return false
+            val indentPrefix = match.groupValues[1]
+            val isDone = match.groupValues[2] == "x"
+            val mainText = parseRemainder(match.groupValues[3]).mainText
+            return mainText == todo.text &&
+                isDone == todo.isDone &&
+                indentLevel(indentPrefix) == todo.indentLevel
+        }
+
+        val atIndex = lines.getOrNull(todo.lineIndex)
+        if (atIndex != null && matches(atIndex)) return todo.lineIndex
+
+        var found: Int? = null
+        for (index in lines.indices) {
+            if (!matches(lines[index])) continue
+            if (found != null) return null
+            found = index
+        }
+        return found
     }
 
     fun hasSubtasks(lines: List<String>, lineIndex: Int): Boolean {
@@ -228,12 +241,169 @@ object MarkdownParser {
         val match = todoRegex.matchEntire(line) ?: return false
         val parentIndent = indentLevel(match.groupValues[1])
 
-        val nextIndex = lineIndex + 1
-        if (nextIndex !in lines.indices) return false
-        val nextLine = lines[nextIndex]
-        val nextMatch = todoRegex.matchEntire(nextLine) ?: return false
-        val nextIndent = indentLevel(nextMatch.groupValues[1])
-        return nextIndent > parentIndent
+        var index = lineIndex + 1
+        while (index < lines.size) {
+            val nextMatch = todoRegex.matchEntire(lines[index])
+            if (nextMatch == null) {
+                index++
+                continue
+            }
+            val nextIndent = indentLevel(nextMatch.groupValues[1])
+            return nextIndent > parentIndent
+        }
+        return false
+    }
+
+    /**
+     * Moves the todo block at [todoLineIndex] under [newParentLineIndex] as a direct child.
+     * Cuts the block (notes + nested todos), re-indents it one level under the new parent,
+     * and inserts before [beforeSiblingLineIndex] when that sibling is a direct child;
+     * otherwise appends after the parent's nested content.
+     * Returns null when the move is invalid.
+     */
+    fun tryMoveTodoUnderParent(
+        lines: List<String>,
+        todoLineIndex: Int,
+        newParentLineIndex: Int,
+        beforeSiblingLineIndex: Int? = null,
+    ): List<String>? {
+        if (todoLineIndex !in lines.indices || newParentLineIndex !in lines.indices) return null
+        if (todoLineIndex == newParentLineIndex) return null
+
+        val todoMatch = todoRegex.matchEntire(lines[todoLineIndex]) ?: return null
+        val parentMatch = todoRegex.matchEntire(lines[newParentLineIndex]) ?: return null
+
+        val parentIndentPrefix = parentMatch.groupValues[1]
+        val oldRootPrefix = todoMatch.groupValues[1]
+        val todoIndent = indentLevel(oldRootPrefix)
+        if (todoIndent <= 0) return null
+
+        val indentUnit = inferIndentUnit(parentIndentPrefix)
+        val newRootPrefix = parentIndentPrefix + indentUnit
+        val expectedChildIndent = indentLevel(newRootPrefix)
+        // Reject promote/demote across hierarchy (e.g. sub-subtask under a top-level task).
+        if (todoIndent != expectedChildIndent) return null
+
+        val blockEnd = todoBlockEnd(lines, todoLineIndex) ?: return null
+        if (newParentLineIndex in todoLineIndex until blockEnd) return null
+
+        val effectiveBeforeSibling = beforeSiblingLineIndex?.takeIf { sibling ->
+            sibling in lines.indices &&
+                sibling != todoLineIndex &&
+                isTodoLine(lines[sibling]) &&
+                sibling !in todoLineIndex until blockEnd
+        }
+
+        val originalBlock = lines.subList(todoLineIndex, blockEnd).toList()
+        val rewrittenBlock = rewriteBlockIndentPrefixes(
+            block = originalBlock,
+            oldRootPrefix = oldRootPrefix,
+            newRootPrefix = newRootPrefix,
+        )
+
+        val withoutBlock = lines.toMutableList().apply {
+            subList(todoLineIndex, blockEnd).clear()
+        }
+
+        fun adjustAfterRemoval(index: Int): Int {
+            return if (index > todoLineIndex) index - originalBlock.size else index
+        }
+
+        val adjustedParent = adjustAfterRemoval(newParentLineIndex)
+        if (adjustedParent !in withoutBlock.indices) return null
+        if (!isTodoLine(withoutBlock[adjustedParent])) return null
+
+        val parentBlockEnd = todoBlockEnd(withoutBlock, adjustedParent) ?: return null
+        val insertIndex = if (effectiveBeforeSibling != null) {
+            val adjustedSibling = adjustAfterRemoval(effectiveBeforeSibling)
+            val siblingMatch = withoutBlock.getOrNull(adjustedSibling)?.let { todoRegex.matchEntire(it) }
+            val canInsertBefore = siblingMatch != null &&
+                adjustedSibling in (adjustedParent + 1) until parentBlockEnd &&
+                indentLevel(siblingMatch.groupValues[1]) == expectedChildIndent
+            if (canInsertBefore) adjustedSibling else parentBlockEnd
+        } else {
+            parentBlockEnd
+        }
+
+        return withoutBlock.apply {
+            addAll(insertIndex, rewrittenBlock)
+        }
+    }
+
+    /**
+     * Reorders todo blocks among [orderedLineIndices] using list-move semantics
+     * (`add(toIndex, removeAt(fromIndex))`).
+     *
+     * Each entry is the starting line of a todo; its block includes following non-todo
+     * lines and deeper nested todos until the next same-or-shallower todo.
+     * Blocks not listed keep their places in the file (e.g. completed items when
+     * reordering only active ones).
+     */
+    fun tryReorderTodoBlocks(
+        lines: List<String>,
+        orderedLineIndices: List<Int>,
+        fromIndex: Int,
+        toIndex: Int,
+    ): List<String>? {
+        if (fromIndex == toIndex) return lines
+        if (fromIndex !in orderedLineIndices.indices || toIndex !in orderedLineIndices.indices) {
+            return null
+        }
+        val newOrder = orderedLineIndices.toMutableList().apply {
+            add(toIndex, removeAt(fromIndex))
+        }
+        return tryApplyTodoBlockOrder(
+            lines = lines,
+            orderedLineIndices = orderedLineIndices,
+            newOrderedLineIndices = newOrder,
+        )
+    }
+
+    /**
+     * Applies a full permutation of todo blocks.
+     * [orderedLineIndices] is the current file order of the reorder set;
+     * [newOrderedLineIndices] is the desired order (same indices, possibly permuted).
+     */
+    fun tryApplyTodoBlockOrder(
+        lines: List<String>,
+        orderedLineIndices: List<Int>,
+        newOrderedLineIndices: List<Int>,
+    ): List<String>? {
+        if (orderedLineIndices == newOrderedLineIndices) return lines
+        if (orderedLineIndices.size != newOrderedLineIndices.size) return null
+        if (orderedLineIndices.size < 2) return lines
+        if (orderedLineIndices.toSet() != newOrderedLineIndices.toSet()) return null
+
+        val startsSet = HashSet<Int>(orderedLineIndices.size)
+        val blockByStart = HashMap<Int, List<String>>(orderedLineIndices.size)
+        val endByStart = HashMap<Int, Int>(orderedLineIndices.size)
+        var previousStart = -1
+        for (start in orderedLineIndices) {
+            if (start !in lines.indices) return null
+            if (start <= previousStart) return null
+            if (!isTodoLine(lines[start])) return null
+            if (!startsSet.add(start)) return null
+            val end = todoBlockEnd(lines, start) ?: return null
+            endByStart[start] = end
+            blockByStart[start] = lines.subList(start, end).toList()
+            previousStart = start
+        }
+
+        val result = ArrayList<String>(lines.size)
+        var index = 0
+        var emitIndex = 0
+        while (index < lines.size) {
+            if (index in startsSet) {
+                index = endByStart.getValue(index)
+                val emitStart = newOrderedLineIndices[emitIndex++]
+                result.addAll(blockByStart.getValue(emitStart))
+            } else {
+                result.add(lines[index])
+                index++
+            }
+        }
+        if (emitIndex != newOrderedLineIndices.size) return null
+        return result
     }
 
     fun editTodoText(
@@ -294,28 +464,56 @@ object MarkdownParser {
         targetLines: List<String>,
     ): Pair<List<String>, List<String>>? {
         if (lineIndex !in sourceLines.indices) return null
-        val line = sourceLines[lineIndex]
-        val match = todoRegex.matchEntire(line) ?: return null
-        val parentIndent = indentLevel(match.groupValues[1])
+        if (!isTodoLine(sourceLines[lineIndex])) return null
+        val endIndex = todoBlockEnd(sourceLines, lineIndex) ?: return null
 
-        var endIndex = lineIndex + 1
-        while (endIndex < sourceLines.size) {
-            val nextLine = sourceLines[endIndex]
-            val nextMatch = todoRegex.matchEntire(nextLine) ?: break
-            val nextIndent = indentLevel(nextMatch.groupValues[1])
-            if (nextIndent > parentIndent) {
-                endIndex++
-            } else {
-                break
-            }
-        }
-
-        val block = sourceLines.subList(lineIndex, endIndex)
+        val block = sourceLines.subList(lineIndex, endIndex).toList()
         val newSourceLines = sourceLines.toMutableList().apply {
             subList(lineIndex, endIndex).clear()
         }
         val newTargetLines = targetLines.toMutableList().apply { addAll(block) }
         return newSourceLines to newTargetLines
+    }
+
+    /**
+     * End index (exclusive) of the todo block starting at [startIndex].
+     * Includes following non-todo lines and deeper nested todos until the next
+     * todo at the same or shallower indent (or EOF).
+     */
+    private fun todoBlockEnd(lines: List<String>, startIndex: Int): Int? {
+        if (startIndex !in lines.indices) return null
+        val match = todoRegex.matchEntire(lines[startIndex]) ?: return null
+        val baseIndent = indentLevel(match.groupValues[1])
+
+        var index = startIndex + 1
+        while (index < lines.size) {
+            val nextMatch = todoRegex.matchEntire(lines[index])
+            if (nextMatch != null && indentLevel(nextMatch.groupValues[1]) <= baseIndent) {
+                break
+            }
+            index++
+        }
+        return index
+    }
+
+    /**
+     * Rewrites indent prefixes for todo lines in [block] by replacing [oldRootPrefix]
+     * with [newRootPrefix] on the root and all deeper-nested todos.
+     * Non-todo lines are preserved unchanged.
+     */
+    private fun rewriteBlockIndentPrefixes(
+        block: List<String>,
+        oldRootPrefix: String,
+        newRootPrefix: String,
+    ): List<String> {
+        if (oldRootPrefix == newRootPrefix) return block
+        return block.map { line ->
+            val match = todoRegex.matchEntire(line) ?: return@map line
+            val prefix = match.groupValues[1]
+            if (!prefix.startsWith(oldRootPrefix)) return@map line
+            val rewrittenPrefix = newRootPrefix + prefix.removePrefix(oldRootPrefix)
+            rewrittenPrefix + line.substring(prefix.length)
+        }
     }
 
     fun editTodo(
