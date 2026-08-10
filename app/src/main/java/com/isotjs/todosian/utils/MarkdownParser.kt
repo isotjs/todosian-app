@@ -19,7 +19,7 @@ object MarkdownParser {
 
     private val completionAnywhereRegex = Regex("""\s✅\s\d{4}-\d{2}-\d{2}(?=\s|$)""")
 
-    fun isTodoLine(line: String): Boolean = todoRegex.matches(line)
+    private fun isTodoLine(line: String): Boolean = todoRegex.matches(line)
 
     fun parse(lines: List<String>): List<Todo> {
         return lines.mapIndexedNotNull { index, line ->
@@ -34,7 +34,6 @@ object MarkdownParser {
                 text = parsed.mainText,
                 isDone = isDone,
                 lineIndex = index,
-                indentPrefix = indentPrefix,
                 indentLevel = indentLevel(indentPrefix),
                 dueDate = parsed.meta.dueDate,
                 startDate = parsed.meta.startDate,
@@ -185,18 +184,6 @@ object MarkdownParser {
         }
 
         return lines.toMutableList().apply { add(insertIndex, newLine) }
-    }
-
-    fun deleteTodo(lines: List<String>, lineIndex: Int): List<String> {
-        if (lineIndex !in lines.indices) return lines
-        return lines.toMutableList().apply { removeAt(lineIndex) }
-    }
-
-    fun tryDeleteTodo(lines: List<String>, lineIndex: Int): List<String>? {
-        if (lineIndex !in lines.indices) return null
-        val line = lines[lineIndex]
-        if (!isTodoLine(line)) return null
-        return deleteTodo(lines, lineIndex)
     }
 
     fun tryDeleteTodoWithSubtasks(lines: List<String>, lineIndex: Int): List<String>? {

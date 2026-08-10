@@ -72,10 +72,6 @@ class CategoryViewModel(
         }
     }
 
-    fun load() {
-        refreshFromDisk(showLoading = true)
-    }
-
     fun refreshFromDisk(showLoading: Boolean = false) {
         viewModelScope.launch {
             if (showLoading) {

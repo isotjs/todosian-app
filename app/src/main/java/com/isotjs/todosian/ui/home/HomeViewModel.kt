@@ -43,7 +43,6 @@ class HomeViewModel(
     val events = _events.asSharedFlow()
 
     private val _dirtyVersion = MutableStateFlow(0L)
-    val dirtyVersion: StateFlow<Long> = _dirtyVersion.asStateFlow()
 
     private var observeJob: Job? = null
     private var observedFolderUri: Uri? = null
@@ -106,19 +105,6 @@ class HomeViewModel(
                 isLoading = false,
                 categories = result.getOrThrow(),
             )
-        }
-    }
-
-    fun changeFolder(uri: Uri) {
-        viewModelScope.launch {
-            val persisted = fileRepository.persistFolderUri(uri)
-            if (persisted.isFailure) {
-                fileRepository.clearFolderUri()
-                _events.emit(Event.ShowMessage(R.string.error_folder_invalid))
-                _events.emit(Event.RequireOnboarding)
-                return@launch
-            }
-            refresh()
         }
     }
 

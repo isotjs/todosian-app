@@ -54,8 +54,6 @@ interface FileRepository {
 
     suspend fun countMarkdownFiles(folderUri: Uri): Result<Int>
 
-    fun observeTreeChanges(treeUri: Uri): Flow<Unit>
-
     fun observeDocumentChanges(documentUri: Uri): Flow<Unit>
 
     fun observeMarkdownFilesChanges(folderUri: Uri): Flow<Unit>
@@ -109,7 +107,6 @@ class SafFileRepository(
                             todo.dueDate?.let { it < today } == true
                         }
                         Category(
-                            fileName = name,
                             displayName = displayName,
                             uri = file.uri,
                             todoCount = todos.size,
@@ -261,15 +258,6 @@ class SafFileRepository(
                 }
             }
         }
-    }
-
-    override fun observeTreeChanges(treeUri: Uri): Flow<Unit> {
-        val treeDocId = DocumentsContract.getTreeDocumentId(treeUri)
-        val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, treeDocId)
-        return observeUrisChanges(
-            uris = listOf(treeUri, childrenUri),
-            notifyDescendants = true,
-        )
     }
 
     override fun observeDocumentChanges(documentUri: Uri): Flow<Unit> {

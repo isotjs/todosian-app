@@ -21,7 +21,7 @@ object DueReminderScheduler {
         }
     }
 
-    fun enqueue(context: Context) {
+    private fun enqueue(context: Context) {
         val appContext = context.applicationContext
         val workManager = WorkManager.getInstance(appContext)
 
@@ -41,7 +41,7 @@ object DueReminderScheduler {
         )
     }
 
-    fun cancel(context: Context) {
+    private fun cancel(context: Context) {
         val appContext = context.applicationContext
         val workManager = WorkManager.getInstance(appContext)
         workManager.cancelUniqueWork(PERIODIC_WORK_NAME)

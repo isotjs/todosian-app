@@ -21,19 +21,16 @@ class MarkdownParserTest {
         assertEquals("First", todos[0].text)
         assertEquals(false, todos[0].isDone)
         assertEquals(1, todos[0].lineIndex)
-        assertEquals("", todos[0].indentPrefix)
         assertEquals(0, todos[0].indentLevel)
 
         assertEquals("Done one", todos[1].text)
         assertEquals(true, todos[1].isDone)
         assertEquals(3, todos[1].lineIndex)
-        assertEquals("", todos[1].indentPrefix)
         assertEquals(0, todos[1].indentLevel)
 
         assertEquals("Second", todos[2].text)
         assertEquals(false, todos[2].isDone)
         assertEquals(4, todos[2].lineIndex)
-        assertEquals("", todos[2].indentPrefix)
         assertEquals(0, todos[2].indentLevel)
     }
 
@@ -48,11 +45,8 @@ class MarkdownParserTest {
         val todos = MarkdownParser.parse(lines)
 
         assertEquals(3, todos.size)
-        assertEquals("", todos[0].indentPrefix)
         assertEquals(0, todos[0].indentLevel)
-        assertEquals("  ", todos[1].indentPrefix)
         assertEquals(1, todos[1].indentLevel)
-        assertEquals("\t", todos[2].indentPrefix)
         assertEquals(2, todos[2].indentLevel)
     }
 
@@ -189,7 +183,7 @@ class MarkdownParserTest {
             "Keep too",
         )
 
-        val updated = MarkdownParser.deleteTodo(lines, lineIndex = 1)
+        val updated = MarkdownParser.tryDeleteTodoWithSubtasks(lines, lineIndex = 1)
 
         assertEquals(listOf("Keep", "Keep too"), updated)
     }

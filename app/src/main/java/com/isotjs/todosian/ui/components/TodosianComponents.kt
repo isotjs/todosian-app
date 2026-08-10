@@ -14,7 +14,6 @@ import androidx.compose.ui.unit.dp
 
 object TodosianDimens {
     val ScreenHorizontalPadding: Dp = 16.dp
-    val CardPadding: Dp = 16.dp
     val ProgressHeight: Dp = 6.dp
 }
 
