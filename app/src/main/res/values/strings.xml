@@ -136,6 +136,7 @@
     <string name="settings_change_folder">Change folder</string>
     <string name="settings_change_folder_subtitle">Choose a different Obsidian todo folder.</string>
     <string name="settings_recheck_access">Re-check access</string>
+    <string name="settings_recheck_access_subtitle">Verify the app can still read this folder.</string>
     <string name="settings_reset_folder">Reset folder</string>
     <string name="settings_reset_folder_title">Reset folder selection?</string>
     <string name="settings_reset_folder_body">You’ll be taken back to setup and will need to choose a folder again.</string>
