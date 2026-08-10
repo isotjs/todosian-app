@@ -134,8 +134,16 @@ object MarkdownParser {
 
         if (lines.isEmpty()) return listOf(newLine)
         return lines.toMutableList().apply {
-            if (addAtStart) add(0, newLine) else add(newLine)
+            if (addAtStart) add(frontmatterEndIndex(this), newLine) else add(newLine)
         }
+    }
+
+    private fun frontmatterEndIndex(lines: List<String>): Int {
+        if (lines.firstOrNull() != "---") return 0
+        for (i in 1 until lines.size) {
+            if (lines[i] == "---") return i + 1
+        }
+        return 0
     }
 
     fun addSubTodo(

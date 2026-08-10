@@ -180,7 +180,7 @@
     <string name="settings_todo_sort_priority_desc">Priority (high to low)</string>
     <string name="settings_todo_sort_created_newest">Created date (newest first)</string>
     <string name="settings_todo_sort_due_earliest">Due date (earliest first)</string>
-    <string name="settings_new_todo_file_position">New todo file position</string>
+    <string name="settings_new_todo_file_position">Add new todos</string>
     <string name="settings_new_todo_file_position_top">Top of file</string>
     <string name="settings_new_todo_file_position_bottom">Bottom of file</string>
 

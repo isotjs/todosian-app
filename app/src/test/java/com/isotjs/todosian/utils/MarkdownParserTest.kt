@@ -113,6 +113,34 @@ class MarkdownParserTest {
     }
 
     @Test
+    fun addTodo_prepends_todo_line_when_addAtStart_with_empty_file() {
+        val updated = MarkdownParser.addTodo(emptyList(), text = "New thing", addAtStart = true)
+
+        assertEquals(listOf("- [ ] New thing"), updated)
+    }
+
+    @Test
+    fun addTodo_inserts_after_frontmatter_when_addAtStart() {
+        val lines = listOf(
+            "---",
+            "tags: [daily]",
+            "---",
+            "# Notes",
+            "Some text",
+        )
+
+        val updated = MarkdownParser.addTodo(lines, text = "New thing", addAtStart = true)
+
+        assertEquals(6, updated.size)
+        assertEquals("---", updated[0])
+        assertEquals("tags: [daily]", updated[1])
+        assertEquals("---", updated[2])
+        assertEquals("- [ ] New thing", updated[3])
+        assertEquals("# Notes", updated[4])
+        assertEquals("Some text", updated[5])
+    }
+
+    @Test
     fun addSubTodo_inserts_after_parent_block() {
         val lines = listOf(
             "- [ ] Parent",

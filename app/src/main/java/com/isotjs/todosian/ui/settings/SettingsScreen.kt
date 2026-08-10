@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.RestartAlt
+import androidx.compose.material.icons.filled.VerticalAlignTop
 import androidx.compose.material.icons.filled.ViewDay
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -595,7 +596,7 @@ fun SettingsScreen(
                         supportingContent = {
                             Text(text = newTodoFilePositionLabel(settings.newTodoFilePosition))
                         },
-                        leadingContent = { Icon(imageVector = Icons.AutoMirrored.Filled.Sort, contentDescription = null) },
+                        leadingContent = { Icon(imageVector = Icons.Filled.VerticalAlignTop, contentDescription = null) },
                         trailingContent = {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
