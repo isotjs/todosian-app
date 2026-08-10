@@ -5,7 +5,6 @@ import android.os.Build
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -17,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -53,12 +53,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -674,39 +676,31 @@ private fun <T> SingleChoiceDialog(
         onDismissRequest = onDismiss,
         title = { Text(text = title) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Column {
                 options.forEach { option ->
                     val isSelected = option.value == selected
-                    val bg = if (isSelected) {
-                        MaterialTheme.colorScheme.surfaceContainerHigh
-                    } else {
-                        Color.Transparent
-                    }
-
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(bg, shape = MaterialTheme.shapes.medium)
-                            .clickable {
-                                onSelected(option.value)
-                                onDismiss()
-                            }
-                            .padding(horizontal = 10.dp, vertical = 10.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            .selectable(
+                                selected = isSelected,
+                                role = Role.RadioButton,
+                                onClick = {
+                                    onSelected(option.value)
+                                    onDismiss()
+                                },
+                            )
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
                         RadioButton(
                             selected = isSelected,
-                            onClick = {
-                                onSelected(option.value)
-                                onDismiss()
-                            },
+                            onClick = null,
                         )
                         Text(
                             text = option.label,
                             style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier
-                                .padding(top = 6.dp)
-                                .weight(1f),
+                            modifier = Modifier.padding(start = 8.dp),
                         )
                     }
                 }
