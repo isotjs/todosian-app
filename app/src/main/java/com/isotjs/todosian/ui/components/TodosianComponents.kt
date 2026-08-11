@@ -1,5 +1,7 @@
 package com.isotjs.todosian.ui.components
 
+import androidx.compose.animation.core.SpringSpec
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -15,6 +17,20 @@ import androidx.compose.ui.unit.dp
 object TodosianDimens {
     val ScreenHorizontalPadding: Dp = 16.dp
     val ProgressHeight: Dp = 6.dp
+}
+
+object TodosianMotion {
+    /** M3 Expressive motion token SlowSpatial: spring(damping = 0.8, stiffness = 200). YES I AM TOO LAZY TO UPDATE THE M3 */ 
+    fun <T> slowSpatialSpec(): SpringSpec<T> = spring(
+        dampingRatio = 0.8f,
+        stiffness = 200f,
+    )
+
+    /** M3 Expressive motion token DefaultEffects: spring(damping = 1.0, stiffness = 1600). YES I AM TOO LAZY TO UPDATE THE M3 */ 
+    fun <T> defaultEffectsSpec(): SpringSpec<T> = spring(
+        dampingRatio = 1f,
+        stiffness = 1600f,
+    )
 }
 
 @Composable

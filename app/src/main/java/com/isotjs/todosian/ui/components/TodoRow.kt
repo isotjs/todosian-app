@@ -2,6 +2,7 @@ package com.isotjs.todosian.ui.components
 
 import android.app.DatePickerDialog
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -18,7 +19,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.filled.Delete
@@ -40,17 +40,19 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxState
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
@@ -80,71 +82,33 @@ fun TodoRow(
     showSubtaskButton: Boolean = true,
 ) {
     val indentPadding = (todo.indentLevel * 12).coerceAtMost(48).dp
-    val dismissState = rememberSwipeToDismissBoxState()
-    LaunchedEffect(dismissState.currentValue) {
-        when (dismissState.currentValue) {
-            SwipeToDismissBoxValue.EndToStart -> {
-                onRequestDelete()
-                dismissState.reset()
-            }
-            SwipeToDismissBoxValue.StartToEnd -> {
-                if (todo.indentLevel == 0) {
-                    onRequestMove?.invoke()
+    val dismissState = rememberSwipeToDismissBoxState(
+        confirmValueChange = { value ->
+            when (value) {
+                SwipeToDismissBoxValue.EndToStart -> onRequestDelete()
+                SwipeToDismissBoxValue.StartToEnd -> {
+                    if (todo.indentLevel == 0) {
+                        onRequestMove?.invoke()
+                    }
                 }
-                dismissState.reset()
+                else -> Unit
             }
-            else -> Unit
-        }
-    }
+            false
+        },
+    )
+    val rowShape = MaterialTheme.shapes.large
 
     SwipeToDismissBox(
         modifier = modifier.padding(start = indentPadding),
         state = dismissState,
         enableDismissFromStartToEnd = allowMove && todo.indentLevel == 0,
         backgroundContent = {
-            val backgroundColor = when (dismissState.targetValue) {
-                SwipeToDismissBoxValue.EndToStart -> MaterialTheme.colorScheme.errorContainer
-                SwipeToDismissBoxValue.StartToEnd -> MaterialTheme.colorScheme.secondaryContainer
-                else -> MaterialTheme.colorScheme.surfaceContainer
-            }
-            val icon = when (dismissState.targetValue) {
-                SwipeToDismissBoxValue.EndToStart -> Icons.Filled.Delete
-                SwipeToDismissBoxValue.StartToEnd -> Icons.AutoMirrored.Outlined.ArrowForward
-                else -> Icons.Filled.Delete
-            }
-            val contentColor = when (dismissState.targetValue) {
-                SwipeToDismissBoxValue.EndToStart -> MaterialTheme.colorScheme.onErrorContainer
-                SwipeToDismissBoxValue.StartToEnd -> MaterialTheme.colorScheme.onSecondaryContainer
-                else -> MaterialTheme.colorScheme.onSurfaceVariant
-            }
-            val alignment = when (dismissState.targetValue) {
-                SwipeToDismissBoxValue.EndToStart -> Alignment.CenterEnd
-                SwipeToDismissBoxValue.StartToEnd -> Alignment.CenterStart
-                else -> Alignment.CenterEnd
-            }
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        color = backgroundColor,
-                        shape = RoundedCornerShape(16.dp),
-                    )
-                    .padding(horizontal = 16.dp),
-                contentAlignment = alignment,
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = if (dismissState.targetValue == SwipeToDismissBoxValue.StartToEnd) {
-                        stringResource(R.string.category_move_title)
-                    } else {
-                        stringResource(R.string.cd_delete)
-                    },
-                    tint = contentColor,
-                )
-            }
+            TodoSwipeBackground(
+                dismissState = dismissState,
+                shape = rowShape,
+            )
         },
         content = {
-            val rowShape = RoundedCornerShape(16.dp)
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -252,6 +216,75 @@ fun TodoRow(
             }
         },
     )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TodoSwipeBackground(
+    dismissState: SwipeToDismissBoxState,
+    shape: Shape,
+) {
+    val direction = dismissState.dismissDirection
+    val targetBackgroundColor = when (direction) {
+        SwipeToDismissBoxValue.EndToStart -> MaterialTheme.colorScheme.errorContainer
+        SwipeToDismissBoxValue.StartToEnd -> MaterialTheme.colorScheme.secondaryContainer
+        else -> MaterialTheme.colorScheme.surfaceContainer
+    }
+    val backgroundColor by animateColorAsState(
+        targetValue = targetBackgroundColor,
+        animationSpec = TodosianMotion.defaultEffectsSpec(),
+        label = "swipe-bg-color",
+    )
+    val icon = when (direction) {
+        SwipeToDismissBoxValue.EndToStart -> Icons.Filled.Delete
+        SwipeToDismissBoxValue.StartToEnd -> Icons.AutoMirrored.Outlined.ArrowForward
+        else -> Icons.Filled.Delete
+    }
+    val targetContentColor = when (direction) {
+        SwipeToDismissBoxValue.EndToStart -> MaterialTheme.colorScheme.onErrorContainer
+        SwipeToDismissBoxValue.StartToEnd -> MaterialTheme.colorScheme.onSecondaryContainer
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    val contentColor by animateColorAsState(
+        targetValue = targetContentColor,
+        animationSpec = TodosianMotion.defaultEffectsSpec(),
+        label = "swipe-content-color",
+    )
+    val alignment = when (direction) {
+        SwipeToDismissBoxValue.EndToStart -> Alignment.CenterEnd
+        SwipeToDismissBoxValue.StartToEnd -> Alignment.CenterStart
+        else -> Alignment.CenterEnd
+    }
+    val isThresholdReached = dismissState.targetValue != SwipeToDismissBoxValue.Settled
+    val iconScale by animateFloatAsState(
+        targetValue = if (isThresholdReached) 1.25f else 0.85f,
+        animationSpec = TodosianMotion.slowSpatialSpec(),
+        label = "swipe-icon-scale",
+    )
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                color = backgroundColor,
+                shape = shape,
+            )
+            .padding(horizontal = 20.dp),
+        contentAlignment = alignment,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = if (direction == SwipeToDismissBoxValue.StartToEnd) {
+                stringResource(R.string.category_move_title)
+            } else {
+                stringResource(R.string.cd_delete)
+            },
+            tint = contentColor,
+            modifier = Modifier.graphicsLayer {
+                scaleX = iconScale
+                scaleY = iconScale
+            },
+        )
+    }
 }
 
 @Composable
