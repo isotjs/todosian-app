@@ -45,6 +45,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -79,23 +80,22 @@ fun TodoRow(
     showSubtaskButton: Boolean = true,
 ) {
     val indentPadding = (todo.indentLevel * 12).coerceAtMost(48).dp
-    val dismissState = rememberSwipeToDismissBoxState(
-        confirmValueChange = { value ->
-            when (value) {
-                SwipeToDismissBoxValue.EndToStart -> {
-                    onRequestDelete()
-                    false
-                }
-                SwipeToDismissBoxValue.StartToEnd -> {
-                    if (todo.indentLevel == 0) {
-                        onRequestMove?.invoke()
-                    }
-                    false
-                }
-                else -> false
+    val dismissState = rememberSwipeToDismissBoxState()
+    LaunchedEffect(dismissState.currentValue) {
+        when (dismissState.currentValue) {
+            SwipeToDismissBoxValue.EndToStart -> {
+                onRequestDelete()
+                dismissState.reset()
             }
-        },
-    )
+            SwipeToDismissBoxValue.StartToEnd -> {
+                if (todo.indentLevel == 0) {
+                    onRequestMove?.invoke()
+                }
+                dismissState.reset()
+            }
+            else -> Unit
+        }
+    }
 
     SwipeToDismissBox(
         modifier = modifier.padding(start = indentPadding),
@@ -616,9 +616,9 @@ internal fun buildTasksMetaChips(
 
     if (!todo.recurrence.isNullOrBlank()) {
         val label = if (useEmojisInUi) {
-            stringResource(R.string.category_tasks_chip_recurrence, todo.recurrence!!)
+            stringResource(R.string.category_tasks_chip_recurrence, todo.recurrence)
         } else {
-            stringResource(R.string.category_tasks_chip_recurrence_label, todo.recurrence!!)
+            stringResource(R.string.category_tasks_chip_recurrence_label, todo.recurrence)
         }
         chips.add(TasksMetaChipUi(label = label, icon = if (useEmojisInUi) null else Icons.Outlined.Repeat))
     }
