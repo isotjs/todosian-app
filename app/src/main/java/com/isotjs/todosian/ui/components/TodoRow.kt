@@ -67,6 +67,7 @@ import com.isotjs.todosian.utils.MarkdownParser
 import java.time.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
+@Suppress("DEPRECATION") // dismissState this little fella causes problems with the new Material3 API, so we have to use the deprecated one for now
 @Composable
 fun TodoRow(
     todo: Todo,
