@@ -9,7 +9,7 @@ import java.util.Properties
 android {
     namespace = "com.isotjs.todosian"
     compileSdk {
-        version = release(36) {
+        version = release(37) {
             minorApiLevel = 1
         }
     }
@@ -17,9 +17,9 @@ android {
     defaultConfig {
         applicationId = "com.isotjs.todosian"
         minSdk = 30
-        targetSdk = 36
-        versionCode = 7
-        versionName = "1.7"
+        targetSdk = 37
+        versionCode = 8
+        versionName = "1.8"
     }
 
     val keystoreProperties = Properties().apply {

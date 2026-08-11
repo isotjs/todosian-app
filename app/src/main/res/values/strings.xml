@@ -192,6 +192,10 @@
     <string name="settings_tasks_plugin_ui_emojis_subtitle">Show Tasks metadata as emojis instead of icons.</string>
     <string name="settings_notification_permission_denied">Notifications are disabled, so due reminders cannot be shown.</string>
 
+    <string name="settings_reminder_time">Reminder time</string>
+    <string name="settings_reminder_time_subtitle">Remind me about due-soon tasks every day at %1$s.</string>
+    <string name="action_ok">OK</string>
+
     <!-- Notifications -->
     <string name="notification_due_channel_name">Due reminders</string>
     <string name="notification_due_channel_description">Reminds you when tasks are close to their due date.</string>

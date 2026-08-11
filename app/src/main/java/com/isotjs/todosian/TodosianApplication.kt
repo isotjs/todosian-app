@@ -39,13 +39,30 @@ class TodosianApplication : Application() {
 
         appScope.launch {
             appSettingsRepository.settings
-                .map { it.enableTasksPluginSupport }
+                .map { settings ->
+                    ReminderSchedule(
+                        enabled = settings.enableTasksPluginSupport,
+                        hour = settings.reminderTimeHour,
+                        minute = settings.reminderTimeMinute,
+                    )
+                }
                 .distinctUntilChanged()
-                .collect { enabled ->
-                    DueReminderScheduler.sync(applicationContext, enabled)
+                .collect { schedule ->
+                    DueReminderScheduler.sync(
+                        applicationContext,
+                        schedule.enabled,
+                        schedule.hour,
+                        schedule.minute,
+                    )
                 }
         }
     }
+
+    private data class ReminderSchedule(
+        val enabled: Boolean,
+        val hour: Int,
+        val minute: Int,
+    )
 
     override fun onTerminate() {
         super.onTerminate()

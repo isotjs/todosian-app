@@ -11,6 +11,8 @@ data class AppSettings(
     val newTodoFilePosition: NewTodoFilePosition = NewTodoFilePosition.BOTTOM,
     val enableTasksPluginSupport: Boolean = false,
     val tasksPluginUseEmojisInUi: Boolean = false,
+    val reminderTimeHour: Int = 19,
+    val reminderTimeMinute: Int = 0,
 )
 
 enum class DailyFocusMode {

@@ -17,7 +17,7 @@ Todosian/
 │   │   │   │   ├── settings/     # AppSettings + repository
 │   │   │   │   ├── FileRepository.kt
 │   │   │   │   └── PreferencesManager.kt
-│   │   │   ├── notifications/   # Due reminders (WorkManager)
+│   │   │   ├── notifications/   # Due reminders (AlarmManager)
 │   │   │   ├── ui/
 │   │   │   │   ├── category/
 │   │   │   │   ├── components/
@@ -57,8 +57,8 @@ Note: the app works with any folder you pick via SAF. Many users point it at an 
 ## AI-only guidelines
 
 1. You are NOT allowed to use the following commands:
-    - You are not to commit, push, or merge any changes to any branch.
-    - You should absolutely NOT use any commands that would modify the git history, do force pushes (except for rebases on your own branch), or delete branches without explicit instructions from a human.
+   - You are not to commit, push, or merge any changes to any branch.
+   - You should absolutely NOT use any commands that would modify the git history, do force pushes (except for rebases on your own branch), or delete branches without explicit instructions from a human.
 2. Always follow the guidelines and instructions provided by human contributors.
 3. Ensure the absolutely highest code quality in all contributions, including proper formatting, clear variable naming, and comprehensive comments where necessary.
 4. Comments should be added only for complex logic or non-obvious code. Avoid redundant comments that simply restate what the code does.
@@ -109,12 +109,12 @@ When modifying Markdown parsing or writing logic:
 
 1. Add unit tests in `app/src/test/java/`
 2. Test edge cases:
-    - Empty files
-    - Files with only non-todo content
-    - Mixed todo and non-todo lines
-    - Unicode characters and emojis
-    - Malformed task metadata
-    - Very long lines
+   - Empty files
+   - Files with only non-todo content
+   - Mixed todo and non-todo lines
+   - Unicode characters and emojis
+   - Malformed task metadata
+   - Very long lines
 3. Verify that non-todo content is preserved character-by-character
 
 ### Obsidian Tasks Plugin Format
@@ -132,14 +132,14 @@ When disabled, the app should ignore (but preserve) these tokens.
 When modifying file access logic:
 
 1. Test with different folder locations:
-    - Internal storage
-    - SD card
-    - Cloud storage providers (Google Drive, Dropbox mounted via SAF)
+   - Internal storage
+   - SD card
+   - Cloud storage providers (Google Drive, Dropbox mounted via SAF)
 2. Test permission persistence across app restarts
 3. Test graceful handling of:
-    - Folder deleted externally
-    - Permissions revoked
-    - Files modified by external apps (Obsidian, text editors)
+   - Folder deleted externally
+   - Permissions revoked
+   - Files modified by external apps (Obsidian, text editors)
 4. Test concurrent access scenarios (e.g., Syncthing syncing while app is open)
 
 ## Categories, File Selection, and Naming
@@ -157,18 +157,20 @@ When preparing for a release:
 3. Ensure no proprietary dependencies are introduced
 4. Verify that no network permissions are added (check `AndroidManifest.xml`)
 5. Test that the app builds reproducibly:
-    ```bash
-    ./gradlew clean
-    ./gradlew :app:assembleRelease
-    ```
+   ```bash
+   ./gradlew clean
+   ./gradlew :app:assembleRelease
+   ```
 6. Metadata updates (screenshots, descriptions) go to `fastlane/metadata/android/`
 
 ## Notifications & Due Reminders
 
-1. The app uses WorkManager to periodically scan the selected folder for due-soon tasks.
-2. Reminders are tied to Tasks plugin support (enabled in Settings).
-3. Android 13+ requires `POST_NOTIFICATIONS` to show reminders.
-4. No network permission is used.
+1. The app uses `AlarmManager.setAndAllowWhileIdle()` to schedule a single daily reminder at a user-configurable time (default 19:00). A `BroadcastReceiver` (`DueReminderReceiver`) handles the alarm and `BOOT_COMPLETED` to re-arm the alarm after reboot.
+2. The alarm fires → `DueReminderNotifier.checkAndNotify()` scans the selected folder for due-soon tasks (due within the next 2 days) and posts a single notification per day (deduplicated by signature).
+3. Reminders are tied to Tasks plugin support (enabled in Settings). The reminder time is also configurable in Settings.
+4. Android 13+ requires `POST_NOTIFICATIONS` to show reminders; `RECEIVE_BOOT_COMPLETED` is required to re-arm the alarm after reboot.
+5. No network permission is used.
+6. Do not switch reminders back to WorkManager periodic work: periodic work is inexact and does not honor a fixed time of day, which caused reminders to not fire in the evening.
 
 ## Resource Management
 
@@ -181,6 +183,7 @@ All user-facing strings must be in `app/src/main/res/values/strings.xml`:
 ```
 
 Access in code:
+
 ```kotlin
 // In Compose
 Text(text = stringResource(R.string.example_key))
@@ -194,6 +197,7 @@ context.getString(R.string.example_key)
 When accessing resources in Jetpack Compose, **do not** use `LocalContext.current` to query resource values (e.g., `context.getString()`, `context.getColor()`, `context.resources.getDrawable()`). Changes to the Configuration object will not invalidate `LocalContext.current` reads, leading to stale values when the system configuration changes (e.g., locale, theme, orientation).
 
 **Always use Compose resource APIs instead:**
+
 - `stringResource()` for strings
 - `colorResource()` for colors
 - `painterResource()` for drawables/images
@@ -203,6 +207,7 @@ If you need direct `Resources` access, use `LocalResources.current` instead of `
 If you need to resolve strings outside of a composable (for example, inside a callback), prefer passing resource IDs through events and resolving them in the UI layer, or ensure the lookup is configuration-safe.
 
 This prevents the lint error:
+
 ```
 Issue id: LocalContextGetResourceValueCall
 ```
@@ -217,6 +222,7 @@ If you need to add a new preference:
 4. Consider migration logic if changing existing preference structure
 
 Example preference pattern:
+
 ```kotlin
 // Data class
 data class AppSettings(
@@ -233,19 +239,12 @@ Switch(
 )
 ```
 
-Current implementation note:
-Settings are stored in SharedPreferences (`SharedPrefsAppSettingsRepository`). Existing settings include theme mode, dynamic color, daily focus banner, category sort, todo grouping/sort, Tasks plugin support, and an optional “use emojis in UI” flag for Tasks metadata.
-
 ## Common Pitfalls
 
 1. **Do not load entire files into memory**: For large Markdown files, use streaming or line-by-line processing.
 
 Current implementation note:
-The current SAF reader uses `readLines()` and loads the whole document into memory. Keep an eye on very large Markdown files when changing parsing or I/O behavior.
-2. **Do not assume file structure**: Users may have arbitrary folder structures, nested folders, and file naming conventions.
-3. **Do not cache file contents**: Always re-read files when displaying to the user (they may have been modified externally).
-4. **Do not block the UI thread**: File I/O operations must be done on background threads (coroutines).
-5. **Do not introduce dependencies** that require network permissions, analytics, crash reporting, or closed-source libraries.
+The current SAF reader uses `readLines()` and loads the whole document into memory. Keep an eye on very large Markdown files when changing parsing or I/O behavior. 2. **Do not assume file structure**: Users may have arbitrary folder structures, nested folders, and file naming conventions. 3. **Do not cache file contents**: Always re-read files when displaying to the user (they may have been modified externally). 4. **Do not block the UI thread**: File I/O operations must be done on background threads (coroutines). 5. **Do not introduce dependencies** that require network permissions, analytics, crash reporting, or closed-source libraries.
 
 ## Testing Checklist
 

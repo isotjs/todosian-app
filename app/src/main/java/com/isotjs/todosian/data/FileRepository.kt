@@ -390,10 +390,9 @@ class SafFileRepository(
     }
 
     private fun readLinesInternal(uri: Uri): List<String> {
-        appContext.contentResolver.openInputStream(uri)?.use { input ->
-            return input.bufferedReader().readLines()
-        }
-        throw IllegalStateException("Unable to open input stream")
+        appContext.contentResolver.openInputStream(uri)?.bufferedReader()?.use { reader ->
+            return reader.readLines()
+        } ?: throw IllegalStateException("Unable to open input stream")
     }
 
     private fun writeLinesInternal(uri: Uri, lines: List<String>) {

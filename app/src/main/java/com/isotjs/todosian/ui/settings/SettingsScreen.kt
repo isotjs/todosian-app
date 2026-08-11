@@ -3,6 +3,7 @@ package com.isotjs.todosian.ui.settings
 import android.Manifest
 import android.os.Build
 import android.content.pm.PackageManager
+import android.text.format.DateFormat
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -28,6 +29,7 @@ import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.RestartAlt
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.VerticalAlignTop
 import androidx.compose.material.icons.filled.ViewDay
 import androidx.compose.material3.AlertDialog
@@ -48,7 +50,9 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -83,6 +87,9 @@ import com.isotjs.todosian.data.settings.TodoGrouping
 import com.isotjs.todosian.data.settings.TodoSort
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.collectLatest
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -142,6 +149,12 @@ fun SettingsScreen(
     var showNewTodoFilePositionDialog by remember { mutableStateOf(false) }
     var showResetDialog by remember { mutableStateOf(false) }
     var showDailyFocusModeDialog by remember { mutableStateOf(false) }
+    var showReminderTimeDialog by remember { mutableStateOf(false) }
+
+    val reminderTimeLabel = remember(settings.reminderTimeHour, settings.reminderTimeMinute) {
+        LocalTime.of(settings.reminderTimeHour, settings.reminderTimeMinute)
+            .format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT))
+    }
 
     if (showThemeDialog) {
         SingleChoiceDialog(
@@ -242,6 +255,37 @@ fun SettingsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showResetDialog = false }) {
+                    Text(text = stringResource(R.string.action_cancel))
+                }
+            },
+        )
+    }
+
+    if (showReminderTimeDialog) {
+        val timePickerState = rememberTimePickerState(
+            initialHour = settings.reminderTimeHour,
+            initialMinute = settings.reminderTimeMinute,
+            is24Hour = DateFormat.is24HourFormat(context),
+        )
+        AlertDialog(
+            onDismissRequest = { showReminderTimeDialog = false },
+            title = { Text(text = stringResource(R.string.settings_reminder_time)) },
+            text = { TimePicker(state = timePickerState) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        appSettingsRepository.setReminderTime(
+                            timePickerState.hour,
+                            timePickerState.minute,
+                        )
+                        showReminderTimeDialog = false
+                    },
+                ) {
+                    Text(text = stringResource(R.string.action_ok))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showReminderTimeDialog = false }) {
                     Text(text = stringResource(R.string.action_cancel))
                 }
             },
@@ -530,6 +574,28 @@ fun SettingsScreen(
                                     )
                                 },
                                 colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            )
+
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+
+                            ListItem(
+                                headlineContent = { Text(text = stringResource(R.string.settings_reminder_time)) },
+                                supportingContent = {
+                                    Text(text = stringResource(R.string.settings_reminder_time_subtitle, reminderTimeLabel))
+                                },
+                                leadingContent = { Icon(imageVector = Icons.Filled.Schedule, contentDescription = null) },
+                                trailingContent = {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                },
+                                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable(role = Role.Button) { showReminderTimeDialog = true }
+                                    .padding(horizontal = 4.dp),
                             )
                         }
 
