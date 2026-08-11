@@ -690,6 +690,26 @@ fun SettingsScreen(
                 }
 
                 item {
+                    Card(
+                        shape = MaterialTheme.shapes.medium,
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                    ) {
+                        ListItem(
+                            headlineContent = { Text(text = stringResource(R.string.settings_enable_subtasks)) },
+                            supportingContent = { Text(text = stringResource(R.string.settings_enable_subtasks_subtitle)) },
+                            leadingContent = { Icon(imageVector = Icons.Filled.Info, contentDescription = null) },
+                            trailingContent = {
+                                Switch(
+                                    checked = settings.enableSubtasks,
+                                    onCheckedChange = { appSettingsRepository.setEnableSubtasks(it) },
+                                )
+                            },
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                        )
+                    }
+                }
+
+                item {
                     SectionTitle(text = stringResource(R.string.settings_about))
                 }
                 item {

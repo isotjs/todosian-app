@@ -25,6 +25,8 @@ interface AppSettingsRepository {
 
     fun setTasksPluginUseEmojisInUi(enabled: Boolean)
 
+    fun setEnableSubtasks(enabled: Boolean)
+
     fun setReminderTime(hour: Int, minute: Int)
 }
 
@@ -91,6 +93,10 @@ class SharedPrefsAppSettingsRepository(
         prefs.edit { putBoolean(KEY_TASKS_PLUGIN_UI_EMOJIS, enabled) }
     }
 
+    override fun setEnableSubtasks(enabled: Boolean) {
+        prefs.edit { putBoolean(KEY_SUBTASKS, enabled) }
+    }
+
     override fun setReminderTime(hour: Int, minute: Int) {
         prefs.edit {
             putInt(KEY_REMINDER_TIME_HOUR, hour)
@@ -132,6 +138,7 @@ class SharedPrefsAppSettingsRepository(
             newTodoFilePosition = newTodoFilePosition,
             enableTasksPluginSupport = prefs.getBoolean(KEY_TASKS_PLUGIN, false),
             tasksPluginUseEmojisInUi = prefs.getBoolean(KEY_TASKS_PLUGIN_UI_EMOJIS, false),
+            enableSubtasks = prefs.getBoolean(KEY_SUBTASKS, false),
             reminderTimeHour = prefs.getInt(KEY_REMINDER_TIME_HOUR, 19),
             reminderTimeMinute = prefs.getInt(KEY_REMINDER_TIME_MINUTE, 0),
         )
@@ -152,6 +159,8 @@ class SharedPrefsAppSettingsRepository(
         private const val KEY_TASKS_PLUGIN = "tasks_plugin_support"
 
         private const val KEY_TASKS_PLUGIN_UI_EMOJIS = "tasks_plugin_ui_emojis"
+
+        private const val KEY_SUBTASKS = "enable_subtasks"
 
         private const val KEY_REMINDER_TIME_HOUR = "reminder_time_hour"
         private const val KEY_REMINDER_TIME_MINUTE = "reminder_time_minute"

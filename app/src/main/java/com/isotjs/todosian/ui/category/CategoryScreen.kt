@@ -489,6 +489,7 @@ fun CategoryScreen(
                         todo = todo,
                         enableTasksPluginSupport = settings.enableTasksPluginSupport,
                         useEmojisInUi = settings.tasksPluginUseEmojisInUi,
+                        showSubtaskButton = settings.enableSubtasks,
                         onToggle = { viewModel.toggleTodo(todo, settings.enableTasksPluginSupport) },
                         onEdit = {
                             sheetMode = TodoSheetMode.Edit(todo)
@@ -542,6 +543,7 @@ fun CategoryScreen(
                         todo = todo,
                         enableTasksPluginSupport = settings.enableTasksPluginSupport,
                         useEmojisInUi = settings.tasksPluginUseEmojisInUi,
+                        showSubtaskButton = settings.enableSubtasks,
                         onToggle = { viewModel.toggleTodo(todo, settings.enableTasksPluginSupport) },
                         onEdit = {
                             sheetMode = TodoSheetMode.Edit(todo)
@@ -593,6 +595,7 @@ fun CategoryScreen(
                         todo = todo,
                         enableTasksPluginSupport = settings.enableTasksPluginSupport,
                         useEmojisInUi = settings.tasksPluginUseEmojisInUi,
+                        showSubtaskButton = settings.enableSubtasks,
                         onToggle = { viewModel.toggleTodo(todo, settings.enableTasksPluginSupport) },
                         onEdit = {
                             sheetMode = TodoSheetMode.Edit(todo)
