@@ -1,12 +1,16 @@
 [
   {
-    "versionCode": 8,
-    "versionName": "1.8",
+    "versionCode": 9,
+    "versionName": "1.9",
     "items": [
       {
         "icon": "SwapVert",
         "title": "New Todo Position",
-        "description": "Choose whether new todos are added at the top or bottom of your Markdown files."
+        "description": "Choose whether new todos are added at the top or bottom of your Markdown files.",
+        "contributor": {
+          "name": "couchninja",
+          "url": "https://github.com/couchninja"
+        }
       },
       {
         "icon": "Notifications",

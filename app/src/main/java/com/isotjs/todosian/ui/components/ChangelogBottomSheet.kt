@@ -34,8 +34,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.dp
 import com.isotjs.todosian.BuildConfig
 import com.isotjs.todosian.R
@@ -49,6 +55,7 @@ fun ChangelogBottomSheet(
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val context = LocalContext.current
+    val uriHandler = LocalUriHandler.current
     val changelogVersion = remember(context) {
         ChangelogRepository.getChangelogForVersion(context, BuildConfig.VERSION_CODE)
     }
@@ -126,11 +133,38 @@ fun ChangelogBottomSheet(
                             )
                         },
                         supportingContent = {
-                            Text(
-                                text = item.description,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
+                            Column {
+                                Text(
+                                    text = item.description,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                item.contributor?.let { contributor ->
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = buildAnnotatedString {
+                                            append(stringResource(R.string.changelog_thanks_to_prefix))
+                                            withLink(
+                                                LinkAnnotation.Clickable(
+                                                    tag = contributor.url,
+                                                    styles = TextLinkStyles(
+                                                        style = SpanStyle(
+                                                            color = MaterialTheme.colorScheme.primary,
+                                                            fontWeight = FontWeight.SemiBold,
+                                                        )
+                                                    ),
+                                                ) {
+                                                    uriHandler.openUri(contributor.url)
+                                                }
+                                            ) {
+                                                append("@${contributor.name}")
+                                            }
+                                        },
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
                         },
                         leadingContent = {
                             Surface(

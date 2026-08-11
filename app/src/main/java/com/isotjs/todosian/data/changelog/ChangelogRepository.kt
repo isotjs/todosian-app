@@ -20,10 +20,16 @@ import org.json.JSONArray
 
 import com.isotjs.todosian.BuildConfig
 
+data class ChangelogContributor(
+    val name: String,
+    val url: String,
+)
+
 data class ChangelogEntry(
     val icon: ImageVector,
     val title: String,
     val description: String,
+    val contributor: ChangelogContributor? = null,
 )
 
 data class ChangelogVersion(
@@ -58,11 +64,22 @@ object ChangelogRepository {
                     val title = itemObj.optString("title", "")
                     val description = itemObj.optString("description", "")
 
+                    val contributorObj = itemObj.optJSONObject("contributor")
+                    val contributor = if (contributorObj != null) {
+                        ChangelogContributor(
+                            name = contributorObj.optString("name", ""),
+                            url = contributorObj.optString("url", ""),
+                        ).takeIf { it.name.isNotBlank() && it.url.isNotBlank() }
+                    } else {
+                        null
+                    }
+
                     itemList.add(
                         ChangelogEntry(
                             icon = parseIcon(iconName),
                             title = title,
                             description = description,
+                            contributor = contributor,
                         )
                     )
                 }

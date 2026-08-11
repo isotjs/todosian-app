@@ -232,6 +232,7 @@
     <string name="changelog_title">What’s new in Todosian</string>
     <string name="changelog_subtitle">Version %1$s</string>
     <string name="changelog_dismiss">Got it</string>
+    <string name="changelog_thanks_to_prefix">"Thanks to "</string>
     <string name="settings_whats_new">What’s new</string>
     <string name="settings_whats_new_subtitle">View recent updates and changes</string>
 </resources>

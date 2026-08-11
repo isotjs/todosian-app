@@ -18,8 +18,8 @@ android {
         applicationId = "com.isotjs.todosian"
         minSdk = 30
         targetSdk = 37
-        versionCode = 8
-        versionName = "1.8"
+        versionCode = 9
+        versionName = "1.9"
     }
 
     val keystoreProperties = Properties().apply {

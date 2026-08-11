@@ -726,15 +726,6 @@ fun SettingsScreen(
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
                     ) {
                         ListItem(
-                            headlineContent = { Text(text = stringResource(R.string.settings_version)) },
-                            supportingContent = {
-                                Text(text = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
-                            },
-                            leadingContent = { Icon(imageVector = Icons.Filled.Info, contentDescription = null) },
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                        )
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
-                        ListItem(
                             headlineContent = { Text(text = stringResource(R.string.settings_whats_new)) },
                             supportingContent = { Text(text = stringResource(R.string.settings_whats_new_subtitle)) },
                             leadingContent = { Icon(imageVector = Icons.Filled.AutoAwesome, contentDescription = null) },
@@ -743,6 +734,15 @@ fun SettingsScreen(
                                 showChangelogSheet = true
                                 preferencesManager.saveLastSeenVersionCode(BuildConfig.VERSION_CODE)
                             },
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                        )
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                        ListItem(
+                            headlineContent = { Text(text = stringResource(R.string.settings_version)) },
+                            supportingContent = {
+                                Text(text = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
+                            },
+                            leadingContent = { Icon(imageVector = Icons.Filled.Info, contentDescription = null) },
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                         )
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
