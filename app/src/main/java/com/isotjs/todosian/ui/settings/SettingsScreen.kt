@@ -514,25 +514,27 @@ fun SettingsScreen(
 
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
 
-                        ListItem(
-                            headlineContent = { Text(text = stringResource(R.string.settings_daily_focus_mode)) },
-                            supportingContent = { Text(text = dailyFocusModeLabel(settings.dailyFocusMode)) },
-                            leadingContent = { Icon(imageVector = Icons.Filled.Info, contentDescription = null) },
-                            trailingContent = {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            },
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable(role = Role.Button) { showDailyFocusModeDialog = true }
-                                .padding(horizontal = 4.dp),
-                        )
+                        if (settings.showDailyFocus) {
+                            ListItem(
+                                headlineContent = { Text(text = stringResource(R.string.settings_daily_focus_mode)) },
+                                supportingContent = { Text(text = dailyFocusModeLabel(settings.dailyFocusMode)) },
+                                leadingContent = { Icon(imageVector = Icons.Filled.Info, contentDescription = null) },
+                                trailingContent = {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                },
+                                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable(role = Role.Button) { showDailyFocusModeDialog = true }
+                                    .padding(horizontal = 4.dp),
+                            )
 
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                        }
 
                         ListItem(
                             headlineContent = { Text(text = stringResource(R.string.settings_enable_tasks_plugin_support)) },
