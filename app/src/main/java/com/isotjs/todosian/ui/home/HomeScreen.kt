@@ -71,14 +71,18 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.Lifecycle
+import com.isotjs.todosian.BuildConfig
 import com.isotjs.todosian.R
 import com.isotjs.todosian.data.FileRepository
+import com.isotjs.todosian.data.PreferencesManager
 import com.isotjs.todosian.data.settings.AppSettingsRepository
 import com.isotjs.todosian.data.settings.CategorySort
 import com.isotjs.todosian.data.settings.DailyFocusMode
 import com.isotjs.todosian.data.model.Category
+import com.isotjs.todosian.ui.components.ChangelogBottomSheet
 import com.isotjs.todosian.ui.components.TodosianDimens
 import com.isotjs.todosian.ui.components.TodosianLinearProgress
+import com.isotjs.todosian.ui.components.TodosianMotion
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
@@ -92,6 +96,7 @@ import androidx.annotation.StringRes
 fun HomeScreen(
     fileRepository: FileRepository,
     appSettingsRepository: AppSettingsRepository,
+    preferencesManager: PreferencesManager,
     onOpenCategory: (android.net.Uri) -> Unit,
     onOpenSettings: () -> Unit,
     onOpenDailyFocus: () -> Unit,
@@ -103,6 +108,17 @@ fun HomeScreen(
         factory = HomeViewModelFactory(fileRepository),
     )
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    var showChangelogSheet by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        val folderUri = preferencesManager.getFolderUri()
+        val lastSeenVersion = preferencesManager.getLastSeenVersionCode()
+        if (folderUri != null && lastSeenVersion < BuildConfig.VERSION_CODE) {
+            showChangelogSheet = true
+            preferencesManager.saveLastSeenVersionCode(BuildConfig.VERSION_CODE)
+        }
+    }
 
     val lifecycleOwner = LocalLifecycleOwner.current
     LaunchedEffect(lifecycleOwner, viewModel) {
@@ -304,6 +320,14 @@ fun HomeScreen(
                 TextButton(onClick = { deleteTarget = null }) {
                     Text(text = stringResource(R.string.action_cancel))
                 }
+            },
+        )
+    }
+
+    if (showChangelogSheet) {
+        ChangelogBottomSheet(
+            onDismissRequest = {
+                showChangelogSheet = false
             },
         )
     }

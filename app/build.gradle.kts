@@ -105,3 +105,25 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.squareup.leakcanary.android)
 }
+
+tasks.register("updateChangelogJson") {
+    val vCode = android.defaultConfig.versionCode
+    val vName = android.defaultConfig.versionName
+    doLast {
+        val jsonFile = file("src/main/assets/changelog.json")
+        if (jsonFile.exists() && vCode != null && vName != null) {
+            val content = jsonFile.readText()
+            val updated = content
+                .replace(Regex("\"versionCode\":\\s*\\d+"), "\"versionCode\": $vCode")
+                .replace(Regex("\"versionName\":\\s*\"[^\"]*\""), "\"versionName\": \"$vName\"")
+            if (content != updated) {
+                jsonFile.writeText(updated)
+            }
+        }
+    }
+}
+
+tasks.named("preBuild") {
+    dependsOn("updateChangelogJson")
+}
+

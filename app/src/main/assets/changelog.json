@@ -1,0 +1,33 @@
+[
+  {
+    "versionCode": 8,
+    "versionName": "1.8",
+    "items": [
+      {
+        "icon": "SwapVert",
+        "title": "New Todo Position",
+        "description": "Choose whether new todos are added at the top or bottom of your Markdown files."
+      },
+      {
+        "icon": "Notifications",
+        "title": "Reliable Reminders",
+        "description": "Due reminders now fire on time, even when the device is in the background."
+      },
+      {
+        "icon": "Palette",
+        "title": "Material 3 Settings",
+        "description": "The settings screen was redesigned to follow Material 3 guidelines."
+      },
+      {
+        "icon": "SubdirectoryArrowRight",
+        "title": "Optional Subtasks",
+        "description": "Enable or disable subtasks from settings to keep your lists simple."
+      },
+      {
+        "icon": "Swipe",
+        "title": "Smoother Swipes",
+        "description": "Todo swipe actions were reworked for a cleaner gesture handling approach."
+      }
+    ]
+  }
+]

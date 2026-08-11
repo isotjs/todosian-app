@@ -17,6 +17,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.isotjs.todosian.data.FileRepository
+import com.isotjs.todosian.data.PreferencesManager
 import com.isotjs.todosian.data.settings.AppSettingsRepository
 import com.isotjs.todosian.ui.category.CategoryScreen
 import com.isotjs.todosian.ui.dailyfocus.DailyFocusScreen
@@ -28,6 +29,7 @@ import com.isotjs.todosian.ui.settings.SettingsScreen
 fun TodosianApp(
     fileRepository: FileRepository,
     appSettingsRepository: AppSettingsRepository,
+    preferencesManager: PreferencesManager,
 ) {
     val navController = rememberNavController()
     val startDestination = remember(fileRepository) {
@@ -83,6 +85,7 @@ fun TodosianApp(
             HomeScreen(
                 fileRepository = fileRepository,
                 appSettingsRepository = appSettingsRepository,
+                preferencesManager = preferencesManager,
                 onOpenCategory = { uri ->
                     navController.navigate(Routes.category(uri))
                 },
@@ -105,6 +108,7 @@ fun TodosianApp(
             SettingsScreen(
                 fileRepository = fileRepository,
                 appSettingsRepository = appSettingsRepository,
+                preferencesManager = preferencesManager,
                 onBack = {
                     navController.previousBackStackEntry?.savedStateHandle?.set(
                         KEY_REFRESH_HOME,

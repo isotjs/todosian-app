@@ -1,0 +1,15 @@
+Version 1.8 brings a polished settings experience, more reliable reminders, and greater control over how todos are added.
+
+New Features:
+• Choose where new todos are added - set them to appear at the top or bottom of your Markdown files
+• Optional Subtasks - enable or disable subtasks from settings to keep your lists simple
+• Redesigned Settings - the settings screen now follows Material 3 guidelines, with compliant radio selection in choice dialogs
+
+Improvements:
+• More reliable due reminders - the reminder system was reworked to fire on time, even when the device is in the background
+• Smoother todo swipe actions with a cleaner gesture handling approach
+• The Daily Focus mode setting now only appears when Daily Focus is enabled
+
+Under the hood:
+• Updated Gradle, Android Gradle Plugin, and Compose BOM
+• Removed unused code for a leaner app

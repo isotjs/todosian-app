@@ -74,9 +74,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.material.icons.filled.AutoAwesome
 import com.isotjs.todosian.BuildConfig
 import com.isotjs.todosian.R
 import com.isotjs.todosian.data.FileRepository
+import com.isotjs.todosian.data.PreferencesManager
 import com.isotjs.todosian.data.settings.AppSettings
 import com.isotjs.todosian.data.settings.AppSettingsRepository
 import com.isotjs.todosian.data.settings.CategorySort
@@ -85,6 +87,7 @@ import com.isotjs.todosian.data.settings.NewTodoFilePosition
 import com.isotjs.todosian.data.settings.ThemeMode
 import com.isotjs.todosian.data.settings.TodoGrouping
 import com.isotjs.todosian.data.settings.TodoSort
+import com.isotjs.todosian.ui.components.ChangelogBottomSheet
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.collectLatest
 import java.time.LocalTime
@@ -96,6 +99,7 @@ import java.time.format.FormatStyle
 fun SettingsScreen(
     fileRepository: FileRepository,
     appSettingsRepository: AppSettingsRepository,
+    preferencesManager: PreferencesManager,
     onBack: () -> Unit,
     onRequireOnboarding: () -> Unit,
     modifier: Modifier = Modifier,
@@ -103,6 +107,8 @@ fun SettingsScreen(
     val viewModel: SettingsViewModel = viewModel(
         factory = SettingsViewModelFactory(fileRepository),
     )
+
+    var showChangelogSheet by remember { mutableStateOf(false) }
 
     val settings by appSettingsRepository.settings.collectAsStateWithLifecycle(
         initialValue = AppSettings(),
@@ -729,6 +735,18 @@ fun SettingsScreen(
                         )
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
                         ListItem(
+                            headlineContent = { Text(text = stringResource(R.string.settings_whats_new)) },
+                            supportingContent = { Text(text = stringResource(R.string.settings_whats_new_subtitle)) },
+                            leadingContent = { Icon(imageVector = Icons.Filled.AutoAwesome, contentDescription = null) },
+                            trailingContent = { Icon(imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null) },
+                            modifier = Modifier.clickable {
+                                showChangelogSheet = true
+                                preferencesManager.saveLastSeenVersionCode(BuildConfig.VERSION_CODE)
+                            },
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                        )
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                        ListItem(
                             headlineContent = { Text(text = stringResource(R.string.settings_android_sdk)) },
                             supportingContent = { Text(text = Build.VERSION.SDK_INT.toString()) },
                             leadingContent = { Icon(imageVector = Icons.Filled.Info, contentDescription = null) },
@@ -739,6 +757,12 @@ fun SettingsScreen(
 
                 item { Spacer(modifier = Modifier.height(24.dp)) }
             }
+        }
+
+        if (showChangelogSheet) {
+            ChangelogBottomSheet(
+                onDismissRequest = { showChangelogSheet = false },
+            )
         }
     }
 }

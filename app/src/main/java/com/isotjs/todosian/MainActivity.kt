@@ -18,6 +18,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        val preferencesManager = (application as TodosianApplication).preferencesManager
         val fileRepository = (application as TodosianApplication).fileRepository
         val appSettingsRepository = (application as TodosianApplication).appSettingsRepository
         setContent {
@@ -43,6 +44,7 @@ class MainActivity : ComponentActivity() {
                     TodosianApp(
                         fileRepository = fileRepository,
                         appSettingsRepository = appSettingsRepository,
+                        preferencesManager = preferencesManager,
                     )
                 }
             }
