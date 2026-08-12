@@ -1,5 +1,6 @@
 package com.isotjs.todosian.ui.components
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,17 +10,20 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
@@ -29,10 +33,13 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
@@ -62,6 +69,19 @@ fun ChangelogBottomSheet(
 
     val versionName = changelogVersion?.versionName ?: BuildConfig.VERSION_NAME
     val items = changelogVersion?.items ?: emptyList()
+    
+    val configuration = LocalConfiguration.current
+    val maxSheetHeight = configuration.screenHeightDp.dp * 0.65f
+
+    val listState = rememberLazyListState()
+    val topDividerAlpha by animateFloatAsState(
+        targetValue = if (listState.canScrollBackward) 1f else 0f,
+        label = "topDividerAlpha"
+    )
+    val bottomDividerAlpha by animateFloatAsState(
+        targetValue = if (listState.canScrollForward) 1f else 0f,
+        label = "bottomDividerAlpha"
+    )
 
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
@@ -71,6 +91,7 @@ fun ChangelogBottomSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .heightIn(max = maxSheetHeight)
                 .padding(horizontal = 20.dp)
                 .padding(bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp),
         ) {
@@ -119,7 +140,13 @@ fun ChangelogBottomSheet(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            HorizontalDivider(
+                modifier = Modifier.alpha(topDividerAlpha),
+                color = MaterialTheme.colorScheme.outlineVariant
+            )
+
             LazyColumn(
+                state = listState,
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.weight(weight = 1f, fill = false),
             ) {
@@ -190,7 +217,12 @@ fun ChangelogBottomSheet(
                 }
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            HorizontalDivider(
+                modifier = Modifier.alpha(bottomDividerAlpha),
+                color = MaterialTheme.colorScheme.outlineVariant
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
 
             Button(
                 onClick = onDismissRequest,

@@ -1,7 +1,7 @@
 [
   {
     "versionCode": 8,
-    "versionName": "1.8",
+    "versionName": "2.0",
     "items": [
       {
         "icon": "SwapVert",
@@ -16,6 +16,11 @@
         "icon": "Notifications",
         "title": "Due Reminders",
         "description": "Due reminders now work, even when the device is in the background."
+      },
+      {
+        "icon": "Widgets",
+        "title": "Widgets",
+        "description": "Widget support has been added, allowing you to view and manage your todos directly from your home screen."
       },
       {
         "icon": "Palette",

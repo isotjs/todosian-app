@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Stars
 import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.filled.Swipe
+import androidx.compose.material.icons.filled.Widgets
 import androidx.compose.ui.graphics.vector.ImageVector
 import org.json.JSONArray
 
@@ -109,6 +110,7 @@ object ChangelogRepository {
             "Speed" -> Icons.Filled.Speed
             "BugReport" -> Icons.Filled.BugReport
             "Stars" -> Icons.Filled.Stars
+            "Widgets" -> Icons.Filled.Widgets
             else -> Icons.Filled.Info
         }
     }

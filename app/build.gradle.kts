@@ -19,7 +19,7 @@ android {
         minSdk = 30
         targetSdk = 37
         versionCode = 8
-        versionName = "1.8"
+        versionName = "2.0"
     }
 
     val keystoreProperties = Properties().apply {
