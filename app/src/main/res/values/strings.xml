@@ -235,4 +235,19 @@
     <string name="changelog_thanks_to_prefix">"Thanks to "</string>
     <string name="settings_whats_new">What’s new</string>
     <string name="settings_whats_new_subtitle">View recent updates and changes</string>
+
+    <!-- Widget -->
+    <string name="widget_name">Todosian</string>
+    <string name="widget_description">Displays your tasks and lets you quickly manage them from the home screen.</string>
+    <string name="widget_no_tasks">No pending tasks</string>
+    <string name="widget_no_folder">Open app to select task folder</string>
+    <string name="widget_add_task">Add task</string>
+    <string name="widget_add_task_name">Add task</string>
+    <string name="widget_add_task_description">Quickly add a task to any of your categories.</string>
+
+    <!-- Add task flow -->
+    <string name="add_task_picker_title">Add task</string>
+    <string name="add_task_picker_subtitle">Choose a category to add the task to</string>
+    <string name="add_task_picker_empty_title">No categories found</string>
+    <string name="add_task_picker_empty_subtitle">Open Todosian and create a category first.</string>
 </resources>

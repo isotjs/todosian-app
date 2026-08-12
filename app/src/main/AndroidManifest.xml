@@ -35,6 +35,32 @@
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
+
+        <receiver
+            android:name=".ui.widget.TodosianWidgetReceiver"
+            android:enabled="true"
+            android:exported="true"
+            android:label="@string/widget_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/todosian_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name=".ui.widget.AddTaskWidgetReceiver"
+            android:enabled="true"
+            android:exported="true"
+            android:label="@string/widget_add_task_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/todosian_add_task_widget_info" />
+        </receiver>
     </application>
 
 </manifest>

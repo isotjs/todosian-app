@@ -8,6 +8,8 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavType
@@ -19,21 +21,41 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.isotjs.todosian.data.FileRepository
 import com.isotjs.todosian.data.PreferencesManager
 import com.isotjs.todosian.data.settings.AppSettingsRepository
+import com.isotjs.todosian.ui.addtask.AddTaskScreen
 import com.isotjs.todosian.ui.category.CategoryScreen
 import com.isotjs.todosian.ui.dailyfocus.DailyFocusScreen
 import com.isotjs.todosian.ui.home.HomeScreen
 import com.isotjs.todosian.ui.onboarding.OnboardingScreen
 import com.isotjs.todosian.ui.settings.SettingsScreen
+import kotlinx.coroutines.flow.StateFlow
 
 @Composable
 fun TodosianApp(
     fileRepository: FileRepository,
     appSettingsRepository: AppSettingsRepository,
     preferencesManager: PreferencesManager,
+    addTaskSignal: StateFlow<Long>,
+    initialAddTaskTick: Long,
 ) {
     val navController = rememberNavController()
-    val startDestination = remember(fileRepository) {
-        if (fileRepository.getFolderUri() == null) Routes.Onboarding else Routes.Home
+    val addTaskTick by addTaskSignal.collectAsStateWithLifecycle(initialValue = initialAddTaskTick)
+    val startDestination = remember(fileRepository, addTaskTick) {
+        when {
+            fileRepository.getFolderUri() == null -> Routes.Onboarding
+            addTaskTick > 0L -> Routes.AddTask
+            else -> Routes.Home
+        }
+    }
+
+    LaunchedEffect(addTaskTick) {
+        if (addTaskTick > 0L &&
+            fileRepository.getFolderUri() != null &&
+            navController.currentDestination?.route != Routes.AddTask
+        ) {
+            navController.navigate(Routes.AddTask) {
+                launchSingleTop = true
+            }
+        }
     }
 
     NavHost(
@@ -130,14 +152,36 @@ fun TodosianApp(
                 navArgument(Routes.ARG_CATEGORY_URI) {
                     type = NavType.StringType
                 },
+                navArgument(Routes.ARG_CATEGORY_ADD) {
+                    type = NavType.BoolType
+                    defaultValue = false
+                },
             ),
         ) { backStackEntry ->
             val encoded = backStackEntry.arguments?.getString(Routes.ARG_CATEGORY_URI).orEmpty()
             val uri = encoded.toUri()
+            val autoOpenAddTodo = backStackEntry.arguments?.getBoolean(Routes.ARG_CATEGORY_ADD) ?: false
             CategoryScreen(
                 fileRepository = fileRepository,
                 appSettingsRepository = appSettingsRepository,
                 categoryUri = uri,
+                autoOpenAddTodo = autoOpenAddTodo,
+                onBack = {
+                    navController.previousBackStackEntry?.savedStateHandle?.set(
+                        KEY_REFRESH_HOME,
+                        System.currentTimeMillis(),
+                    )
+                    navController.popBackStack()
+                },
+            )
+        }
+
+        composable(Routes.AddTask) {
+            AddTaskScreen(
+                fileRepository = fileRepository,
+                onSelectCategory = { uri ->
+                    navController.navigate(Routes.category(uri, addTodo = true))
+                },
                 onBack = {
                     navController.previousBackStackEntry?.savedStateHandle?.set(
                         KEY_REFRESH_HOME,
@@ -165,9 +209,12 @@ object Routes {
     const val Home = "home"
     const val Settings = "settings"
     const val DailyFocus = "daily_focus"
+    const val AddTask = "add_task"
 
     const val ARG_CATEGORY_URI = "categoryUri"
-    const val Category = "category/{$ARG_CATEGORY_URI}"
+    const val ARG_CATEGORY_ADD = "add"
+    const val Category = "category/{$ARG_CATEGORY_URI}?$ARG_CATEGORY_ADD={$ARG_CATEGORY_ADD}"
 
-    fun category(uri: Uri): String = "category/${Uri.encode(uri.toString())}"
+    fun category(uri: Uri, addTodo: Boolean = false): String =
+        "category/${Uri.encode(uri.toString())}?$ARG_CATEGORY_ADD=$addTodo"
 }

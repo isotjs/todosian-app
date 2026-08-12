@@ -1,5 +1,7 @@
 package com.isotjs.todosian.data
 
+import android.appwidget.AppWidgetManager
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.database.ContentObserver
@@ -7,11 +9,13 @@ import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.provider.DocumentsContract
+import android.util.Log
 import androidx.documentfile.provider.DocumentFile
 import com.isotjs.todosian.data.model.Category
 import com.isotjs.todosian.utils.MarkdownParser
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.awaitClose
@@ -21,6 +25,10 @@ import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import com.isotjs.todosian.ui.widget.TodosianWidget
+import androidx.glance.appwidget.updateAll
 import java.time.LocalDate
 
 interface FileRepository {
@@ -39,6 +47,8 @@ interface FileRepository {
     suspend fun getFolderDisplayName(folderUri: Uri): Result<String>
 
     suspend fun writeLines(uri: Uri, lines: List<String>): Result<Unit>
+    
+    suspend fun updateLines(uri: Uri, transform: (List<String>) -> List<String>?): Result<Unit>
 
     suspend fun createCategory(folderUri: Uri, name: String): Result<Uri>
 
@@ -64,10 +74,40 @@ class SafFileRepository(
     private val preferencesManager: PreferencesManager,
 ) : FileRepository {
 
+    private val widgetUpdateScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val fileMutex = Mutex()
+    
+    @Volatile
+    private var widgetUpdateJob: Job? = null
+
+    private fun scheduleWidgetUpdate() {
+        widgetUpdateJob?.cancel()
+        widgetUpdateJob = widgetUpdateScope.launch {
+            delay(WIDGET_UPDATE_DEBOUNCE_MS)
+            refreshTodosianWidget()
+        }
+    }
+
+
+    private fun refreshTodosianWidget() {
+        widgetUpdateScope.launch {
+            runCatching {
+                Log.d(TAG, "Requesting Glance widget updateAll")
+                com.isotjs.todosian.ui.widget.WidgetUpdater.updateAllWidgets(appContext)
+            }.onFailure { Log.e(TAG, "Widget refresh failed", it) }
+        }
+    }
+
+    companion object {
+        private const val WIDGET_UPDATE_DEBOUNCE_MS = 50L
+        private const val TAG = "SafFileRepository"
+    }
+
     override fun getFolderUri(): Uri? = preferencesManager.getFolderUri()
 
     override fun clearFolderUri() {
         preferencesManager.clearFolderUri()
+        scheduleWidgetUpdate()
     }
 
     override suspend fun persistFolderUri(uri: Uri): Result<Unit> {
@@ -76,6 +116,8 @@ class SafFileRepository(
                 val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
                 appContext.contentResolver.takePersistableUriPermission(uri, flags)
                 preferencesManager.saveFolderUri(uri)
+            }.onSuccess {
+                scheduleWidgetUpdate()
             }
         }
     }
@@ -123,7 +165,9 @@ class SafFileRepository(
 
     override suspend fun readLines(uri: Uri): Result<List<String>> {
         return withContext(Dispatchers.IO) {
-            runCatching { readLinesInternal(uri) }
+            runCatching {
+                fileMutex.withLock { readLinesInternal(uri) }
+            }
         }
     }
 
@@ -152,7 +196,19 @@ class SafFileRepository(
     override suspend fun writeLines(uri: Uri, lines: List<String>): Result<Unit> {
         return withContext(Dispatchers.IO) {
             runCatching {
-                writeLinesInternal(uri, lines)
+                fileMutex.withLock { writeLinesInternal(uri, lines) }
+            }
+        }
+    }
+
+    override suspend fun updateLines(uri: Uri, transform: (List<String>) -> List<String>?): Result<Unit> {
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                fileMutex.withLock {
+                    val currentLines = readLinesInternal(uri)
+                    val newLines = transform(currentLines) ?: return@withLock
+                    writeLinesInternal(uri, newLines)
+                }
             }
         }
     }
@@ -170,6 +226,7 @@ class SafFileRepository(
                 val created = folder.createFile("text/markdown", fileName)
                     ?: throw IllegalStateException("Unable to create file")
 
+                scheduleWidgetUpdate()
                 created.uri
             }
         }
@@ -191,6 +248,7 @@ class SafFileRepository(
 
                 val renamed = DocumentsContract.renameDocument(appContext.contentResolver, categoryUri, fileName)
                 if (renamed == null) throw IllegalStateException("Unable to rename document")
+                scheduleWidgetUpdate()
             }
         }
     }
@@ -202,6 +260,7 @@ class SafFileRepository(
                     ?: throw IllegalStateException("Invalid file URI")
                 val ok = file.delete()
                 if (!ok) throw IllegalStateException("Unable to delete file")
+                scheduleWidgetUpdate()
             }
         }
     }
@@ -396,7 +455,7 @@ class SafFileRepository(
     }
 
     private fun writeLinesInternal(uri: Uri, lines: List<String>) {
-        appContext.contentResolver.openOutputStream(uri, "rwt")?.use { out ->
+        appContext.contentResolver.openOutputStream(uri, "w")?.use { out ->
             out.bufferedWriter().use { writer ->
                 lines.forEachIndexed { index, line ->
                     if (index > 0) writer.newLine()
@@ -404,5 +463,12 @@ class SafFileRepository(
                 }
             }
         } ?: throw IllegalStateException("Unable to open output stream")
+        
+        try {
+            appContext.contentResolver.notifyChange(uri, null)
+        } catch (e: Exception) {
+            // Ignore
+        }
+        scheduleWidgetUpdate()
     }
 }

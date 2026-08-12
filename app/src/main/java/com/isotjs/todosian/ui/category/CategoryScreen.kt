@@ -89,6 +89,7 @@ fun CategoryScreen(
     appSettingsRepository: AppSettingsRepository,
     categoryUri: Uri,
     onBack: () -> Unit,
+    autoOpenAddTodo: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val viewModel: CategoryViewModel = viewModel(
@@ -127,6 +128,20 @@ fun CategoryScreen(
     var deleteTodoHasSubtasks by remember { mutableStateOf(false) }
     var moveTodoTarget by remember { mutableStateOf<Todo?>(null) }
     var showCopyOption by remember { mutableStateOf(false) }
+
+    var autoOpenedAddTodo by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        if (autoOpenAddTodo && !autoOpenedAddTodo) {
+            autoOpenedAddTodo = true
+            sheetMode = TodoSheetMode.Add
+            sheetText = ""
+            sheetMeta = if (settings.enableTasksPluginSupport) {
+                MarkdownParser.TasksMeta(createdDate = LocalDate.now().toString())
+            } else {
+                MarkdownParser.TasksMeta()
+            }
+        }
+    }
 
     if (sheetMode != null) {
         ModalBottomSheet(
