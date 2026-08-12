@@ -196,7 +196,7 @@
     <string name="settings_notification_permission_denied">Notifications are disabled, so due reminders cannot be shown.</string>
 
     <string name="settings_reminder_time">Reminder time</string>
-    <string name="settings_reminder_time_subtitle">Remind me about due-soon tasks every day at %1$s.</string>
+    <string name="settings_reminder_time_subtitle">Remind me about due-soon tasks every day at %1$s. (might not be on time)</string>
     <string name="action_ok">OK</string>
 
     <!-- Notifications -->
