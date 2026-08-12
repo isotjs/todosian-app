@@ -301,6 +301,9 @@ fun CategoryScreen(
     }
 
     if (moveTodoTarget != null) {
+        LaunchedEffect(moveTodoTarget) {
+            viewModel.loadMoveTargets()
+        }
         ModalBottomSheet(
             onDismissRequest = {
                 moveTodoTarget = null
@@ -327,66 +330,78 @@ fun CategoryScreen(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 val targets = uiState.moveTargets
-                if (targets.isEmpty()) {
-                    Text(
-                        text = stringResource(R.string.category_move_empty),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                } else {
-                    targets.forEach { target ->
-                        ListItem(
-                            headlineContent = { Text(text = target.title) },
-                            leadingContent = {
-                                Icon(
-                                    imageVector = Icons.Outlined.Folder,
-                                    contentDescription = null,
-                                )
-                            },
-                            modifier = Modifier.clickable {
-                                val todo = moveTodoTarget
-                                if (todo != null) {
-                                    viewModel.moveTodo(todo, target.uri)
-                                }
-                                moveTodoTarget = null
-                                showCopyOption = false
-                            },
-                        )
+                when {
+                    targets == null -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 24.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            CircularProgressIndicator()
+                        }
                     }
-                }
 
-                if (targets.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(12.dp))
-                    TextButton(onClick = { showCopyOption = !showCopyOption }) {
+                    targets.isEmpty() -> {
                         Text(
-                            text = if (showCopyOption) {
-                                stringResource(R.string.category_copy_hide)
-                            } else {
-                                stringResource(R.string.category_copy_show)
-                            },
+                            text = stringResource(R.string.category_move_empty),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
 
-                    if (showCopyOption) {
-                        Spacer(modifier = Modifier.height(8.dp))
+                    else -> {
                         targets.forEach { target ->
                             ListItem(
                                 headlineContent = { Text(text = target.title) },
                                 leadingContent = {
                                     Icon(
-                                        imageVector = Icons.Outlined.ContentCopy,
+                                        imageVector = Icons.Outlined.Folder,
                                         contentDescription = null,
                                     )
                                 },
                                 modifier = Modifier.clickable {
                                     val todo = moveTodoTarget
                                     if (todo != null) {
-                                        viewModel.copyTodo(todo, target.uri)
+                                        viewModel.moveTodo(todo, target.uri)
                                     }
                                     moveTodoTarget = null
                                     showCopyOption = false
                                 },
                             )
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                        TextButton(onClick = { showCopyOption = !showCopyOption }) {
+                            Text(
+                                text = if (showCopyOption) {
+                                    stringResource(R.string.category_copy_hide)
+                                } else {
+                                    stringResource(R.string.category_copy_show)
+                                },
+                            )
+                        }
+
+                        if (showCopyOption) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            targets.forEach { target ->
+                                ListItem(
+                                    headlineContent = { Text(text = target.title) },
+                                    leadingContent = {
+                                        Icon(
+                                            imageVector = Icons.Outlined.ContentCopy,
+                                            contentDescription = null,
+                                        )
+                                    },
+                                    modifier = Modifier.clickable {
+                                        val todo = moveTodoTarget
+                                        if (todo != null) {
+                                            viewModel.copyTodo(todo, target.uri)
+                                        }
+                                        moveTodoTarget = null
+                                        showCopyOption = false
+                                    },
+                                )
+                            }
                         }
                     }
                 }

@@ -27,7 +27,8 @@ data class CategoryUiState(
     val activeTodos: List<Todo> = emptyList(),
     val completedTodos: List<Todo> = emptyList(),
     val lines: List<String> = emptyList(),
-    val moveTargets: List<MoveTarget> = emptyList(),
+    val moveTargets: List<MoveTarget>? = null,
+    val isLoadingMoveTargets: Boolean = false,
 )
 
 data class MoveTarget(
@@ -94,19 +95,32 @@ class CategoryViewModel(
             val todos = MarkdownParser.parse(lines)
             val (completed, active) = todos.partition { it.isDone }
 
-            val targets = fileRepository.getCategories()
-                .getOrElse { emptyList() }
-                .filterNot { it.uri == categoryUri }
-                .map { MoveTarget(title = it.displayName, uri = it.uri) }
-                .sortedBy { it.title.lowercase() }
-
             _uiState.value = CategoryUiState(
                 isLoading = false,
                 title = title,
                 activeTodos = active.sortedBy { it.lineIndex },
                 completedTodos = completed.sortedBy { it.lineIndex },
                 lines = lines,
+                moveTargets = _uiState.value.moveTargets,
+            )
+        }
+    }
+
+    fun loadMoveTargets() {
+        val state = _uiState.value
+        if (state.moveTargets != null || state.isLoadingMoveTargets) return
+
+        _uiState.value = state.copy(isLoadingMoveTargets = true)
+        viewModelScope.launch {
+            val targets = fileRepository.getCategories()
+                .getOrElse { emptyList() }
+                .filterNot { it.uri == categoryUri }
+                .map { MoveTarget(title = it.displayName, uri = it.uri) }
+                .sortedBy { it.title.lowercase() }
+
+            _uiState.value = _uiState.value.copy(
                 moveTargets = targets,
+                isLoadingMoveTargets = false,
             )
         }
     }
