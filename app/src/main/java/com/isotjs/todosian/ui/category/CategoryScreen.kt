@@ -89,8 +89,8 @@ fun CategoryScreen(
     appSettingsRepository: AppSettingsRepository,
     categoryUri: Uri,
     onBack: () -> Unit,
-    autoOpenAddTodo: Boolean = false,
     modifier: Modifier = Modifier,
+    autoOpenAddTodo: Boolean = false,
 ) {
     val viewModel: CategoryViewModel = viewModel(
         factory = CategoryViewModelFactory(
