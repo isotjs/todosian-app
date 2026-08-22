@@ -1,41 +1,12 @@
 [
   {
-    "versionCode": 8,
-    "versionName": "2.0",
+    "versionCode": 9,
+    "versionName": "2.1",
     "items": [
       {
-        "icon": "SwapVert",
-        "title": "New Todo Position",
-        "description": "Choose whether new todos are added at the top or bottom of your Markdown files.",
-        "contributor": {
-          "name": "couchninja",
-          "url": "https://github.com/couchninja"
-        }
-      },
-      {
-        "icon": "Notifications",
-        "title": "Due Reminders",
-        "description": "Due reminders now work, even when the device is in the background."
-      },
-      {
-        "icon": "Widgets",
-        "title": "Widgets",
-        "description": "Widget support has been added, allowing you to view and manage your todos directly from your home screen."
-      },
-      {
-        "icon": "Palette",
-        "title": "Material 3 Settings",
-        "description": "The settings screen was redesigned to follow Material 3 guidelines."
-      },
-      {
-        "icon": "SubdirectoryArrowRight",
-        "title": "Optional Subtasks",
-        "description": "Enable or disable subtasks from settings to keep your lists simple."
-      },
-      {
-        "icon": "Swipe",
-        "title": "Smoother Swipes",
-        "description": "Todo swipe actions were reworked for a cleaner gesture handling approach."
+        "icon": "BugReport",
+        "title": "Deleted Todos Fixed",
+        "description": "Removed todos now stay removed and no longer reappear in your Markdown files."
       }
     ]
   }

@@ -1,0 +1,7 @@
+Version 2.1 fixes the issue where deleted todos would come back to your Markdown files.
+
+Fixes:
+• Removed todos now stay removed - deleting a todo no longer leaves it behind or causes it to reappear next time you open the app
+
+Under the hood:
+• Code quality and lint fixes for a cleaner, more reliable app
