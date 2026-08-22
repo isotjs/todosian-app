@@ -13,20 +13,29 @@ It is designed to work with a folder that is synced to your phone (for example v
 <h2 align="center">Screenshots</h2>
 
 <div align="center">
-  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1.jpeg" alt="Screenshot 1" width="200">
-  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/2.jpeg" alt="Screenshot 2" width="200">
-  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/3.jpeg" alt="Screenshot 3" width="200">
-  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/4.jpeg" alt="Screenshot 4" width="200">
+<table>
+  <tr>
+    <td align="center"><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1.jpeg" alt="Screenshot 1" width="200"></td>
+    <td align="center"><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/2.jpeg" alt="Screenshot 2" width="200"></td>
+    <td align="center"><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/3.jpeg" alt="Screenshot 3" width="200"></td>
+    <td align="center"><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/4.jpeg" alt="Screenshot 4" width="200"></td>
+  </tr>
+</table>
 </div>
 
 <h2 align="center">Features</h2>
 
-- Folder-based setup using Android Storage Access Framework (SAF) with persisted permissions.
-- Each Markdown file becomes a category.
-- Add / edit / toggle / delete todos.
-- Create / rename / delete categories (files).
-- (Optional) Support for Obsidian Tasks plugin metadata (dates, priority, recurrence).
-- Material 3 UI, dynamic color (Android 12+).
+- **Folder-based setup** using Android Storage Access Framework (SAF) with persisted permissions.
+- Each Markdown file becomes a **category**.
+- **Add / edit / toggle / delete** todos and **subtasks**.
+- **Create / rename / delete** categories (files).
+- (Optional) Support for **Obsidian Tasks plugin** metadata (dates, priority, recurrence).
+- **Daily Focus** view to see what's due today, overdue, or both.
+- Editable **due reminders** that fire once per day for tasks due soon.
+- Home screen **widgets**: a todo list with inline toggling and a quick-add widget.
+- Configurable **theme** (System / Light / Dark), Material 3 UI, and **dynamic color** (Android 12+).
+- **Category and todo sorting** (A–Z, priority, created date, due date) and grouping.
+- **Lazy loading** for smooth performance on large files.
 
 <h2 align="center">Supported Markdown</h2>
 
