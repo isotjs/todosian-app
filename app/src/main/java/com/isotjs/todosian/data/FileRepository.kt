@@ -456,6 +456,7 @@ class SafFileRepository(
 
     private fun writeLinesInternal(uri: Uri, lines: List<String>) {
         appContext.contentResolver.openOutputStream(uri, "w")?.use { out ->
+            runCatching { (out as? java.io.FileOutputStream)?.channel?.truncate(0) }
             out.bufferedWriter().use { writer ->
                 lines.forEachIndexed { index, line ->
                     if (index > 0) writer.newLine()
