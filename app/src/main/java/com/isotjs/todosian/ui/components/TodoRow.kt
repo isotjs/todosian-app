@@ -233,7 +233,7 @@ private fun TodoSwipeBackground(
     }
     val backgroundColor by animateColorAsState(
         targetValue = targetBackgroundColor,
-        animationSpec = TodosianMotion.defaultEffectsSpec(),
+        animationSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
         label = "swipe-bg-color",
     )
     val icon = when (direction) {
@@ -248,7 +248,7 @@ private fun TodoSwipeBackground(
     }
     val contentColor by animateColorAsState(
         targetValue = targetContentColor,
-        animationSpec = TodosianMotion.defaultEffectsSpec(),
+        animationSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
         label = "swipe-content-color",
     )
     val alignment = when (direction) {
@@ -259,7 +259,7 @@ private fun TodoSwipeBackground(
     val isThresholdReached = dismissState.targetValue != SwipeToDismissBoxValue.Settled
     val iconScale by animateFloatAsState(
         targetValue = if (isThresholdReached) 1.25f else 0.85f,
-        animationSpec = TodosianMotion.slowSpatialSpec(),
+        animationSpec = MaterialTheme.motionScheme.slowSpatialSpec(),
         label = "swipe-icon-scale",
     )
     Box(

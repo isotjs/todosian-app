@@ -25,10 +25,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.outlined.Checklist
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -74,7 +74,10 @@ import com.isotjs.todosian.ui.components.TasksMetaEditor
 import com.isotjs.todosian.ui.components.TodoRow
 import com.isotjs.todosian.ui.components.TodoSheetMode
 import com.isotjs.todosian.ui.components.TodosianDimens
+import com.isotjs.todosian.ui.components.TodosianEmptyState
+import com.isotjs.todosian.ui.components.TodosianLoadingIndicator
 import com.isotjs.todosian.ui.components.TodosianSectionHeader
+import com.isotjs.todosian.ui.components.todosianFabShape
 import com.isotjs.todosian.utils.MarkdownParser
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -353,7 +356,7 @@ fun CategoryScreen(
                                 .padding(vertical = 24.dp),
                             contentAlignment = Alignment.Center,
                         ) {
-                            CircularProgressIndicator()
+                            TodosianLoadingIndicator()
                         }
                     }
 
@@ -456,6 +459,7 @@ fun CategoryScreen(
                         MarkdownParser.TasksMeta()
                     }
                 },
+                shape = todosianFabShape(),
             ) {
                 Icon(
                     imageVector = Icons.Filled.Add,
@@ -472,25 +476,21 @@ fun CategoryScreen(
                     .padding(padding),
                 contentAlignment = Alignment.Center,
             ) {
-                CircularProgressIndicator()
+                TodosianLoadingIndicator()
             }
             return@Scaffold
         }
 
         val anyTodos = uiState.activeTodos.isNotEmpty() || uiState.completedTodos.isNotEmpty()
         if (!anyTodos) {
-            Box(
+            TodosianEmptyState(
+                icon = Icons.Outlined.Checklist,
+                title = stringResource(R.string.category_empty_title),
+                subtitle = stringResource(R.string.category_empty_subtitle),
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = stringResource(R.string.category_empty_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            )
             return@Scaffold
         }
 

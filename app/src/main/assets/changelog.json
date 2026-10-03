@@ -1,12 +1,32 @@
 [
   {
-    "versionCode": 9,
-    "versionName": "2.1",
+    "versionCode": 10,
+    "versionName": "2.2",
     "items": [
       {
-        "icon": "BugReport",
-        "title": "Deleted Todos Fixed",
-        "description": "Removed todos now stay removed and no longer reappear in your Markdown files."
+        "icon": "Palette",
+        "title": "Fresh Expressive Look",
+        "description": "Settings is now organized into grouped cards with a large title that collapses as you scroll, and dependent options animate in when you enable them."
+      },
+      {
+        "icon": "Checklist",
+        "title": "Friendly Empty States",
+        "description": "Home, category, daily focus, and the add-task picker now show illustrated placeholders instead of plain text."
+      },
+      {
+        "icon": "AutoAwesome",
+        "title": "Smoother Motion",
+        "description": "The app now uses the Material 3 Expressive motion scheme for more natural, consistent animations throughout."
+      },
+      {
+        "icon": "Stars",
+        "title": "Redesigned Onboarding",
+        "description": "A clearer first-run experience with an animated hero and a more prominent folder picker."
+      },
+      {
+        "icon": "Speed",
+        "title": "Updated Foundation",
+        "description": "Updated Gradle, Android Gradle Plugin, Kotlin, Compose BOM, and AndroidX libraries."
       }
     ]
   }
