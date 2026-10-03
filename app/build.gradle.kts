@@ -18,8 +18,8 @@ android {
         applicationId = "com.isotjs.todosian"
         minSdk = 30
         targetSdk = 37
-        versionCode = 9
-        versionName = "2.1"
+        versionCode = 10
+        versionName = "2.2"
     }
 
     val keystoreProperties = Properties().apply {
@@ -78,7 +78,7 @@ android {
 
 android.sourceSets {
     getByName("debug") {
-        res.srcDirs("src/debug/res")
+        res.directories += "src/debug/res"
     }
 }
 
@@ -127,4 +127,3 @@ tasks.register("updateChangelogJson") {
 tasks.named("preBuild") {
     dependsOn("updateChangelogJson")
 }
-

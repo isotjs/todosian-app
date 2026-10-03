@@ -1,20 +1,26 @@
 package com.isotjs.todosian.ui.settings
 
 import android.Manifest
-import android.os.Build
 import android.content.pm.PackageManager
+import android.os.Build
 import android.text.format.DateFormat
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -24,6 +30,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.Sort
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.ColorLens
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Info
@@ -40,7 +47,9 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemColors
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
@@ -51,17 +60,20 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
@@ -74,7 +86,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.compose.material.icons.filled.AutoAwesome
 import com.isotjs.todosian.BuildConfig
 import com.isotjs.todosian.R
 import com.isotjs.todosian.data.FileRepository
@@ -88,8 +99,9 @@ import com.isotjs.todosian.data.settings.ThemeMode
 import com.isotjs.todosian.data.settings.TodoGrouping
 import com.isotjs.todosian.data.settings.TodoSort
 import com.isotjs.todosian.ui.components.ChangelogBottomSheet
-import kotlinx.coroutines.launch
+import com.isotjs.todosian.ui.components.TodosianSectionHeader
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -118,7 +130,7 @@ fun SettingsScreen(
     val context = LocalContext.current
     val resources = LocalResources.current
     val snackbarHostState = remember { SnackbarHostState() }
-    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val scope = rememberCoroutineScope()
 
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
@@ -298,9 +310,14 @@ fun SettingsScreen(
         )
     }
 
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+
     Scaffold(
+        modifier = modifier
+            .fillMaxSize()
+            .nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            TopAppBar(
+            LargeTopAppBar(
                 title = { Text(text = stringResource(R.string.settings_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -310,10 +327,10 @@ fun SettingsScreen(
                         )
                     }
                 },
+                scrollBehavior = scrollBehavior,
             )
         },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-        modifier = modifier.fillMaxSize(),
     ) { padding ->
         Box(
             modifier = Modifier
@@ -326,57 +343,32 @@ fun SettingsScreen(
                     .fillMaxSize()
                     .widthIn(max = 840.dp)
                     .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(top = 4.dp, bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 item {
-                    SectionTitle(text = stringResource(R.string.settings_storage))
-                }
-                item {
-                    Card(
-                        shape = MaterialTheme.shapes.medium,
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-                    ) {
+                    SettingsGroup(title = stringResource(R.string.settings_storage)) {
                         val folderText = storageState.folderDisplayName
                             ?: storageState.folderUri?.toString()
                             ?: stringResource(R.string.settings_no_folder)
 
-                        val itemColors = ListItemDefaults.colors(containerColor = Color.Transparent)
-                        ListItem(
-                            headlineContent = { Text(text = stringResource(R.string.settings_folder)) },
-                            supportingContent = {
-                                Text(
-                                    text = folderText,
-                                    maxLines = 2,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                            },
-                            leadingContent = { Icon(imageVector = Icons.Filled.Folder, contentDescription = null) },
-                            colors = itemColors,
+                        SettingsInfoRow(
+                            icon = Icons.Filled.Folder,
+                            title = stringResource(R.string.settings_folder),
+                            subtitle = folderText,
+                            subtitleMaxLines = 2,
                         )
 
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                        SettingsDivider()
 
-                        ListItem(
-                            headlineContent = { Text(text = stringResource(R.string.settings_change_folder)) },
-                            supportingContent = {
-                                Text(text = stringResource(R.string.settings_change_folder_subtitle))
-                            },
-                            leadingContent = { Icon(imageVector = Icons.Filled.RestartAlt, contentDescription = null) },
-                            trailingContent = {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            },
-                            colors = itemColors,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable(role = Role.Button) { folderLauncher.launch(null) }
-                                .padding(horizontal = 4.dp),
+                        SettingsNavRow(
+                            icon = Icons.Filled.RestartAlt,
+                            title = stringResource(R.string.settings_change_folder),
+                            subtitle = stringResource(R.string.settings_change_folder_subtitle),
+                            onClick = { folderLauncher.launch(null) },
                         )
 
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                        SettingsDivider()
 
                         val mdCount = storageState.markdownFileCount
                         val statusText = when {
@@ -388,374 +380,227 @@ fun SettingsScreen(
                             else -> pluralStringResource(R.plurals.settings_status_ok, mdCount, mdCount)
                         }
 
-                        ListItem(
-                            headlineContent = { Text(text = stringResource(R.string.settings_status)) },
-                            supportingContent = { Text(text = statusText) },
-                            leadingContent = { Icon(imageVector = Icons.Filled.Refresh, contentDescription = null) },
-                            trailingContent = {
-                                if (storageState.isChecking) {
+                        SettingsInfoRow(
+                            icon = Icons.Filled.Refresh,
+                            title = stringResource(R.string.settings_status),
+                            subtitle = statusText,
+                            trailing = if (storageState.isChecking) {
+                                {
                                     CircularProgressIndicator(
                                         strokeWidth = 2.dp,
                                         modifier = Modifier.size(18.dp),
                                     )
                                 }
+                            } else {
+                                null
                             },
-                            colors = itemColors,
                         )
 
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                        SettingsDivider()
 
-                        ListItem(
-                        headlineContent = { Text(text = stringResource(R.string.settings_recheck_access)) },
-                        supportingContent = { Text(text = stringResource(R.string.settings_recheck_access_subtitle)) },
-                            leadingContent = { Icon(imageVector = Icons.Filled.Refresh, contentDescription = null) },
-                            colors = itemColors,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable(role = Role.Button) { viewModel.refreshStorageStatus() }
-                                .padding(horizontal = 4.dp),
+                        SettingsNavRow(
+                            icon = Icons.Filled.Refresh,
+                            title = stringResource(R.string.settings_recheck_access),
+                            subtitle = stringResource(R.string.settings_recheck_access_subtitle),
+                            showChevron = false,
+                            onClick = { viewModel.refreshStorageStatus() },
                         )
 
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                        SettingsDivider()
 
-                        ListItem(
-                            headlineContent = {
-                                Text(
-                                    text = stringResource(R.string.settings_reset_folder),
-                                    color = MaterialTheme.colorScheme.error,
-                                )
-                            },
-                            supportingContent = { Text(text = stringResource(R.string.settings_reset_folder_body)) },
-                            leadingContent = {
-                                Icon(
-                                    imageVector = Icons.Filled.RestartAlt,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.error,
-                                )
-                            },
-                            colors = itemColors,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable(enabled = storageState.folderUri != null, role = Role.Button) { showResetDialog = true }
-                                .padding(horizontal = 4.dp),
+                        SettingsNavRow(
+                            icon = Icons.Filled.RestartAlt,
+                            title = stringResource(R.string.settings_reset_folder),
+                            subtitle = stringResource(R.string.settings_reset_folder_body),
+                            contentColor = MaterialTheme.colorScheme.error,
+                            enabled = storageState.folderUri != null,
+                            showChevron = false,
+                            onClick = { showResetDialog = true },
                         )
                     }
                 }
 
                 item {
-                    SectionTitle(text = stringResource(R.string.settings_appearance))
-                }
-                item {
-                    Card(
-                        shape = MaterialTheme.shapes.medium,
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-                    ) {
-                        ListItem(
-                            headlineContent = { Text(text = stringResource(R.string.settings_theme_mode)) },
-                            supportingContent = {
-                                Text(text = themeModeLabel(settings.themeMode))
-                            },
-                            leadingContent = { Icon(imageVector = Icons.Filled.ColorLens, contentDescription = null) },
-                            trailingContent = {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            },
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable(role = Role.Button) { showThemeDialog = true }
-                                .padding(horizontal = 4.dp),
+                    SettingsGroup(title = stringResource(R.string.settings_appearance)) {
+                        SettingsNavRow(
+                            icon = Icons.Filled.ColorLens,
+                            title = stringResource(R.string.settings_theme_mode),
+                            subtitle = themeModeLabel(settings.themeMode),
+                            onClick = { showThemeDialog = true },
                         )
 
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                        SettingsDivider()
 
                         val dynamicEnabled = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-                        ListItem(
-                            headlineContent = { Text(text = stringResource(R.string.settings_dynamic_color)) },
-                            supportingContent = {
-                                Text(
-                                    text = if (dynamicEnabled) {
-                                        stringResource(R.string.settings_dynamic_color_subtitle)
-                                    } else {
-                                        stringResource(R.string.settings_dynamic_color_unavailable)
-                                    },
-                                )
+                        SettingsSwitchRow(
+                            icon = Icons.Filled.ViewDay,
+                            title = stringResource(R.string.settings_dynamic_color),
+                            subtitle = if (dynamicEnabled) {
+                                stringResource(R.string.settings_dynamic_color_subtitle)
+                            } else {
+                                stringResource(R.string.settings_dynamic_color_unavailable)
                             },
-                            leadingContent = { Icon(imageVector = Icons.Filled.ViewDay, contentDescription = null) },
-                            trailingContent = {
-                                Switch(
-                                    checked = settings.dynamicColorEnabled,
-                                    onCheckedChange = { appSettingsRepository.setDynamicColorEnabled(it) },
-                                    enabled = dynamicEnabled,
-                                )
-                            },
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            checked = settings.dynamicColorEnabled,
+                            enabled = dynamicEnabled,
+                            onCheckedChange = { appSettingsRepository.setDynamicColorEnabled(it) },
                         )
                     }
                 }
 
                 item {
-                    SectionTitle(text = stringResource(R.string.settings_behaviour))
-                }
-                item {
-                    Card(
-                        shape = MaterialTheme.shapes.medium,
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-                    ) {
-                        ListItem(
-                            headlineContent = { Text(text = stringResource(R.string.settings_show_daily_focus)) },
-                            supportingContent = { Text(text = stringResource(R.string.settings_show_daily_focus_subtitle)) },
-                            leadingContent = { Icon(imageVector = Icons.Filled.Info, contentDescription = null) },
-                            trailingContent = {
-                                Switch(
-                                    checked = settings.showDailyFocus,
-                                    onCheckedChange = { appSettingsRepository.setShowDailyFocus(it) },
-                                )
-                            },
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                    SettingsGroup(title = stringResource(R.string.settings_behaviour)) {
+                        SettingsSwitchRow(
+                            icon = Icons.Filled.Info,
+                            title = stringResource(R.string.settings_show_daily_focus),
+                            subtitle = stringResource(R.string.settings_show_daily_focus_subtitle),
+                            checked = settings.showDailyFocus,
+                            onCheckedChange = { appSettingsRepository.setShowDailyFocus(it) },
                         )
 
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
-
-                        if (settings.showDailyFocus) {
-                            ListItem(
-                                headlineContent = { Text(text = stringResource(R.string.settings_daily_focus_mode)) },
-                                supportingContent = { Text(text = dailyFocusModeLabel(settings.dailyFocusMode)) },
-                                leadingContent = { Icon(imageVector = Icons.Filled.Info, contentDescription = null) },
-                                trailingContent = {
-                                    Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                },
-                                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable(role = Role.Button) { showDailyFocusModeDialog = true }
-                                    .padding(horizontal = 4.dp),
-                            )
-
-                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                        AnimatedVisibility(
+                            visible = settings.showDailyFocus,
+                            enter = fadeIn(tween(180)) + expandVertically(tween(220)),
+                            exit = fadeOut(tween(140)) + shrinkVertically(tween(200)),
+                        ) {
+                            Column {
+                                SettingsDivider()
+                                SettingsNavRow(
+                                    icon = Icons.Filled.Info,
+                                    title = stringResource(R.string.settings_daily_focus_mode),
+                                    subtitle = dailyFocusModeLabel(settings.dailyFocusMode),
+                                    onClick = { showDailyFocusModeDialog = true },
+                                )
+                            }
                         }
 
-                        ListItem(
-                            headlineContent = { Text(text = stringResource(R.string.settings_enable_tasks_plugin_support)) },
-                            supportingContent = { Text(text = stringResource(R.string.settings_enable_tasks_plugin_support_subtitle)) },
-                            leadingContent = { Icon(imageVector = Icons.Filled.Info, contentDescription = null) },
-                            trailingContent = {
-                                Switch(
-                                    checked = settings.enableTasksPluginSupport,
-                                    onCheckedChange = { enabled ->
-                                        appSettingsRepository.setEnableTasksPluginSupport(enabled)
+                        SettingsDivider()
 
-                                        if (!enabled) return@Switch
-                                        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return@Switch
+                        SettingsSwitchRow(
+                            icon = Icons.Filled.Info,
+                            title = stringResource(R.string.settings_enable_tasks_plugin_support),
+                            subtitle = stringResource(R.string.settings_enable_tasks_plugin_support_subtitle),
+                            checked = settings.enableTasksPluginSupport,
+                            onCheckedChange = { enabled ->
+                                appSettingsRepository.setEnableTasksPluginSupport(enabled)
 
-                                        val granted = ContextCompat.checkSelfPermission(
-                                            context,
-                                            Manifest.permission.POST_NOTIFICATIONS,
-                                        ) == PackageManager.PERMISSION_GRANTED
-                                        if (!granted) {
-                                            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                                        }
-                                    },
-                                )
+                                if (!enabled) return@SettingsSwitchRow
+                                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return@SettingsSwitchRow
+
+                                val granted = ContextCompat.checkSelfPermission(
+                                    context,
+                                    Manifest.permission.POST_NOTIFICATIONS,
+                                ) == PackageManager.PERMISSION_GRANTED
+                                if (!granted) {
+                                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                }
                             },
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                         )
 
-                        if (settings.enableTasksPluginSupport) {
-                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                        AnimatedVisibility(
+                            visible = settings.enableTasksPluginSupport,
+                            enter = fadeIn(tween(180)) + expandVertically(tween(220)),
+                            exit = fadeOut(tween(140)) + shrinkVertically(tween(200)),
+                        ) {
+                            Column {
+                                SettingsDivider()
+                                SettingsSwitchRow(
+                                    icon = Icons.Filled.Info,
+                                    title = stringResource(R.string.settings_tasks_plugin_ui_emojis),
+                                    subtitle = stringResource(R.string.settings_tasks_plugin_ui_emojis_subtitle),
+                                    checked = settings.tasksPluginUseEmojisInUi,
+                                    onCheckedChange = { appSettingsRepository.setTasksPluginUseEmojisInUi(it) },
+                                )
 
-                            ListItem(
-                                headlineContent = { Text(text = stringResource(R.string.settings_tasks_plugin_ui_emojis)) },
-                                supportingContent = { Text(text = stringResource(R.string.settings_tasks_plugin_ui_emojis_subtitle)) },
-                                leadingContent = { Icon(imageVector = Icons.Filled.Info, contentDescription = null) },
-                                trailingContent = {
-                                    Switch(
-                                        checked = settings.tasksPluginUseEmojisInUi,
-                                        onCheckedChange = { appSettingsRepository.setTasksPluginUseEmojisInUi(it) },
-                                    )
-                                },
-                                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            )
+                                SettingsDivider()
 
-                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
-
-                            ListItem(
-                                headlineContent = { Text(text = stringResource(R.string.settings_reminder_time)) },
-                                supportingContent = {
-                                    Text(text = stringResource(R.string.settings_reminder_time_subtitle, reminderTimeLabel))
-                                },
-                                leadingContent = { Icon(imageVector = Icons.Filled.Schedule, contentDescription = null) },
-                                trailingContent = {
-                                    Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                },
-                                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable(role = Role.Button) { showReminderTimeDialog = true }
-                                    .padding(horizontal = 4.dp),
-                            )
+                                SettingsNavRow(
+                                    icon = Icons.Filled.Schedule,
+                                    title = stringResource(R.string.settings_reminder_time),
+                                    subtitle = stringResource(R.string.settings_reminder_time_subtitle, reminderTimeLabel),
+                                    onClick = { showReminderTimeDialog = true },
+                                )
+                            }
                         }
 
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                        SettingsDivider()
 
-                        ListItem(
-                            headlineContent = { Text(text = stringResource(R.string.settings_category_sort)) },
-                            supportingContent = {
-                                Text(text = categorySortLabel(settings.categorySort))
-                            },
-                            leadingContent = { Icon(imageVector = Icons.AutoMirrored.Filled.Sort, contentDescription = null) },
-                            trailingContent = {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            },
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable(role = Role.Button) { showSortDialog = true }
-                                .padding(horizontal = 4.dp),
+                        SettingsNavRow(
+                            icon = Icons.AutoMirrored.Filled.Sort,
+                            title = stringResource(R.string.settings_category_sort),
+                            subtitle = categorySortLabel(settings.categorySort),
+                            onClick = { showSortDialog = true },
                         )
 
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                        SettingsDivider()
 
-                        ListItem(
-                            headlineContent = { Text(text = stringResource(R.string.settings_todo_grouping)) },
-                            supportingContent = {
-                                Text(text = todoGroupingLabel(settings.todoGrouping))
-                            },
-                            leadingContent = { Icon(imageVector = Icons.AutoMirrored.Filled.Sort, contentDescription = null) },
-                            trailingContent = {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            },
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable(role = Role.Button) { showGroupingDialog = true }
-                                .padding(horizontal = 4.dp),
+                        SettingsNavRow(
+                            icon = Icons.AutoMirrored.Filled.Sort,
+                            title = stringResource(R.string.settings_todo_grouping),
+                            subtitle = todoGroupingLabel(settings.todoGrouping),
+                            onClick = { showGroupingDialog = true },
                         )
 
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                        SettingsDivider()
 
-                        ListItem(
-                            headlineContent = { Text(text = stringResource(R.string.settings_todo_sort)) },
-                            supportingContent = {
-                                Text(text = todoSortLabel(settings.todoSort))
-                            },
-                            leadingContent = { Icon(imageVector = Icons.AutoMirrored.Filled.Sort, contentDescription = null) },
-                            trailingContent = {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            },
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable(role = Role.Button) { showTodoSortDialog = true }
-                                .padding(horizontal = 4.dp),
+                        SettingsNavRow(
+                            icon = Icons.AutoMirrored.Filled.Sort,
+                            title = stringResource(R.string.settings_todo_sort),
+                            subtitle = todoSortLabel(settings.todoSort),
+                            onClick = { showTodoSortDialog = true },
                         )
 
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                        SettingsDivider()
 
-                        ListItem(
-                            headlineContent = { Text(text = stringResource(R.string.settings_new_todo_file_position)) },
-                            supportingContent = {
-                                Text(text = newTodoFilePositionLabel(settings.newTodoFilePosition))
-                            },
-                            leadingContent = { Icon(imageVector = Icons.Filled.VerticalAlignTop, contentDescription = null) },
-                            trailingContent = {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            },
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable(role = Role.Button) { showNewTodoFilePositionDialog = true }
-                                .padding(horizontal = 4.dp),
+                        SettingsNavRow(
+                            icon = Icons.Filled.VerticalAlignTop,
+                            title = stringResource(R.string.settings_new_todo_file_position),
+                            subtitle = newTodoFilePositionLabel(settings.newTodoFilePosition),
+                            onClick = { showNewTodoFilePositionDialog = true },
                         )
                     }
                 }
 
                 item {
-                    Card(
-                        shape = MaterialTheme.shapes.medium,
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-                    ) {
-                        ListItem(
-                            headlineContent = { Text(text = stringResource(R.string.settings_enable_subtasks)) },
-                            supportingContent = { Text(text = stringResource(R.string.settings_enable_subtasks_subtitle)) },
-                            leadingContent = { Icon(imageVector = Icons.Filled.Info, contentDescription = null) },
-                            trailingContent = {
-                                Switch(
-                                    checked = settings.enableSubtasks,
-                                    onCheckedChange = { appSettingsRepository.setEnableSubtasks(it) },
-                                )
-                            },
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                    SettingsGroup(title = null) {
+                        SettingsSwitchRow(
+                            icon = Icons.Filled.Info,
+                            title = stringResource(R.string.settings_enable_subtasks),
+                            subtitle = stringResource(R.string.settings_enable_subtasks_subtitle),
+                            checked = settings.enableSubtasks,
+                            onCheckedChange = { appSettingsRepository.setEnableSubtasks(it) },
                         )
                     }
                 }
 
                 item {
-                    SectionTitle(text = stringResource(R.string.settings_about))
-                }
-                item {
-                    Card(
-                        shape = MaterialTheme.shapes.medium,
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-                    ) {
-                        ListItem(
-                            headlineContent = { Text(text = stringResource(R.string.settings_whats_new)) },
-                            supportingContent = { Text(text = stringResource(R.string.settings_whats_new_subtitle)) },
-                            leadingContent = { Icon(imageVector = Icons.Filled.AutoAwesome, contentDescription = null) },
-                            trailingContent = { Icon(imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null) },
-                            modifier = Modifier.clickable {
+                    SettingsGroup(title = stringResource(R.string.settings_about)) {
+                        SettingsNavRow(
+                            icon = Icons.Filled.AutoAwesome,
+                            title = stringResource(R.string.settings_whats_new),
+                            subtitle = stringResource(R.string.settings_whats_new_subtitle),
+                            onClick = {
                                 showChangelogSheet = true
                                 preferencesManager.saveLastSeenVersionCode(BuildConfig.VERSION_CODE)
                             },
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                         )
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
-                        ListItem(
-                            headlineContent = { Text(text = stringResource(R.string.settings_version)) },
-                            supportingContent = {
-                                Text(text = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
-                            },
-                            leadingContent = { Icon(imageVector = Icons.Filled.Info, contentDescription = null) },
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+
+                        SettingsDivider()
+
+                        SettingsInfoRow(
+                            icon = Icons.Filled.Info,
+                            title = stringResource(R.string.settings_version),
+                            subtitle = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
                         )
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
-                        ListItem(
-                            headlineContent = { Text(text = stringResource(R.string.settings_android_sdk)) },
-                            supportingContent = { Text(text = Build.VERSION.SDK_INT.toString()) },
-                            leadingContent = { Icon(imageVector = Icons.Filled.Info, contentDescription = null) },
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+
+                        SettingsDivider()
+
+                        SettingsInfoRow(
+                            icon = Icons.Filled.Info,
+                            title = stringResource(R.string.settings_android_sdk),
+                            subtitle = Build.VERSION.SDK_INT.toString(),
                         )
                     }
                 }
-
-                item { Spacer(modifier = Modifier.height(24.dp)) }
             }
         }
 
@@ -768,17 +613,135 @@ fun SettingsScreen(
 }
 
 @Composable
-private fun SectionTitle(
-    text: String,
+private fun SettingsGroup(
+    title: String?,
     modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit,
 ) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = modifier.padding(top = 8.dp),
+    Column(modifier = modifier.fillMaxWidth()) {
+        if (title != null) {
+            TodosianSectionHeader(text = title)
+        }
+        Card(
+            shape = MaterialTheme.shapes.extraLarge,
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Column(content = content)
+        }
+    }
+}
+
+@Composable
+private fun SettingsSwitchRow(
+    icon: ImageVector,
+    title: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    subtitle: String? = null,
+    enabled: Boolean = true,
+) {
+    ListItem(
+        headlineContent = { Text(text = title) },
+        supportingContent = if (subtitle != null) {
+            { Text(text = subtitle) }
+        } else {
+            null
+        },
+        leadingContent = { Icon(imageVector = icon, contentDescription = null) },
+        trailingContent = {
+            Switch(
+                checked = checked,
+                onCheckedChange = onCheckedChange,
+                enabled = enabled,
+            )
+        },
+        colors = transparentListItemColors(),
     )
 }
+
+@Composable
+private fun SettingsNavRow(
+    icon: ImageVector,
+    title: String,
+    onClick: () -> Unit,
+    subtitle: String? = null,
+    enabled: Boolean = true,
+    contentColor: Color? = null,
+    showChevron: Boolean = true,
+) {
+    ListItem(
+        headlineContent = {
+            Text(
+                text = title,
+                color = contentColor ?: Color.Unspecified,
+            )
+        },
+        supportingContent = if (subtitle != null) {
+            { Text(text = subtitle) }
+        } else {
+            null
+        },
+        leadingContent = {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = contentColor ?: MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        },
+        trailingContent = if (showChevron) {
+            {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        } else {
+            null
+        },
+        colors = transparentListItemColors(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick),
+    )
+}
+
+@Composable
+private fun SettingsInfoRow(
+    icon: ImageVector,
+    title: String,
+    subtitle: String? = null,
+    subtitleMaxLines: Int = Int.MAX_VALUE,
+    trailing: (@Composable () -> Unit)? = null,
+) {
+    ListItem(
+        headlineContent = { Text(text = title) },
+        supportingContent = if (subtitle != null) {
+            {
+                Text(
+                    text = subtitle,
+                    maxLines = subtitleMaxLines,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        } else {
+            null
+        },
+        leadingContent = { Icon(imageVector = icon, contentDescription = null) },
+        trailingContent = trailing,
+        colors = transparentListItemColors(),
+    )
+}
+
+@Composable
+private fun SettingsDivider() {
+    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+}
+
+@Composable
+private fun transparentListItemColors(): ListItemColors =
+    ListItemDefaults.colors(containerColor = Color.Transparent)
 
 private data class ChoiceOption<T>(
     val value: T,

@@ -4,6 +4,9 @@ import android.content.Intent
 import android.content.Context
 import android.util.Log
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
+import androidx.glance.currentState
 import androidx.glance.semantics.contentDescription
 import androidx.glance.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -24,6 +27,7 @@ import androidx.glance.appwidget.appWidgetBackground
 import androidx.glance.appwidget.lazy.LazyColumn
 import androidx.glance.appwidget.lazy.items
 import androidx.glance.appwidget.provideContent
+import androidx.glance.appwidget.updateAll
 import androidx.glance.background
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
@@ -41,13 +45,17 @@ import androidx.glance.text.TextStyle
 import com.isotjs.todosian.MainActivity
 import com.isotjs.todosian.R
 import com.isotjs.todosian.TodosianApplication
+import com.isotjs.todosian.data.FileRepository
 import com.isotjs.todosian.data.model.Todo
 import com.isotjs.todosian.utils.MarkdownParser
 
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.glance.appwidget.GlanceAppWidgetManager
+import androidx.glance.appwidget.state.getAppWidgetState
 import androidx.glance.appwidget.state.updateAppWidgetState
 import androidx.glance.state.PreferencesGlanceStateDefinition
+
+private val KEY_LAST_UPDATE = longPreferencesKey("last_update_timestamp")
 
 data class WidgetTaskItem(
     val categoryUri: String,
@@ -55,34 +63,29 @@ data class WidgetTaskItem(
     val todo: Todo,
 )
 
+private data class WidgetData(
+    val hasFolder: Boolean,
+    val items: List<WidgetTaskItem>,
+    val activeCount: Int,
+)
+
 object WidgetUpdater {
     private const val TAG = "WidgetUpdater"
-    private val KEY_LAST_UPDATE = longPreferencesKey("last_update_timestamp")
 
     suspend fun updateAllWidgets(context: Context) {
         runCatching {
             val manager = GlanceAppWidgetManager(context)
             val glanceIds = manager.getGlanceIds(TodosianWidget::class.java)
             for (glanceId in glanceIds) {
+                // Bumping the timestamp makes any still-alive Glance session reload its data.
                 updateAppWidgetState(context, PreferencesGlanceStateDefinition, glanceId) { prefs ->
                     prefs.toMutablePreferences().apply {
                         this[KEY_LAST_UPDATE] = System.currentTimeMillis()
                     }
                 }
-                TodosianWidget().update(context, glanceId)
             }
-            
-            // Explicitly broadcast to force immediate update in Launcher, bypassing WorkManager throttling
-            val appWidgetManager = android.appwidget.AppWidgetManager.getInstance(context)
-            val componentName = android.content.ComponentName(context, TodosianWidgetReceiver::class.java)
-            val appWidgetIds = appWidgetManager.getAppWidgetIds(componentName)
-            
-            val intent = Intent(context, TodosianWidgetReceiver::class.java).apply {
-                action = android.appwidget.AppWidgetManager.ACTION_APPWIDGET_UPDATE
-                putExtra(android.appwidget.AppWidgetManager.EXTRA_APPWIDGET_IDS, appWidgetIds)
-            }
-            context.sendBroadcast(intent)
-            
+            // Start a session if none is currently running (e.g. the widget was idle).
+            TodosianWidget().updateAll(context)
         }.onFailure { Log.e(TAG, "Failed to update widgets", it) }
     }
 }
@@ -96,16 +99,12 @@ class TodosianWidget : GlanceAppWidget() {
         const val TAG = "TodosianWidget"
     }
 
-    override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val app = context.applicationContext as? TodosianApplication
-        val fileRepository = app?.fileRepository
-
+    private suspend fun loadData(fileRepository: FileRepository?): WidgetData {
         val folderUri = fileRepository?.getFolderUri()
         val taskItems = mutableListOf<WidgetTaskItem>()
 
         if (folderUri != null) {
-            val categoriesResult = fileRepository.getCategories()
-            val categories = categoriesResult.getOrDefault(emptyList())
+            val categories = fileRepository.getCategories().getOrDefault(emptyList())
             for (category in categories) {
                 val lines = fileRepository.readLines(category.uri).getOrDefault(emptyList())
                 val todos = MarkdownParser.parse(lines)
@@ -120,18 +119,42 @@ class TodosianWidget : GlanceAppWidget() {
                 }
             }
         }
+
         val activeTasks = taskItems.filter { !it.todo.isDone }
         val completedTasks = taskItems.filter { it.todo.isDone }
-        Log.d(TAG, "provideGlance: folder=${folderUri != null} tasks=${taskItems.size} " +
+        Log.d(TAG, "loadData: folder=${folderUri != null} tasks=${taskItems.size} " +
             "active=${activeTasks.size} completed=${completedTasks.size}")
-        val sortedItems = (activeTasks + completedTasks).take(MAX_TASKS)
+        return WidgetData(
+            hasFolder = folderUri != null,
+            items = (activeTasks + completedTasks).take(MAX_TASKS),
+            activeCount = activeTasks.size,
+        )
+    }
+
+    override suspend fun provideGlance(context: Context, id: GlanceId) {
+        val app = context.applicationContext as? TodosianApplication
+        val fileRepository = app?.fileRepository
+
+        // Load initial data before provideContent, as provideGlance times out shortly after.
+        val initialData = loadData(fileRepository)
+        val initialRefreshKey =
+            getAppWidgetState(context, PreferencesGlanceStateDefinition, id)[KEY_LAST_UPDATE] ?: 0L
 
         provideContent {
+            // Observe the refresh timestamp so a manual refresh reloads data even while this
+            // Glance session is still alive (update() alone would only recompose stale data).
+            val refreshKey = currentState(KEY_LAST_UPDATE) ?: 0L
+            val data by produceState(initialValue = initialData, refreshKey) {
+                if (refreshKey != initialRefreshKey) {
+                    value = loadData(fileRepository)
+                }
+            }
+
             GlanceTheme {
                 WidgetContent(
-                    hasFolder = folderUri != null,
-                    items = sortedItems,
-                    activeCount = activeTasks.size,
+                    hasFolder = data.hasFolder,
+                    items = data.items,
+                    activeCount = data.activeCount,
                 )
             }
         }
@@ -193,6 +216,20 @@ class TodosianWidget : GlanceAppWidget() {
                         )
                     }
                 }
+
+                Button(
+                    text = "↻",
+                    onClick = actionRunCallback<RefreshWidgetAction>(),
+                    modifier = GlanceModifier.semantics {
+                        contentDescription = context.getString(R.string.widget_refresh)
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        backgroundColor = GlanceTheme.colors.primaryContainer,
+                        contentColor = GlanceTheme.colors.onPrimaryContainer,
+                    ),
+                )
+
+                Spacer(modifier = GlanceModifier.width(8.dp))
 
                 Button(
                     text = "+",

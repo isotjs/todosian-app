@@ -1,0 +1,14 @@
+Version 2.2 brings a fresh Material 3 Expressive look across the app, with smoother animations and a cleaner settings screen.
+
+New Features:
+• Redesigned Settings - options are now grouped into cards with a large title that collapses as you scroll, and dependent options animate in as you enable them
+• New empty states - the home, category, daily focus, and add-task screens now show friendly illustrated placeholders instead of plain text
+• Redesigned onboarding - a clearer first-run screen with an animated hero and a prominent folder picker
+
+Improvements:
+• Smoother motion throughout - the app now uses the Material 3 Expressive motion scheme for consistent, more natural animations
+• More expressive loading indicators while your files are being read
+• Refreshed floating action buttons with a playful cookie shape
+
+Under the hood:
+• Updated Gradle, Android Gradle Plugin, Kotlin, Compose BOM, and AndroidX libraries

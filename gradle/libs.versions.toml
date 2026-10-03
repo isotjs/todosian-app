@@ -1,18 +1,19 @@
 [versions]
-agp = "9.2.1"
-coreKtx = "1.18.0"
-coroutines = "1.8.1"
+agp = "9.4.1"
+coreKtx = "1.19.1"
+coroutines = "1.11.0"
 material = "1.14.0"
 leakcanary = "2.14"
 junit = "4.13.2"
-lifecycleRuntimeKtx = "2.10.0"
+lifecycleRuntimeKtx = "2.11.0"
 activityCompose = "1.13.0"
-kotlin = "2.4.10"
-composeBom = "2026.06.01"
-navigationCompose = "2.9.8"
+kotlin = "2.4.20"
+composeBom = "2026.09.00"
+navigationCompose = "2.10.2"
 documentFile = "1.1.0"
-workRuntimeKtx = "2.11.2"
-glance = "1.1.1"
+workRuntimeKtx = "2.12.0"
+glance = "1.2.0"
+material3 = "1.5.0-alpha21"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -34,7 +35,7 @@ androidx-compose-foundation-layout = { group = "androidx.compose.foundation", na
 androidx-compose-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
 androidx-compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
 androidx-compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
-androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
+androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3", version.ref = "material3" }
 androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "workRuntimeKtx" }
 androidx-glance-appwidget = { group = "androidx.glance", name = "glance-appwidget", version.ref = "glance" }
 

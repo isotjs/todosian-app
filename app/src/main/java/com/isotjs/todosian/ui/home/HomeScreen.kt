@@ -30,12 +30,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.CreateNewFolder
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -81,8 +81,10 @@ import com.isotjs.todosian.data.settings.DailyFocusMode
 import com.isotjs.todosian.data.model.Category
 import com.isotjs.todosian.ui.components.ChangelogBottomSheet
 import com.isotjs.todosian.ui.components.TodosianDimens
+import com.isotjs.todosian.ui.components.TodosianEmptyState
+import com.isotjs.todosian.ui.components.TodosianLoadingIndicator
 import com.isotjs.todosian.ui.components.TodosianLinearProgress
-import com.isotjs.todosian.ui.components.TodosianMotion
+import com.isotjs.todosian.ui.components.todosianFabShape
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
@@ -348,7 +350,10 @@ fun HomeScreen(
         },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         floatingActionButton = {
-            FloatingActionButton(onClick = { showNewCategorySheet = true }) {
+            FloatingActionButton(
+                onClick = { showNewCategorySheet = true },
+                shape = todosianFabShape(),
+            ) {
                 Icon(
                     imageVector = Icons.Filled.Add,
                     contentDescription = stringResource(R.string.cd_add_category),
@@ -389,7 +394,7 @@ fun HomeScreen(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center,
                     ) {
-                        CircularProgressIndicator()
+                        TodosianLoadingIndicator()
                     }
                 }
 
@@ -641,30 +646,14 @@ private fun EmptyHomeState(
     onCreateCategory: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Box(
+    TodosianEmptyState(
+        icon = Icons.Outlined.CreateNewFolder,
+        title = stringResource(R.string.home_empty_title),
+        subtitle = stringResource(R.string.home_empty_subtitle),
+        actionLabel = stringResource(R.string.home_create_category),
+        onAction = onCreateCategory,
         modifier = modifier,
-        contentAlignment = Alignment.Center,
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(16.dp),
-        ) {
-            Text(
-                text = stringResource(R.string.home_empty_title),
-                style = MaterialTheme.typography.titleLarge,
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = stringResource(R.string.home_empty_subtitle),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            TextButton(onClick = onCreateCategory) {
-                Text(text = stringResource(R.string.home_create_category))
-            }
-        }
-    }
+    )
 }
 
 private class HomeViewModelFactory(
