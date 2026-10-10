@@ -2,10 +2,7 @@ package com.isotjs.todosian.ui.widget
 
 import android.content.Intent
 import android.content.Context
-import android.util.Log
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.produceState
 import androidx.glance.currentState
 import androidx.glance.semantics.contentDescription
 import androidx.glance.semantics.semantics
@@ -27,7 +24,6 @@ import androidx.glance.appwidget.appWidgetBackground
 import androidx.glance.appwidget.lazy.LazyColumn
 import androidx.glance.appwidget.lazy.items
 import androidx.glance.appwidget.provideContent
-import androidx.glance.appwidget.updateAll
 import androidx.glance.background
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
@@ -42,20 +38,10 @@ import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextDecoration
 import androidx.glance.text.TextStyle
+import androidx.glance.state.PreferencesGlanceStateDefinition
 import com.isotjs.todosian.MainActivity
 import com.isotjs.todosian.R
-import com.isotjs.todosian.TodosianApplication
-import com.isotjs.todosian.data.FileRepository
 import com.isotjs.todosian.data.model.Todo
-import com.isotjs.todosian.utils.MarkdownParser
-
-import androidx.datastore.preferences.core.longPreferencesKey
-import androidx.glance.appwidget.GlanceAppWidgetManager
-import androidx.glance.appwidget.state.getAppWidgetState
-import androidx.glance.appwidget.state.updateAppWidgetState
-import androidx.glance.state.PreferencesGlanceStateDefinition
-
-private val KEY_LAST_UPDATE = longPreferencesKey("last_update_timestamp")
 
 data class WidgetTaskItem(
     val categoryUri: String,
@@ -63,98 +49,28 @@ data class WidgetTaskItem(
     val todo: Todo,
 )
 
-private data class WidgetData(
-    val hasFolder: Boolean,
-    val items: List<WidgetTaskItem>,
-    val activeCount: Int,
-)
-
-object WidgetUpdater {
-    private const val TAG = "WidgetUpdater"
-
-    suspend fun updateAllWidgets(context: Context) {
-        runCatching {
-            val manager = GlanceAppWidgetManager(context)
-            val glanceIds = manager.getGlanceIds(TodosianWidget::class.java)
-            for (glanceId in glanceIds) {
-                // Bumping the timestamp makes any still-alive Glance session reload its data.
-                updateAppWidgetState(context, PreferencesGlanceStateDefinition, glanceId) { prefs ->
-                    prefs.toMutablePreferences().apply {
-                        this[KEY_LAST_UPDATE] = System.currentTimeMillis()
-                    }
-                }
-            }
-            // Start a session if none is currently running (e.g. the widget was idle).
-            TodosianWidget().updateAll(context)
-        }.onFailure { Log.e(TAG, "Failed to update widgets", it) }
-    }
-}
-
 class TodosianWidget : GlanceAppWidget() {
 
     override val stateDefinition = PreferencesGlanceStateDefinition
 
-    private companion object {
-        const val MAX_TASKS = 50
-        const val TAG = "TodosianWidget"
-    }
-
-    private suspend fun loadData(fileRepository: FileRepository?): WidgetData {
-        val folderUri = fileRepository?.getFolderUri()
-        val taskItems = mutableListOf<WidgetTaskItem>()
-
-        if (folderUri != null) {
-            val categories = fileRepository.getCategories().getOrDefault(emptyList())
-            for (category in categories) {
-                val lines = fileRepository.readLines(category.uri).getOrDefault(emptyList())
-                val todos = MarkdownParser.parse(lines)
-                for (todo in todos) {
-                    taskItems.add(
-                        WidgetTaskItem(
-                            categoryUri = category.uri.toString(),
-                            categoryName = category.displayName,
-                            todo = todo,
-                        )
-                    )
-                }
-            }
+    override suspend fun provideGlance(context: Context, id: GlanceId) {
+        // A freshly placed widget has no snapshot yet; load one from the files before composing
+        // (provideGlance has a generous time budget, unlike the live composition).
+        if (!WidgetRefresher.hasSnapshot(context, id)) {
+            WidgetRefresher.refreshWidgets(context)
         }
 
-        val activeTasks = taskItems.filter { !it.todo.isDone }
-        val completedTasks = taskItems.filter { it.todo.isDone }
-        Log.d(TAG, "loadData: folder=${folderUri != null} tasks=${taskItems.size} " +
-            "active=${activeTasks.size} completed=${completedTasks.size}")
-        return WidgetData(
-            hasFolder = folderUri != null,
-            items = (activeTasks + completedTasks).take(MAX_TASKS),
-            activeCount = activeTasks.size,
-        )
-    }
-
-    override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val app = context.applicationContext as? TodosianApplication
-        val fileRepository = app?.fileRepository
-
-        // Load initial data before provideContent, as provideGlance times out shortly after.
-        val initialData = loadData(fileRepository)
-        val initialRefreshKey =
-            getAppWidgetState(context, PreferencesGlanceStateDefinition, id)[KEY_LAST_UPDATE] ?: 0L
-
         provideContent {
-            // Observe the refresh timestamp so a manual refresh reloads data even while this
-            // Glance session is still alive (update() alone would only recompose stale data).
-            val refreshKey = currentState(KEY_LAST_UPDATE) ?: 0L
-            val data by produceState(initialValue = initialData, refreshKey) {
-                if (refreshKey != initialRefreshKey) {
-                    value = loadData(fileRepository)
-                }
-            }
+            // Render purely from the Glance state: WidgetRefresher pushes a fresh snapshot after
+            // every change, which triggers exactly one recomposition with fresh data. The content
+            // never touches the file system itself.
+            val snapshot = WidgetSnapshot.fromPreferences(currentState())
 
             GlanceTheme {
                 WidgetContent(
-                    hasFolder = data.hasFolder,
-                    items = data.items,
-                    activeCount = data.activeCount,
+                    hasFolder = snapshot?.hasFolder ?: false,
+                    items = snapshot?.items.orEmpty(),
+                    activeCount = snapshot?.activeCount ?: 0,
                 )
             }
         }

@@ -15,7 +15,7 @@ class RefreshWidgetAction : ActionCallback {
         parameters: ActionParameters,
     ) {
         Log.d(TAG, "Manual refresh requested for glanceId=$glanceId")
-        WidgetUpdater.updateAllWidgets(context)
+        WidgetRefresher.refreshWidgets(context)
     }
 
     companion object {

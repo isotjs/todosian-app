@@ -86,8 +86,9 @@ class ToggleTaskAction : ActionCallback {
                 return@withContext
             }
 
-            Log.d(TAG, "Toggled line successfully. Triggering widget update immediately.")
-            WidgetUpdater.updateAllWidgets(context)
+            // No explicit refresh needed here: the write already scheduled a debounced widget
+            // refresh through the repository, which pushes the fresh snapshot to the widget.
+            Log.d(TAG, "Toggled line successfully; widget refresh scheduled by repository")
         }
     }
 

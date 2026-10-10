@@ -1,7 +1,5 @@
 package com.isotjs.todosian.data
 
-import android.appwidget.AppWidgetManager
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.database.ContentObserver
@@ -27,8 +25,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import com.isotjs.todosian.ui.widget.TodosianWidget
-import androidx.glance.appwidget.updateAll
+import com.isotjs.todosian.ui.widget.WidgetRefresher
 import java.time.LocalDate
 
 interface FileRepository {
@@ -92,8 +89,8 @@ class SafFileRepository(
     private fun refreshTodosianWidget() {
         widgetUpdateScope.launch {
             runCatching {
-                Log.d(TAG, "Requesting Glance widget updateAll")
-                com.isotjs.todosian.ui.widget.WidgetUpdater.updateAllWidgets(appContext)
+                Log.d(TAG, "Refreshing Todosian widgets")
+                WidgetRefresher.refreshWidgets(appContext)
             }.onFailure { Log.e(TAG, "Widget refresh failed", it) }
         }
     }
