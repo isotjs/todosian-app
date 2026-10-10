@@ -71,6 +71,9 @@ class TodosianWidget : GlanceAppWidget() {
                     hasFolder = snapshot?.hasFolder ?: false,
                     items = snapshot?.items.orEmpty(),
                     activeCount = snapshot?.activeCount ?: 0,
+                    title = snapshot?.title,
+                    selectedCategoryUri = snapshot?.selectedCategoryUri,
+                    missingList = snapshot?.missingList ?: false,
                 )
             }
         }
@@ -81,6 +84,9 @@ class TodosianWidget : GlanceAppWidget() {
         hasFolder: Boolean,
         items: List<WidgetTaskItem>,
         activeCount: Int,
+        title: String?,
+        selectedCategoryUri: String?,
+        missingList: Boolean,
     ) {
         val context = LocalContext.current
         val openAppAction = actionStartActivity(
@@ -88,12 +94,19 @@ class TodosianWidget : GlanceAppWidget() {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             }
         )
+        // A widget bound to a single note routes "+" straight into that note; unbound widgets
+        // open the regular "pick a note" flow.
         val openAddTaskAction = actionStartActivity(
             Intent(context, MainActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-                putExtra(MainActivity.EXTRA_OPEN_ADD_TASK, true)
+                if (selectedCategoryUri != null) {
+                    putExtra(MainActivity.EXTRA_OPEN_ADD_TASK_CATEGORY, selectedCategoryUri)
+                } else {
+                    putExtra(MainActivity.EXTRA_OPEN_ADD_TASK, true)
+                }
             }
         )
+        val headerTitle = title ?: context.getString(R.string.widget_title_all_lists)
 
         Column(
             modifier = GlanceModifier
@@ -115,14 +128,15 @@ class TodosianWidget : GlanceAppWidget() {
                         .clickable(openAppAction),
                 ) {
                     Text(
-                        text = context.getString(R.string.app_name),
+                        text = headerTitle,
                         style = TextStyle(
                             color = GlanceTheme.colors.onSurface,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
                         ),
+                        maxLines = 1,
                     )
-                    if (hasFolder) {
+                    if (hasFolder && !missingList) {
                         Text(
                             text = "$activeCount active",
                             style = TextStyle(
@@ -170,6 +184,21 @@ class TodosianWidget : GlanceAppWidget() {
                 ) {
                     Text(
                         text = context.getString(R.string.widget_no_folder),
+                        style = TextStyle(
+                            color = GlanceTheme.colors.onSurfaceVariant,
+                            fontSize = 13.sp,
+                        ),
+                    )
+                }
+            } else if (missingList) {
+                Box(
+                    modifier = GlanceModifier
+                        .fillMaxSize()
+                        .clickable(openAppAction),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = context.getString(R.string.widget_missing_list),
                         style = TextStyle(
                             color = GlanceTheme.colors.onSurfaceVariant,
                             fontSize = 13.sp,

@@ -246,6 +246,10 @@
     <string name="widget_refresh">Refresh tasks</string>
     <string name="widget_add_task_name">Add task</string>
     <string name="widget_add_task_description">Quickly add a task to any of your categories.</string>
+    <string name="widget_title_all_lists">All lists</string>
+    <string name="widget_configure_title">Select a list for this widget</string>
+    <string name="widget_configure_all_lists_hint">Shows tasks from every note</string>
+    <string name="widget_missing_list">List unavailable. Long-press the widget and choose Edit to pick another.</string>
 
     <!-- Add task flow -->
     <string name="add_task_picker_title">Add task</string>

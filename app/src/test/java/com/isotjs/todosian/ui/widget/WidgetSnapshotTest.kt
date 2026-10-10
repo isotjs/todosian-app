@@ -4,6 +4,7 @@ import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.intPreferencesKey
 import com.isotjs.todosian.data.model.Todo
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Test
 
@@ -180,5 +181,95 @@ class WidgetSnapshotTest {
         val restored = WidgetSnapshot.fromPreferences(snapshot.toPreferences())
 
         assertEquals(snapshot, restored)
+    }
+
+    @Test
+    fun `round trip preserves title, selected uri and missing list flag`() {
+        val snapshot = WidgetSnapshot(
+            hasFolder = true,
+            activeCount = 1,
+            items = listOf(item("Task", lineIndex = 0)),
+            title = "Calendar",
+            selectedCategoryUri = "content://note/Calendar",
+            missingList = false,
+        )
+
+        val restored = WidgetSnapshot.fromPreferences(snapshot.toPreferences())
+
+        assertEquals(snapshot, restored)
+    }
+
+    @Test
+    fun `all lists snapshot has null title and selected uri`() {
+        val prefs = WidgetSnapshot(hasFolder = true, activeCount = 0, items = emptyList())
+            .toPreferences().toMutablePreferences()
+
+        val restored = WidgetSnapshot.fromPreferences(prefs)
+
+        assertNull(restored?.title)
+        assertNull(restored?.selectedCategoryUri)
+        assertFalse(restored?.missingList == true)
+    }
+
+    @Test
+    fun `selection round trip preserves uri and name`() {
+        val selection = WidgetSelection("content://note/Calendar", "Calendar")
+        val prefs = emptyPreferences().toMutablePreferences()
+
+        selection.writeTo(prefs)
+
+        assertEquals(selection, WidgetSelection.from(prefs))
+    }
+
+    @Test
+    fun `all lists selection removes stale keys`() {
+        val prefs = WidgetSelection("content://note/Calendar", "Calendar")
+            .let { emptyPreferences().toMutablePreferences().also(it::writeTo) }
+
+        WidgetSelection.ALL.writeTo(prefs)
+
+        assertEquals(WidgetSelection.ALL, WidgetSelection.from(prefs))
+    }
+
+    @Test
+    fun `resolve matches by uri first`() {
+        val keys = listOf(
+            "content://note/a" to "Other name",
+            "content://note/b" to "Calendar",
+        )
+        val selection = WidgetSelection("content://note/b", "Other name")
+
+        assertEquals("content://note/b", resolveCategoryKey(keys, selection))
+    }
+
+    @Test
+    fun `resolve falls back to stored name when uri is stale`() {
+        val keys = listOf("content://note/new" to "Calendar renamed")
+        val selection = WidgetSelection("content://note/old-uri", "Calendar renamed")
+
+        assertEquals("content://note/new", resolveCategoryKey(keys, selection))
+    }
+
+    @Test
+    fun `resolve name match is case insensitive`() {
+        val keys = listOf("content://note/new" to "Calendar")
+        val selection = WidgetSelection("content://gone", "cAlEnDaR")
+
+        assertEquals("content://note/new", resolveCategoryKey(keys, selection))
+    }
+
+    @Test
+    fun `resolve returns null for all lists selection`() {
+        val keys = listOf("content://note/a" to "Calendar")
+
+        assertNull(resolveCategoryKey(keys, WidgetSelection.ALL))
+    }
+
+    @Test
+    fun `resolve returns null when nothing matches`() {
+        val keys = listOf("content://note/a" to "Calendar")
+        val selection = WidgetSelection("content://gone", "Deleted list")
+
+        assertNull(resolveCategoryKey(keys, selection))
     }
 }

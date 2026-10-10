@@ -15,9 +15,12 @@ import com.isotjs.todosian.ui.theme.TodosianTheme
 import com.isotjs.todosian.data.settings.ThemeMode
 import kotlinx.coroutines.flow.MutableStateFlow
 
+/** Request to open the add-task flow; [categoryUri] non-null routes straight into that note. */
+data class AddTaskRequest(val tick: Long, val categoryUri: String?)
+
 class MainActivity : ComponentActivity() {
 
-    private val addTaskSignal = MutableStateFlow(0L)
+    private val addTaskSignal = MutableStateFlow(AddTaskRequest(0L, null))
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -28,7 +31,7 @@ class MainActivity : ComponentActivity() {
         val preferencesManager = (application as TodosianApplication).preferencesManager
         val fileRepository = (application as TodosianApplication).fileRepository
         val appSettingsRepository = (application as TodosianApplication).appSettingsRepository
-        val initialAddTaskTick = addTaskSignal.value
+        val initialAddTaskRequest = addTaskSignal.value
         setContent {
             val settings = appSettingsRepository.settings.collectAsStateWithLifecycle(
                 initialValue = com.isotjs.todosian.data.settings.AppSettings(),
@@ -54,7 +57,7 @@ class MainActivity : ComponentActivity() {
                         appSettingsRepository = appSettingsRepository,
                         preferencesManager = preferencesManager,
                         addTaskSignal = addTaskSignal,
-                        initialAddTaskTick = initialAddTaskTick,
+                        initialAddTaskRequest = initialAddTaskRequest,
                     )
                 }
             }
@@ -68,13 +71,17 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleIntent(intent: Intent?) {
-        if (intent?.getBooleanExtra(EXTRA_OPEN_ADD_TASK, false) == true) {
-            addTaskSignal.value = addTaskSignal.value + 1L
-            intent.removeExtra(EXTRA_OPEN_ADD_TASK)
+        val wantsGlobalAdd = intent?.getBooleanExtra(EXTRA_OPEN_ADD_TASK, false) == true
+        val categoryUri = intent?.getStringExtra(EXTRA_OPEN_ADD_TASK_CATEGORY)
+        if (wantsGlobalAdd || categoryUri != null) {
+            addTaskSignal.value = AddTaskRequest(addTaskSignal.value.tick + 1L, categoryUri)
+            intent?.removeExtra(EXTRA_OPEN_ADD_TASK)
+            intent?.removeExtra(EXTRA_OPEN_ADD_TASK_CATEGORY)
         }
     }
 
     companion object {
         const val EXTRA_OPEN_ADD_TASK = "open_add_task"
+        const val EXTRA_OPEN_ADD_TASK_CATEGORY = "open_add_task_category"
     }
 }

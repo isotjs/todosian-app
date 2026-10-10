@@ -34,26 +34,33 @@ fun TodosianApp(
     fileRepository: FileRepository,
     appSettingsRepository: AppSettingsRepository,
     preferencesManager: PreferencesManager,
-    addTaskSignal: StateFlow<Long>,
-    initialAddTaskTick: Long,
+    addTaskSignal: StateFlow<AddTaskRequest>,
+    initialAddTaskRequest: AddTaskRequest,
 ) {
     val navController = rememberNavController()
-    val addTaskTick by addTaskSignal.collectAsStateWithLifecycle(initialValue = initialAddTaskTick)
-    val startDestination = remember(fileRepository, addTaskTick) {
+    val addTaskRequest by addTaskSignal.collectAsStateWithLifecycle(initialValue = initialAddTaskRequest)
+    val startDestination = remember(fileRepository, addTaskRequest) {
         when {
             fileRepository.getFolderUri() == null -> Routes.Onboarding
-            addTaskTick > 0L -> Routes.AddTask
+            addTaskRequest.tick > 0L && addTaskRequest.categoryUri != null ->
+                Routes.category(Uri.parse(addTaskRequest.categoryUri), addTodo = true)
+            addTaskRequest.tick > 0L -> Routes.AddTask
             else -> Routes.Home
         }
     }
 
-    LaunchedEffect(addTaskTick) {
-        if (addTaskTick > 0L &&
-            fileRepository.getFolderUri() != null &&
-            navController.currentDestination?.route != Routes.AddTask
-        ) {
-            navController.navigate(Routes.AddTask) {
-                launchSingleTop = true
+    LaunchedEffect(addTaskRequest) {
+        val request = addTaskRequest
+        if (request.tick > 0L && fileRepository.getFolderUri() != null) {
+            val destination = navController.currentDestination?.route
+            when {
+                request.categoryUri != null && destination != Routes.Category ->
+                    navController.navigate(
+                        Routes.category(Uri.parse(request.categoryUri), addTodo = true),
+                    ) { launchSingleTop = true }
+
+                request.categoryUri == null && destination != Routes.AddTask ->
+                    navController.navigate(Routes.AddTask) { launchSingleTop = true }
             }
         }
     }

@@ -7,6 +7,8 @@
     android:targetCellHeight="2"
     android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen"
+    android:configure="com.isotjs.todosian.ui.widget.WidgetConfigureActivity"
+    android:widgetFeatures="reconfigurable"
     android:initialLayout="@layout/glance_default_loading_layout"
     android:description="@string/widget_description"
     tools:ignore="UnusedAttribute" />
