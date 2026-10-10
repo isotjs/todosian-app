@@ -86,6 +86,21 @@ fun TodosianApp(
                 animationSpec = tween(300),
             ) + fadeOut(animationSpec = tween(150))
         },
+        // Predictive back gestures (swipe from edge) use these instead of popEnter/popExit.
+        // Without them, the system's default scale-down "zoom out" animation plays, which
+        // clashes with the app's slide-based motion language.
+        predictivePopEnterTransition = { _ ->
+            slideInHorizontally(
+                initialOffsetX = { -it / 4 },
+                animationSpec = tween(300),
+            ) + fadeIn(animationSpec = tween(150))
+        },
+        predictivePopExitTransition = { _ ->
+            slideOutHorizontally(
+                targetOffsetX = { it },
+                animationSpec = tween(300),
+            ) + fadeOut(animationSpec = tween(150))
+        },
     ) {
         composable(Routes.Onboarding) {
             OnboardingScreen(
