@@ -38,6 +38,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -353,6 +354,15 @@ fun HomeScreen(
             FloatingActionButton(
                 onClick = { showNewCategorySheet = true },
                 shape = todosianFabShape(),
+                // The cookie shape is concave; Skia's spot-shadow tessellation for concave
+                // outlines is pathologically slow and freezes the RenderThread during
+                // navigation animations. Keep depth via tonal colors instead of a shadow.
+                elevation = FloatingActionButtonDefaults.elevation(
+                    defaultElevation = 0.dp,
+                    pressedElevation = 0.dp,
+                    focusedElevation = 0.dp,
+                    hoveredElevation = 0.dp,
+                ),
             ) {
                 Icon(
                     imageVector = Icons.Filled.Add,
