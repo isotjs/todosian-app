@@ -83,6 +83,15 @@ class WidgetConfigureActivity : ComponentActivity() {
             return
         }
 
+        val boundProvider = AppWidgetManager.getInstance(this)
+            .getAppWidgetInfo(appWidgetId)
+            ?.provider
+        if (boundProvider != null && boundProvider.packageName != packageName) {
+            setResult(RESULT_CANCELED)
+            finish()
+            return
+        }
+
         val app = application as? TodosianApplication
         if (app == null) {
             setResult(RESULT_CANCELED)

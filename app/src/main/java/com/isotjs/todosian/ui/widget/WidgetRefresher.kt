@@ -302,7 +302,7 @@ object WidgetRefresher {
         if (selection.categoryUri != null && resolved == null) {
             // The bound note was renamed or deleted; keep the title so the user knows which
             // selection to redo, and surface a recoverable state instead of an empty list.
-            Log.d(TAG, "Selection not found: uri=${selection.categoryUri}")
+            Log.d(TAG, "Widget selection no longer resolves to a note")
             return WidgetSnapshot(
                 hasFolder = true,
                 activeCount = 0,

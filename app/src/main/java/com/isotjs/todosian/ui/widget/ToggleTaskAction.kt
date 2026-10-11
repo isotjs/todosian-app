@@ -24,7 +24,7 @@ class ToggleTaskAction : ActionCallback {
         val lineIndex = parameters[PARAM_LINE_INDEX] ?: return
         val expectedText = parameters[PARAM_TODO_TEXT] ?: return
 
-        Log.d(TAG, "Action received: uri=$categoryUriString line=$lineIndex expectedText='$expectedText'")
+        Log.d(TAG, "Toggle requested for line=$lineIndex")
 
         val app = context.applicationContext as? TodosianApplication
         val fileRepository = app?.fileRepository
@@ -56,7 +56,7 @@ class ToggleTaskAction : ActionCallback {
                     } else {
                         Log.w(
                             TAG,
-                            "Todo '$expectedText' not found in $categoryUri, aborting toggle.",
+                            "Todo not found at or near line $lineIndex, aborting toggle.",
                         )
                         return@updateLines null
                     }
@@ -76,13 +76,13 @@ class ToggleTaskAction : ActionCallback {
                     enableTasksPlugin = settings.enableTasksPluginSupport,
                 )
                 if (updatedLines == null) {
-                    Log.w(TAG, "Unable to toggle line $targetIndex in $categoryUri")
+                    Log.w(TAG, "Unable to toggle line $targetIndex")
                 }
                 updatedLines
             }
 
             if (updateResult.isFailure) {
-                Log.w(TAG, "Failed to write toggled line to $categoryUri", updateResult.exceptionOrNull())
+                Log.w(TAG, "Failed to write toggled line", updateResult.exceptionOrNull())
                 return@withContext
             }
 

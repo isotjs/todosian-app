@@ -28,8 +28,24 @@ import kotlinx.coroutines.sync.withLock
 import com.isotjs.todosian.ui.widget.WidgetRefresher
 import java.time.LocalDate
 
+private const val CONTENT_SCHEME = "content"
+
+internal fun isDocumentWithinFolder(
+    folderAuthority: String?,
+    candidateScheme: String?,
+    candidateAuthority: String?,
+    candidateDocumentId: String?,
+): Boolean {
+    if (candidateScheme != CONTENT_SCHEME) return false
+    if (folderAuthority.isNullOrEmpty()) return false
+    if (candidateAuthority != folderAuthority) return false
+    return !candidateDocumentId.isNullOrEmpty()
+}
+
 interface FileRepository {
     fun getFolderUri(): Uri?
+
+    fun isCategoryUri(uri: Uri): Boolean
 
     fun clearFolderUri()
 
@@ -102,6 +118,21 @@ class SafFileRepository(
 
     override fun getFolderUri(): Uri? = preferencesManager.getFolderUri()
 
+    override fun isCategoryUri(uri: Uri): Boolean {
+        val folderUri = getFolderUri() ?: return false
+        if (folderUri == uri) return false
+        val documentId = runCatching { DocumentsContract.getDocumentId(uri) }.getOrNull()
+        return isDocumentWithinFolder(
+            folderAuthority = folderUri.authority,
+            candidateScheme = uri.scheme,
+            candidateAuthority = uri.authority,
+            candidateDocumentId = documentId,
+        )
+    }
+
+    private fun <T> foreignUriError(): Result<T> =
+        Result.failure(IllegalArgumentException("URI is not a note in the selected folder"))
+
     override fun clearFolderUri() {
         preferencesManager.clearFolderUri()
         scheduleWidgetUpdate()
@@ -161,6 +192,7 @@ class SafFileRepository(
     }
 
     override suspend fun readLines(uri: Uri): Result<List<String>> {
+        if (!isCategoryUri(uri)) return foreignUriError()
         return withContext(Dispatchers.IO) {
             runCatching {
                 fileMutex.withLock { readLinesInternal(uri) }
@@ -169,6 +201,7 @@ class SafFileRepository(
     }
 
     override suspend fun getDisplayName(uri: Uri): Result<String> {
+        if (!isCategoryUri(uri)) return foreignUriError()
         return withContext(Dispatchers.IO) {
             runCatching {
                 val file = DocumentFile.fromSingleUri(appContext, uri)
@@ -191,6 +224,7 @@ class SafFileRepository(
     }
 
     override suspend fun writeLines(uri: Uri, lines: List<String>): Result<Unit> {
+        if (!isCategoryUri(uri)) return foreignUriError()
         return withContext(Dispatchers.IO) {
             runCatching {
                 fileMutex.withLock { writeLinesInternal(uri, lines) }
@@ -199,6 +233,7 @@ class SafFileRepository(
     }
 
     override suspend fun updateLines(uri: Uri, transform: (List<String>) -> List<String>?): Result<Unit> {
+        if (!isCategoryUri(uri)) return foreignUriError()
         return withContext(Dispatchers.IO) {
             runCatching {
                 fileMutex.withLock {
@@ -263,6 +298,7 @@ class SafFileRepository(
     }
 
     override suspend fun moveTodoLine(sourceUri: Uri, targetUri: Uri, lineIndex: Int): Result<Unit> {
+        if (!isCategoryUri(sourceUri) || !isCategoryUri(targetUri)) return foreignUriError()
         return withContext(Dispatchers.IO) {
             runCatching {
                 val sourceLines = readLinesInternal(sourceUri)
@@ -280,6 +316,7 @@ class SafFileRepository(
     }
 
     override suspend fun copyTodoLine(sourceUri: Uri, targetUri: Uri, lineIndex: Int): Result<Unit> {
+        if (!isCategoryUri(sourceUri) || !isCategoryUri(targetUri)) return foreignUriError()
         return withContext(Dispatchers.IO) {
             runCatching {
                 val sourceLines = readLinesInternal(sourceUri)
