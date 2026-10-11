@@ -25,6 +25,7 @@ import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -39,6 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.glance.appwidget.GlanceAppWidgetManager
+import androidx.glance.appwidget.state.getAppWidgetState
 import androidx.glance.appwidget.state.updateAppWidgetState
 import androidx.glance.state.PreferencesGlanceStateDefinition
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -62,6 +64,10 @@ import kotlinx.coroutines.launch
  */
 class WidgetConfigureActivity : ComponentActivity() {
 
+    // Hoisted "show completed" preference; pre-filled asynchronously from the widget state so
+    // reconfiguring shows the widget's current value.
+    private val showCompleted = mutableStateOf(true)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -81,6 +87,20 @@ class WidgetConfigureActivity : ComponentActivity() {
             setResult(RESULT_CANCELED)
             finish()
             return
+        }
+
+        // Pre-fill the screen with the widget's current preferences (reconfigure case); the
+        // state read is suspending, so it lands in the hoisted state asynchronously.
+        lifecycleScope.launch {
+            showCompleted.value = runCatching {
+                val glanceId = GlanceAppWidgetManager(this@WidgetConfigureActivity)
+                    .getGlanceIdBy(appWidgetId)
+                getAppWidgetState(
+                    this@WidgetConfigureActivity,
+                    PreferencesGlanceStateDefinition,
+                    glanceId,
+                )[KEY_SHOW_COMPLETED] ?: true
+            }.getOrDefault(true)
         }
 
         val initialSettings = app.appSettingsRepository.settings
@@ -104,7 +124,14 @@ class WidgetConfigureActivity : ComponentActivity() {
                 ) {
                     WidgetConfigureScreen(
                         fileRepository = app.fileRepository,
-                        onConfirm = { selection -> persistSelection(appWidgetId, selection) },
+                        showCompleted = showCompleted.value,
+                        onShowCompletedChange = { checked ->
+                            showCompleted.value = checked
+                            persistPreferences(appWidgetId, selection = null, showCompleted = checked)
+                        },
+                        onConfirm = { selection ->
+                            persistPreferences(appWidgetId, selection, showCompleted.value)
+                        },
                         onCancel = {
                             setResult(RESULT_CANCELED)
                             finish()
@@ -115,26 +142,38 @@ class WidgetConfigureActivity : ComponentActivity() {
         }
     }
 
-    private fun persistSelection(appWidgetId: Int, selection: WidgetSelection) {
+    /**
+     * Persists widget preferences and rebuilds the snapshots so changes show immediately.
+     *
+     * A non-null [selection] is the placement-confirming write (finishes with RESULT_OK);
+     * a null selection only persists the "show completed" toggle, leaving the activity open
+     * and the stored selection untouched.
+     */
+    private fun persistPreferences(appWidgetId: Int, selection: WidgetSelection?, showCompleted: Boolean) {
         val context = this
         lifecycleScope.launch {
             val result = runCatching {
                 val glanceId = GlanceAppWidgetManager(context).getGlanceIdBy(appWidgetId) // validates the binding
                 updateAppWidgetState(context, PreferencesGlanceStateDefinition, glanceId) { prefs ->
-                    prefs.toMutablePreferences().apply { selection.writeTo(this) }
+                    prefs.toMutablePreferences().apply {
+                        selection?.writeTo(this)
+                        this[KEY_SHOW_COMPLETED] = showCompleted
+                    }
                 }
-                // Rebuild the snapshots now so the widget shows the bound list immediately.
+                // Rebuild the snapshots now so the widget shows the new preferences immediately.
                 // A snapshot may already exist (a placement-time update can race the picker),
-                // so writing the selection alone would leave the old content on screen until
+                // so writing the state alone would leave the old content on screen until
                 // the next file change.
                 WidgetRefresher.refreshWidgets(context)
             }
-            if (result.isSuccess) {
-                setResult(RESULT_OK, Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId))
-            } else {
-                setResult(RESULT_CANCELED)
+            if (selection != null) {
+                if (result.isSuccess) {
+                    setResult(RESULT_OK, Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId))
+                } else {
+                    setResult(RESULT_CANCELED)
+                }
+                finish()
             }
-            finish()
         }
     }
 }
@@ -143,6 +182,8 @@ class WidgetConfigureActivity : ComponentActivity() {
 @Composable
 private fun WidgetConfigureScreen(
     fileRepository: FileRepository?,
+    showCompleted: Boolean,
+    onShowCompletedChange: (Boolean) -> Unit,
     onConfirm: (WidgetSelection) -> Unit,
     onCancel: () -> Unit,
     modifier: Modifier = Modifier,
@@ -194,6 +235,19 @@ private fun WidgetConfigureScreen(
                         .padding(padding)
                         .padding(horizontal = TodosianDimens.ScreenHorizontalPadding),
                 ) {
+                    item(key = SHOW_COMPLETED_KEY) {
+                        ListItem(
+                            headlineContent = {
+                                Text(text = stringResource(R.string.widget_configure_show_completed))
+                            },
+                            trailingContent = {
+                                Switch(checked = showCompleted, onCheckedChange = onShowCompletedChange)
+                            },
+                            colors = ListItemDefaults.colors(
+                                containerColor = Color.Transparent,
+                            ),
+                        )
+                    }
                     item(key = ALL_LISTS_KEY) {
                         ListItem(
                             headlineContent = {
@@ -247,3 +301,4 @@ private fun WidgetConfigureScreen(
 }
 
 private const val ALL_LISTS_KEY = "all_lists"
+private const val SHOW_COMPLETED_KEY = "show_completed"

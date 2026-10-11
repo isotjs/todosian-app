@@ -6,6 +6,7 @@ import android.util.Log
 import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.mutablePreferencesOf
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -28,7 +29,16 @@ internal val KEY_WIDGET_ACTIVE_COUNT = intPreferencesKey("widget_active_count")
 internal val KEY_WIDGET_ITEM_COUNT = intPreferencesKey("widget_item_count")
 internal val KEY_SELECTED_CATEGORY_URI = stringPreferencesKey("selected_category_uri")
 internal val KEY_SELECTED_CATEGORY_NAME = stringPreferencesKey("selected_category_name")
+internal val KEY_SHOW_COMPLETED = booleanPreferencesKey("show_completed")
 private const val ITEM_KEY_PREFIX = "widget_item_"
+
+/**
+ * Drops checked entries from the snapshot when the widget's "show completed" preference is off.
+ */
+internal fun filterCompletedItems(
+    items: List<WidgetTaskItem>,
+    showCompleted: Boolean,
+): List<WidgetTaskItem> = if (showCompleted) items else items.filter { !it.todo.isDone }
 
 /**
  * Which note a widget instance is bound to. Null [categoryUri] means "All lists" (the unbound,
@@ -225,16 +235,16 @@ object WidgetRefresher {
 
         refreshMutex.withLock {
             val categories = fileRepository.getCategories().getOrDefault(emptyList())
-            val selections = glanceIds.map { glanceId ->
+            val widgetStates = glanceIds.map { glanceId ->
                 runCatching {
-                    WidgetSelection.from(
-                        getAppWidgetState(context, PreferencesGlanceStateDefinition, glanceId)
-                    )
+                    getAppWidgetState(context, PreferencesGlanceStateDefinition, glanceId)
                 }.getOrElse {
                     Log.w(TAG, "Unable to read widget state for $glanceId", it)
-                    WidgetSelection.ALL
+                    emptyPreferences()
                 }
             }
+            val selections = widgetStates.map { WidgetSelection.from(it) }
+            val showCompletedFlags = widgetStates.map { it[KEY_SHOW_COMPLETED] ?: true }
 
             // Read each needed file exactly once per refresh, no matter how many widgets share it.
             val neededUris = buildList {
@@ -248,8 +258,14 @@ object WidgetRefresher {
             }
 
             val hasFolder = fileRepository.getFolderUri() != null
-            for ((glanceId, selection) in glanceIds.zip(selections)) {
-                val snapshot = buildSnapshot(hasFolder, categories, linesByUri, selection)
+            for ((index, glanceId) in glanceIds.withIndex()) {
+                val snapshot = buildSnapshot(
+                    hasFolder = hasFolder,
+                    categories = categories,
+                    linesByUri = linesByUri,
+                    selection = selections[index],
+                    showCompleted = showCompletedFlags[index],
+                )
                 runCatching {
                     updateAppWidgetState(context, PreferencesGlanceStateDefinition, glanceId) { prefs ->
                         prefs.toMutablePreferences().apply { snapshot.writeTo(this) }
@@ -279,6 +295,7 @@ object WidgetRefresher {
         categories: List<Category>,
         linesByUri: Map<Uri, List<String>>,
         selection: WidgetSelection,
+        showCompleted: Boolean,
     ): WidgetSnapshot {
         val resolved = resolveSelectedCategory(categories, selection)
 
@@ -317,7 +334,8 @@ object WidgetRefresher {
         return WidgetSnapshot(
             hasFolder = hasFolder,
             activeCount = activeTasks.size,
-            items = (activeTasks + completedTasks).take(MAX_TASKS),
+            items = filterCompletedItems(activeTasks + completedTasks, showCompleted)
+                .take(MAX_TASKS),
             title = resolved?.displayName,
             selectedCategoryUri = resolved?.uri?.toString(),
             missingList = false,

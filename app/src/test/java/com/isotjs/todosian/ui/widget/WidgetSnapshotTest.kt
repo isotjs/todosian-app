@@ -272,4 +272,31 @@ class WidgetSnapshotTest {
 
         assertNull(resolveCategoryKey(keys, selection))
     }
+
+    @Test
+    fun `filter keeps all entries when show completed is on`() {
+        val items = listOf(
+            item("Active", lineIndex = 0),
+            item("Done", isDone = true, lineIndex = 1),
+        )
+
+        assertEquals(items, filterCompletedItems(items, showCompleted = true))
+    }
+
+    @Test
+    fun `filter drops checked entries when show completed is off`() {
+        val items = listOf(
+            item("Active", lineIndex = 0),
+            item("Done", isDone = true, lineIndex = 1),
+            item("Also done", isDone = true, lineIndex = 2),
+        )
+
+        assertEquals(listOf(item("Active", lineIndex = 0)), filterCompletedItems(items, showCompleted = false))
+    }
+
+    @Test
+    fun `filter of empty list stays empty regardless of the flag`() {
+        assertEquals(emptyList<WidgetTaskItem>(), filterCompletedItems(emptyList(), showCompleted = false))
+        assertEquals(emptyList<WidgetTaskItem>(), filterCompletedItems(emptyList(), showCompleted = true))
+    }
 }
