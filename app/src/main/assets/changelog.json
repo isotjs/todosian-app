@@ -24,6 +24,38 @@
         "description": "A clearer first-run experience with an animated hero and a more prominent folder picker."
       },
       {
+        "icon": "Widgets",
+        "title": "Better Widgets",
+        "description": "Choose which list a widget shows, hide completed tasks, and see it update the moment your todos change.",
+        "contributor": {
+          "name": "willl03",
+          "url": "https://github.com/willl03"
+        }
+      },
+      {
+        "icon": "Swipe",
+        "title": "Polished Navigation",
+        "description": "Back gestures now play a smooth slide transition, and the home and note screens refresh when you return to the app.",
+        "contributor": {
+          "name": "willl03",
+          "url": "https://github.com/willl03"
+        }
+      },
+      {
+        "icon": "BugReport",
+        "title": "Rendering Freeze Fix",
+        "description": "Fixed a rare freeze caused by the floating action button's shadow.",
+        "contributor": {
+          "name": "willl03",
+          "url": "https://github.com/willl03"
+        }
+      },
+      {
+        "icon": "Security",
+        "title": "Safer Note Links",
+        "description": "Notes opened from external intents and widgets are now validated to keep your files safe."
+      },
+      {
         "icon": "Speed",
         "title": "Updated Foundation",
         "description": "Updated Gradle, Android Gradle Plugin, Kotlin, Compose BOM, and AndroidX libraries."

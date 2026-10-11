@@ -4,11 +4,15 @@ New Features:
 • Redesigned Settings - options are now grouped into cards with a large title that collapses as you scroll, and dependent options animate in as you enable them
 • New empty states - the home, category, daily focus, and add-task screens now show friendly illustrated placeholders instead of plain text
 • Redesigned onboarding - a clearer first-run screen with an animated hero and a prominent folder picker
+• Better widgets - choose which list a widget shows, hide completed tasks, and see it update the moment your todos change (thanks @willl03)
 
 Improvements:
 • Smoother motion throughout - the app now uses the Material 3 Expressive motion scheme for consistent, more natural animations
 • More expressive loading indicators while your files are being read
 • Refreshed floating action buttons with a playful cookie shape
+• Smoother navigation - back gestures now play a slide transition, and the home and note screens refresh when you return (thanks @willl03)
+• Fixed a rare freeze caused by the floating action button's shadow (thanks @willl03)
 
 Under the hood:
 • Updated Gradle, Android Gradle Plugin, Kotlin, Compose BOM, and AndroidX libraries
+• Notes opened from external intents and widgets are now validated for safety

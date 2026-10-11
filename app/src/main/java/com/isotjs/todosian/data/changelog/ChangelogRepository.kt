@@ -10,6 +10,7 @@ import androidx.compose.material.icons.filled.FilterCenterFocus
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.SubdirectoryArrowRight
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Stars
@@ -110,6 +111,7 @@ object ChangelogRepository {
             "Speed" -> Icons.Filled.Speed
             "BugReport" -> Icons.Filled.BugReport
             "Stars" -> Icons.Filled.Stars
+            "Security" -> Icons.Filled.Security
             "Widgets" -> Icons.Filled.Widgets
             else -> Icons.Filled.Info
         }
