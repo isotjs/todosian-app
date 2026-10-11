@@ -126,7 +126,9 @@ fun HomeScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
     LaunchedEffect(lifecycleOwner, viewModel) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-            viewModel.refreshIfDirty()
+            // Re-scan on every resume so tasks checked in the widget, edits made in Obsidian,
+            // or sync changes that happened while the app was away are picked up.
+            viewModel.refresh(showLoading = false)
         }
     }
 

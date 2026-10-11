@@ -12,12 +12,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.FlowPreview
 
 data class HomeUiState(
     val isLoading: Boolean = false,
@@ -42,39 +37,8 @@ class HomeViewModel(
     private val _events = MutableSharedFlow<Event>()
     val events = _events.asSharedFlow()
 
-    private val _dirtyVersion = MutableStateFlow(0L)
-
-    private var observeJob: Job? = null
-    private var observedFolderUri: Uri? = null
-
     init {
         refresh()
-    }
-
-    private fun ensureFolderObserver(folderUri: Uri) {
-        if (observedFolderUri == folderUri && observeJob?.isActive == true) return
-
-        observeJob?.cancel()
-        observedFolderUri = folderUri
-
-        @OptIn(FlowPreview::class)
-        observeJob = viewModelScope.launch {
-            fileRepository.observeMarkdownFilesChanges(folderUri)
-                .debounce(350)
-                .catch {
-                    // Thanks god app still works without live updates.
-                }
-                .collectLatest {
-                    _dirtyVersion.value = System.currentTimeMillis()
-                }
-        }
-    }
-
-    fun refreshIfDirty() {
-        val version = _dirtyVersion.value
-        if (version <= 0L) return
-        _dirtyVersion.value = 0L
-        refresh(showLoading = false)
     }
 
     fun refresh(showLoading: Boolean = true) {
@@ -85,8 +49,6 @@ class HomeViewModel(
                 _uiState.value = HomeUiState(isLoading = false)
                 return@launch
             }
-
-            ensureFolderObserver(folderUri)
 
             val shouldShowLoading = showLoading || _uiState.value.categories.isEmpty()
             if (shouldShowLoading) {

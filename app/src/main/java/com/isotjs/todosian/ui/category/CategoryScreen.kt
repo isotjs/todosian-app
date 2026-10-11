@@ -59,9 +59,12 @@ import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.isotjs.todosian.R
 import com.isotjs.todosian.data.FileRepository
@@ -103,6 +106,15 @@ fun CategoryScreen(
         ),
     )
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    // The note may have changed while the app was away (widget toggle, Obsidian edit, sync);
+    // re-read the file whenever the screen becomes visible again.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(lifecycleOwner, viewModel) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            viewModel.refreshFromDisk(showLoading = false)
+        }
+    }
 
     val settings by appSettingsRepository.settings.collectAsStateWithLifecycle(
         initialValue = com.isotjs.todosian.data.settings.AppSettings(),
