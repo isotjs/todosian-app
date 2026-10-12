@@ -70,7 +70,7 @@ class ToggleTaskAction : ActionCallback {
                     return@updateLines null
                 }
 
-                val updatedLines = MarkdownParser.tryToggleLine(
+                val updatedLines = MarkdownParser.tryToggleTodoWithSubtasks(
                     lines = lines,
                     lineIndex = targetIndex,
                     enableTasksPlugin = settings.enableTasksPluginSupport,

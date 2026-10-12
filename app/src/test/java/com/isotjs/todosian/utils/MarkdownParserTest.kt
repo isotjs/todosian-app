@@ -582,4 +582,179 @@ class MarkdownParserTest {
             result[0],
         )
     }
+
+    @Test
+    fun toggleLineWithSubtasks_completes_subtasks_when_parent_checked() {
+        val lines = listOf(
+            "- [ ] Parent",
+            "  - [ ] Child one",
+            "    - [ ] Grandchild",
+            "  - [x] Child done",
+            "- [ ] Sibling",
+        )
+
+        val result = MarkdownParser.toggleLineWithSubtasks(
+            lines = lines,
+            lineIndex = 0,
+            enableTasksPlugin = false,
+        )
+
+        assertEquals(5, result.size)
+        assertEquals("- [x] Parent", result[0])
+        assertEquals("  - [x] Child one", result[1])
+        assertEquals("    - [x] Grandchild", result[2])
+        assertEquals("  - [x] Child done", result[3])
+        assertEquals("- [ ] Sibling", result[4])
+    }
+
+    @Test
+    fun toggleLineWithSubtasks_unchecking_parent_leaves_subtasks_unchanged() {
+        val lines = listOf(
+            "- [x] Parent",
+            "  - [x] Child one",
+            "  - [ ] Child two",
+        )
+
+        val result = MarkdownParser.toggleLineWithSubtasks(
+            lines = lines,
+            lineIndex = 0,
+            enableTasksPlugin = false,
+        )
+
+        assertEquals("- [ ] Parent", result[0])
+        assertEquals("  - [x] Child one", result[1])
+        assertEquals("  - [ ] Child two", result[2])
+    }
+
+    @Test
+    fun toggleLineWithSubtasks_plugin_adds_completion_dates_to_subtasks() {
+        val today = LocalDate.of(2024, 3, 15)
+        val lines = listOf(
+            "- [ ] Parent",
+            "  - [ ] Child 📅 2024-03-10",
+            "  - [x] Child done ✅ 2024-03-01",
+        )
+
+        val result = MarkdownParser.toggleLineWithSubtasks(
+            lines = lines,
+            lineIndex = 0,
+            enableTasksPlugin = true,
+            today = today,
+        )
+
+        assertEquals(3, result.size)
+        assertEquals("- [x] Parent ✅ 2024-03-15", result[0])
+        assertEquals("  - [x] Child 📅 2024-03-10 ✅ 2024-03-15", result[1])
+        assertEquals("  - [x] Child done ✅ 2024-03-01", result[2])
+    }
+
+    @Test
+    fun toggleLineWithSubtasks_without_subtasks_matches_toggle_line() {
+        val lines = listOf(
+            "Intro",
+            "- [ ] Task",
+            "Outro",
+        )
+
+        val result = MarkdownParser.toggleLineWithSubtasks(
+            lines = lines,
+            lineIndex = 1,
+            enableTasksPlugin = false,
+        )
+
+        assertEquals(listOf("Intro", "- [x] Task", "Outro"), result)
+    }
+
+    @Test
+    fun toggleLineWithSubtasks_recurring_inserts_new_occurrence_above_block() {
+        val today = LocalDate.of(2024, 3, 15)
+        val lines = listOf(
+            "- [ ] Water plants 📅 2024-03-14 🔁 every day",
+            "  - [ ] Get watering can",
+            "  - [ ] Check soil",
+        )
+
+        val result = MarkdownParser.toggleLineWithSubtasks(
+            lines = lines,
+            lineIndex = 0,
+            enableTasksPlugin = true,
+            today = today,
+        )
+
+        assertEquals(4, result.size)
+        assertEquals("- [ ] Water plants 📅 2024-03-15 🔁 every day", result[0])
+        assertEquals("- [x] Water plants 📅 2024-03-14 🔁 every day ✅ 2024-03-15", result[1])
+        assertEquals("  - [x] Get watering can ✅ 2024-03-15", result[2])
+        assertEquals("  - [x] Check soil ✅ 2024-03-15", result[3])
+    }
+
+    @Test
+    fun tryToggleTodoWithSubtasks_returns_null_for_non_todo_line() {
+        val lines = listOf("# Heading")
+
+        val result = MarkdownParser.tryToggleTodoWithSubtasks(
+            lines = lines,
+            lineIndex = 0,
+            enableTasksPlugin = false,
+        )
+
+        assertEquals(null, result)
+    }
+
+    @Test
+    fun filterHiddenSubtasks_with_no_collapsed_returns_all() {
+        val todos = MarkdownParser.parse(listOf("- [ ] A", "  - [ ] B"))
+
+        val visible = MarkdownParser.filterHiddenSubtasks(todos, emptySet())
+
+        assertEquals(2, visible.size)
+    }
+
+    @Test
+    fun filterHiddenSubtasks_hides_descendants_of_collapsed_parent() {
+        val todos = MarkdownParser.parse(listOf(
+            "- [ ] A",
+            "  - [ ] B",
+            "    - [ ] C",
+            "  - [ ] D",
+            "- [ ] E",
+            "  - [ ] F",
+        ))
+
+        val visible = MarkdownParser.filterHiddenSubtasks(todos, setOf(0))
+
+        assertEquals(listOf("A", "E", "F"), visible.map { it.text })
+    }
+
+    @Test
+    fun filterHiddenSubtasks_collapsing_child_keeps_parent_and_siblings_visible() {
+        val todos = MarkdownParser.parse(listOf(
+            "- [ ] A",
+            "  - [ ] B",
+            "    - [ ] C",
+            "  - [ ] D",
+        ))
+
+        val visible = MarkdownParser.filterHiddenSubtasks(todos, setOf(1))
+
+        assertEquals(listOf("A", "B", "D"), visible.map { it.text })
+    }
+
+    @Test
+    fun hiddenSubtaskLineIndices_hides_completed_subtask_in_other_section() {
+        val all = MarkdownParser.parse(listOf(
+            "- [ ] A",
+            "  - [x] B done",
+            "  - [ ] C",
+        ))
+        val activeTodos = all.filter { !it.isDone }
+        val completedTodos = all.filter { it.isDone }
+
+        val hidden = MarkdownParser.hiddenSubtaskLineIndices(
+            todos = activeTodos + completedTodos,
+            collapsedLineIndices = setOf(0),
+        )
+
+        assertEquals(setOf(1, 2), hidden)
+    }
 }

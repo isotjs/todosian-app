@@ -128,7 +128,7 @@ class CategoryViewModel(
     fun toggleTodo(todo: Todo, enableTasksPluginSupport: Boolean) {
         viewModelScope.launch {
             val previousLines = _uiState.value.lines
-            val newLines = MarkdownParser.tryToggleLine(
+            val newLines = MarkdownParser.tryToggleTodoWithSubtasks(
                 lines = previousLines,
                 lineIndex = todo.lineIndex,
                 enableTasksPlugin = enableTasksPluginSupport,

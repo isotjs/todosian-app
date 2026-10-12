@@ -129,7 +129,7 @@ class DailyFocusViewModel(
     fun toggleTodo(task: DailyFocusTask) {
         viewModelScope.launch {
             val previousLines = currentLinesFor(task)
-            val newLines = MarkdownParser.tryToggleLine(
+            val newLines = MarkdownParser.tryToggleTodoWithSubtasks(
                 lines = previousLines,
                 lineIndex = task.todo.lineIndex,
                 enableTasksPlugin = enableTasksPluginSupport,

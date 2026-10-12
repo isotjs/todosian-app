@@ -56,53 +56,70 @@ object MarkdownParser {
 
         val line = lines[lineIndex]
         val match = todoRegex.matchEntire(line) ?: return lines
-
-        val indentPrefix = match.groupValues[1]
         val isDone = match.groupValues[2] == "x"
-        val remainder = match.groupValues[3]
-        val newMark = if (isDone) " " else "x"
 
-        val todayStr = today.toString()
-
-        val newRemainder = if (!enableTasksPlugin) {
-            remainder
-        } else {
-            val withoutDoneDate = removeCompletionDate(remainder)
-            if (!isDone) {
-                withoutDoneDate + " ✅ $todayStr"
-            } else {
-                withoutDoneDate
-            }
-        }
-
-        val newLine = "$indentPrefix- [$newMark] ${newRemainder.trimEnd()}"
         val updatedLines = lines.toMutableList().apply {
-            this[lineIndex] = newLine
+            this[lineIndex] = toggledLine(this[lineIndex], enableTasksPlugin, today)
         }
-        
-        if (!isDone && enableTasksPlugin) {
-            val parsed = parseRemainder(remainder)
-            val rule = parsed.meta.recurrence
-            if (!rule.isNullOrBlank()) {
-                val nextLine = buildRecurredTaskLine(
-                    indentPrefix = indentPrefix,
-                    taskText = parsed.mainText,
-                    originalMeta = parsed.meta,
-                    rule = rule,
-                    today = today,
-                )
-                if (nextLine != null) {
-                    return updatedLines.toMutableList().apply {
-                        add(lineIndex, nextLine)
-                    }
-                }
+
+        if (!isDone) {
+            insertRecurredOccurrenceIfAny(updatedLines, match, lineIndex, enableTasksPlugin, today)?.let {
+                return it
             }
         }
 
         return updatedLines
     }
 
-    fun tryToggleLine(
+    /**
+     * Toggles a todo line and, when the todo is being marked as completed, also marks all of its
+     * sub-todos (the following lines with a greater indent) as completed. Sub-todos that are
+     * already completed are left untouched, including their metadata. Re-opening a todo never
+     * touches its sub-todos.
+     */
+    fun toggleLineWithSubtasks(
+        lines: List<String>,
+        lineIndex: Int,
+        enableTasksPlugin: Boolean,
+        today: LocalDate = LocalDate.now(),
+    ): List<String> {
+        if (lineIndex !in lines.indices) return lines
+
+        val line = lines[lineIndex]
+        val match = todoRegex.matchEntire(line) ?: return lines
+        val parentIndent = indentLevel(match.groupValues[1])
+        val isDone = match.groupValues[2] == "x"
+
+        var endIndex = lineIndex + 1
+        while (endIndex < lines.size) {
+            val nextLine = lines[endIndex]
+            val nextMatch = todoRegex.matchEntire(nextLine) ?: break
+            if (indentLevel(nextMatch.groupValues[1]) > parentIndent) {
+                endIndex++
+            } else {
+                break
+            }
+        }
+
+        val updatedLines = lines.toMutableList()
+        updatedLines[lineIndex] = toggledLine(updatedLines[lineIndex], enableTasksPlugin, today)
+
+        if (!isDone) {
+            for (i in lineIndex + 1 until endIndex) {
+                updatedLines[i] = setLineDone(updatedLines[i], enableTasksPlugin, today)
+            }
+        }
+
+        if (!isDone) {
+            insertRecurredOccurrenceIfAny(updatedLines, match, lineIndex, enableTasksPlugin, today)?.let {
+                return it
+            }
+        }
+
+        return updatedLines
+    }
+
+    fun tryToggleTodoWithSubtasks(
         lines: List<String>,
         lineIndex: Int,
         enableTasksPlugin: Boolean,
@@ -111,7 +128,60 @@ object MarkdownParser {
         if (lineIndex !in lines.indices) return null
         val line = lines[lineIndex]
         if (!isTodoLine(line)) return null
-        return toggleLine(lines, lineIndex, enableTasksPlugin, today)
+        return toggleLineWithSubtasks(lines, lineIndex, enableTasksPlugin, today)
+    }
+
+    /**
+     * Computes the line indices of all todos that are sub-todos of a collapsed todo. A todo is
+     * considered collapsed when its 0-based line index is contained in [collapsedLineIndices].
+     * Descendants of hidden sub-todos are counted as hidden as well.
+     */
+    fun hiddenSubtaskLineIndices(
+        todos: List<Todo>,
+        collapsedLineIndices: Set<Int>,
+    ): Set<Int> {
+        if (collapsedLineIndices.isEmpty() || todos.isEmpty()) return emptySet()
+
+        val ordered = todos.sortedBy { it.lineIndex }
+        val hiddenLineIndices = HashSet<Int>()
+
+        for (i in 1 until ordered.size) {
+            val todo = ordered[i]
+
+            var j = i - 1
+            var ancestor: Todo? = null
+            while (j >= 0) {
+                val candidate = ordered[j]
+                if (candidate.indentLevel < todo.indentLevel) {
+                    ancestor = candidate
+                    break
+                }
+                j--
+            }
+
+            val isHidden = ancestor != null && (
+                ancestor.lineIndex in collapsedLineIndices ||
+                    ancestor.lineIndex in hiddenLineIndices
+                )
+            if (isHidden) {
+                hiddenLineIndices.add(todo.lineIndex)
+            }
+        }
+
+        return hiddenLineIndices
+    }
+
+    /**
+     * Removes all todos that are sub-todos of a collapsed todo. A todo is considered collapsed
+     * when its 0-based line index is contained in [collapsedLineIndices]. Descendants of hidden
+     * sub-todos are hidden as well. The input order of [todos] is preserved.
+     */
+    fun filterHiddenSubtasks(
+        todos: List<Todo>,
+        collapsedLineIndices: Set<Int>,
+    ): List<Todo> {
+        val hiddenLineIndices = hiddenSubtaskLineIndices(todos, collapsedLineIndices)
+        return todos.filterNot { it.lineIndex in hiddenLineIndices }
     }
 
     fun addTodo(
@@ -336,6 +406,81 @@ object MarkdownParser {
     }
 
     private fun todayString(today: LocalDate = LocalDate.now()): String = today.toString()
+
+    private fun toggledLine(
+        line: String,
+        enableTasksPlugin: Boolean,
+        today: LocalDate,
+    ): String {
+        val match = todoRegex.matchEntire(line) ?: return line
+        val indentPrefix = match.groupValues[1]
+        val isDone = match.groupValues[2] == "x"
+        val remainder = match.groupValues[3]
+        val newMark = if (isDone) " " else "x"
+
+        val newRemainder = if (!enableTasksPlugin) {
+            remainder
+        } else {
+            val withoutDoneDate = removeCompletionDate(remainder)
+            if (!isDone) {
+                withoutDoneDate + " ✅ ${today.toString()}"
+            } else {
+                withoutDoneDate
+            }
+        }
+
+        return "$indentPrefix- [$newMark] ${newRemainder.trimEnd()}"
+    }
+
+    private fun setLineDone(
+        line: String,
+        enableTasksPlugin: Boolean,
+        today: LocalDate,
+    ): String {
+        val match = todoRegex.matchEntire(line) ?: return line
+        if (match.groupValues[2] == "x") return line
+
+        val indentPrefix = match.groupValues[1]
+        val remainder = match.groupValues[3]
+        val newRemainder = if (!enableTasksPlugin) {
+            remainder
+        } else {
+            removeCompletionDate(remainder) + " ✅ ${today.toString()}"
+        }
+
+        return "$indentPrefix- [x] ${newRemainder.trimEnd()}"
+    }
+
+    /**
+     * When the tasks plugin is enabled and the toggled todo has a recurrence rule, inserts a new
+     * occurrence of that todo at [lineIndex] (above the already-toggled todo and its sub-todos).
+     * Returns the updated lines, or null when no occurrence should be inserted.
+     */
+    private fun insertRecurredOccurrenceIfAny(
+        updatedLines: MutableList<String>,
+        match: MatchResult,
+        lineIndex: Int,
+        enableTasksPlugin: Boolean,
+        today: LocalDate,
+    ): List<String>? {
+        if (!enableTasksPlugin) return null
+
+        val parsed = parseRemainder(match.groupValues[3])
+        val rule = parsed.meta.recurrence
+        if (rule.isNullOrBlank()) return null
+
+        val nextLine = buildRecurredTaskLine(
+            indentPrefix = match.groupValues[1],
+            taskText = parsed.mainText,
+            originalMeta = parsed.meta,
+            rule = rule,
+            today = today,
+        ) ?: return null
+
+        return updatedLines.toMutableList().apply {
+            add(lineIndex, nextLine)
+        }
+    }
 
     private fun buildRecurredTaskLine(
         indentPrefix: String,
