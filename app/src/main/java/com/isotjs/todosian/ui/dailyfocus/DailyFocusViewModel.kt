@@ -161,6 +161,7 @@ class DailyFocusViewModel(
         task: DailyFocusTask,
         newText: String,
         meta: MarkdownParser.TasksMeta?,
+        notes: List<String>,
     ) {
         viewModelScope.launch {
             val previousLines = currentLinesFor(task)
@@ -181,14 +182,15 @@ class DailyFocusViewModel(
                 }
                 updated
             }
+            val finalLines = MarkdownParser.tryEditTodoNotes(newLines, task.todo.lineIndex, notes) ?: newLines
 
-            applyLines(task.categoryUri, newLines)
+            applyLines(task.categoryUri, finalLines)
 
             inFlightWrites.incrementAndGet()
             try {
-                val write = fileRepository.writeLines(task.categoryUri, newLines)
+                val write = fileRepository.writeLines(task.categoryUri, finalLines)
                 if (write.isFailure) {
-                    if (currentLinesFor(task) == newLines) {
+                    if (currentLinesFor(task) == finalLines) {
                         applyLines(task.categoryUri, previousLines)
                     }
                     _events.emit(Event.ShowMessage(R.string.error_write_failed))

@@ -12,6 +12,7 @@ data class AppSettings(
     val enableTasksPluginSupport: Boolean = false,
     val tasksPluginUseEmojisInUi: Boolean = false,
     val enableSubtasks: Boolean = false,
+    val showNotesInTaskList: Boolean = true,
     val reminderTimeHour: Int = 19,
     val reminderTimeMinute: Int = 0,
 )

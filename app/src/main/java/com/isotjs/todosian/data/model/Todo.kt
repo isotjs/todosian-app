@@ -27,6 +27,9 @@ data class Todo(
     val lineIndex: Int,
     val indentLevel: Int = 0,
 
+    // Indented non-todo lines that belong to this todo (raw lines, indentation preserved)
+    val notes: List<String> = emptyList(),
+
     // Obsidian Tasks plugin metadata (Tasks Emoji Format)
     val dueDate: String? = null, // 📅 YYYY-MM-DD
     val startDate: String? = null, // 🛫 YYYY-MM-DD

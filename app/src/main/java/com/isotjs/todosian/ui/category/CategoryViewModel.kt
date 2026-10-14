@@ -233,6 +233,7 @@ class CategoryViewModel(
         newText: String,
         meta: MarkdownParser.TasksMeta?,
         enableTasksPluginSupport: Boolean,
+        notes: List<String>,
     ) {
         viewModelScope.launch {
             val previousLines = _uiState.value.lines
@@ -253,14 +254,15 @@ class CategoryViewModel(
                 }
                 updated
             }
+            val finalLines = MarkdownParser.tryEditTodoNotes(newLines, todo.lineIndex, notes) ?: newLines
 
-            applyLines(newLines)
+            applyLines(finalLines)
 
             inFlightWrites.incrementAndGet()
             try {
-                val write = fileRepository.writeLines(categoryUri, newLines)
+                val write = fileRepository.writeLines(categoryUri, finalLines)
                 if (write.isFailure) {
-                    if (_uiState.value.lines == newLines) {
+                    if (_uiState.value.lines == finalLines) {
                         applyLines(previousLines)
                     }
                     _events.emit(Event.ShowMessage(R.string.error_write_failed))

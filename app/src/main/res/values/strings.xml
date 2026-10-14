@@ -51,6 +51,8 @@
     <string name="category_add_subtask_hint">Subtask text</string>
     <string name="category_edit_todo_title">Edit todo</string>
     <string name="category_edit_todo_hint">Todo text</string>
+    <string name="task_notes_label">Notes</string>
+    <string name="task_notes_hint">Optional notes for this task</string>
     <string name="category_delete_todo_title">Delete todo?</string>
     <string name="category_delete_todo_body">This action removes the todo from the markdown file.</string>
     <string name="category_delete_todo_body_with_subtasks">This action removes the todo and its subtasks from the markdown file.</string>
@@ -194,6 +196,8 @@
 
     <string name="settings_enable_subtasks">Enable subtasks</string>
     <string name="settings_enable_subtasks_subtitle">Allow adding subtasks to todos.</string>
+    <string name="settings_show_notes_in_task_list">Show notes in task list</string>
+    <string name="settings_show_notes_in_task_list_subtitle">Display indented note lines under their task.</string>
     <string name="settings_notification_permission_denied">Notifications are disabled, so due reminders cannot be shown.</string>
 
     <string name="settings_reminder_time">Reminder time</string>

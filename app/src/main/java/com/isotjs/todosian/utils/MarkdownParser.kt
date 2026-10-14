@@ -22,6 +22,36 @@ object MarkdownParser {
     private fun isTodoLine(line: String): Boolean = todoRegex.matches(line)
 
     fun parse(lines: List<String>): List<Todo> {
+        val notesByTodoLineIndex = HashMap<Int, MutableList<String>>()
+        val ownerStack = ArrayList<Int>()
+        var previousLineBlank = true
+
+        for (index in lines.indices) {
+            val line = lines[index]
+            val match = todoRegex.matchEntire(line)
+            if (match != null) {
+                val indent = indentLevel(match.groupValues[1])
+                while (ownerStack.isNotEmpty() && lineIndent(lines[ownerStack[ownerStack.size - 1]]) >= indent) {
+                    ownerStack.removeAt(ownerStack.size - 1)
+                }
+                ownerStack.add(index)
+            } else if (line.trim().isNotEmpty() && !previousLineBlank) {
+                val indent = lineIndent(line)
+                for (j in ownerStack.size - 1 downTo 0) {
+                    if (lineIndent(lines[ownerStack[j]]) < indent) {
+                        var notes = notesByTodoLineIndex[ownerStack[j]]
+                        if (notes == null) {
+                            notes = mutableListOf()
+                            notesByTodoLineIndex[ownerStack[j]] = notes
+                        }
+                        notes.add(line)
+                        break
+                    }
+                }
+            }
+            previousLineBlank = line.trim().isEmpty()
+        }
+
         return lines.mapIndexedNotNull { index, line ->
             val match = todoRegex.matchEntire(line) ?: return@mapIndexedNotNull null
             val indentPrefix = match.groupValues[1]
@@ -35,6 +65,7 @@ object MarkdownParser {
                 isDone = isDone,
                 lineIndex = index,
                 indentLevel = indentLevel(indentPrefix),
+                notes = notesByTodoLineIndex[index]?.toList() ?: emptyList(),
                 dueDate = parsed.meta.dueDate,
                 startDate = parsed.meta.startDate,
                 scheduledDate = parsed.meta.scheduledDate,
@@ -174,9 +205,8 @@ object MarkdownParser {
         var insertIndex = parentLineIndex + 1
         while (insertIndex < lines.size) {
             val nextLine = lines[insertIndex]
-            val nextMatch = todoRegex.matchEntire(nextLine) ?: break
-            val nextIndent = nextMatch.groupValues[1]
-            if (indentLevel(nextIndent) > parentIndentLevel) {
+            if (nextLine.trim().isEmpty()) break
+            if (lineIndent(nextLine) > parentIndentLevel) {
                 insertIndex++
             } else {
                 break
@@ -195,9 +225,8 @@ object MarkdownParser {
         var endIndex = lineIndex + 1
         while (endIndex < lines.size) {
             val nextLine = lines[endIndex]
-            val nextMatch = todoRegex.matchEntire(nextLine) ?: break
-            val nextIndent = indentLevel(nextMatch.groupValues[1])
-            if (nextIndent > parentIndent) {
+            if (nextLine.trim().isEmpty()) break
+            if (lineIndent(nextLine) > parentIndent) {
                 endIndex++
             } else {
                 break
@@ -215,12 +244,15 @@ object MarkdownParser {
         val match = todoRegex.matchEntire(line) ?: return false
         val parentIndent = indentLevel(match.groupValues[1])
 
-        val nextIndex = lineIndex + 1
-        if (nextIndex !in lines.indices) return false
-        val nextLine = lines[nextIndex]
-        val nextMatch = todoRegex.matchEntire(nextLine) ?: return false
-        val nextIndent = indentLevel(nextMatch.groupValues[1])
-        return nextIndent > parentIndent
+        var i = lineIndex + 1
+        while (i < lines.size) {
+            val nextLine = lines[i]
+            if (nextLine.trim().isEmpty()) return false
+            if (lineIndent(nextLine) <= parentIndent) return false
+            if (todoRegex.matches(nextLine)) return true
+            i++
+        }
+        return false
     }
 
     fun editTodoText(
@@ -288,9 +320,8 @@ object MarkdownParser {
         var endIndex = lineIndex + 1
         while (endIndex < sourceLines.size) {
             val nextLine = sourceLines[endIndex]
-            val nextMatch = todoRegex.matchEntire(nextLine) ?: break
-            val nextIndent = indentLevel(nextMatch.groupValues[1])
-            if (nextIndent > parentIndent) {
+            if (nextLine.trim().isEmpty()) break
+            if (lineIndent(nextLine) > parentIndent) {
                 endIndex++
             } else {
                 break
@@ -333,6 +364,79 @@ object MarkdownParser {
         }
 
         return lines.toMutableList().apply { this[lineIndex] = newLine }
+    }
+
+    /**
+     * Replaces the notes (indented non-todo lines) that belong to the todo at [lineIndex] with
+     * [newNotes]. Each new note line is indented one level deeper than the todo. Notes belonging
+     * to sub-todos are left untouched. When [newNotes] is empty, all notes of the todo are
+     * removed.
+     */
+    fun editTodoNotes(
+        lines: List<String>,
+        lineIndex: Int,
+        newNotes: List<String>,
+    ): List<String> {
+        if (lineIndex !in lines.indices) return lines
+        val line = lines[lineIndex]
+        val match = todoRegex.matchEntire(line) ?: return lines
+        val parentIndent = indentLevel(match.groupValues[1])
+        val indentPrefix = match.groupValues[1]
+        val noteIndentPrefix = indentPrefix + inferIndentUnit(indentPrefix)
+
+        var endIndex = lineIndex + 1
+        while (endIndex < lines.size) {
+            val nextLine = lines[endIndex]
+            if (nextLine.trim().isEmpty()) break
+            if (lineIndent(nextLine) <= parentIndent) break
+            endIndex++
+        }
+
+        val noteIndices = ArrayList<Int>()
+        val existingNotes = ArrayList<String>()
+        val stackIndents = mutableListOf(parentIndent)
+        for (i in lineIndex + 1 until endIndex) {
+            val currentLine = lines[i]
+            val currentIndent = lineIndent(currentLine)
+            if (todoRegex.matches(currentLine)) {
+                while (stackIndents.isNotEmpty() && stackIndents[stackIndents.size - 1] >= currentIndent) {
+                    stackIndents.removeAt(stackIndents.size - 1)
+                }
+                stackIndents.add(currentIndent)
+            } else {
+                for (j in stackIndents.size - 1 downTo 0) {
+                    if (stackIndents[j] < currentIndent) {
+                        if (j == 0) {
+                            noteIndices.add(i)
+                            existingNotes.add(currentLine.trim())
+                        }
+                        break
+                    }
+                }
+            }
+        }
+
+        val cleanedNotes = newNotes.map { it.trim() }.filterNot { it.isEmpty() }
+        if (noteIndices.isEmpty() && cleanedNotes.isEmpty()) return lines
+        if (existingNotes.joinToString("\n") == cleanedNotes.joinToString("\n")) return lines
+
+        val updatedLines = lines.toMutableList()
+        for (i in noteIndices.size - 1 downTo 0) {
+            updatedLines.removeAt(noteIndices[i])
+        }
+        updatedLines.addAll(lineIndex + 1, cleanedNotes.map { "$noteIndentPrefix$it" })
+        return updatedLines
+    }
+
+    fun tryEditTodoNotes(
+        lines: List<String>,
+        lineIndex: Int,
+        newNotes: List<String>,
+    ): List<String>? {
+        if (lineIndex !in lines.indices) return null
+        val line = lines[lineIndex]
+        if (!isTodoLine(line)) return null
+        return editTodoNotes(lines, lineIndex, newNotes)
     }
 
     private fun todayString(today: LocalDate = LocalDate.now()): String = today.toString()
@@ -406,6 +510,14 @@ object MarkdownParser {
     private fun inferIndentUnit(prefix: String): String {
         return if (prefix.contains('\t')) "\t" else "  "
     }
+
+    private fun leadingWhitespace(line: String): String {
+        var end = 0
+        while (end < line.length && (line[end] == ' ' || line[end] == '\t')) end++
+        return line.substring(0, end)
+    }
+
+    private fun lineIndent(line: String): Int = indentLevel(leadingWhitespace(line))
 
     private fun removeCompletionDate(remainder: String): String {
         val removed = remainder.replace(completionAnywhereRegex, "")

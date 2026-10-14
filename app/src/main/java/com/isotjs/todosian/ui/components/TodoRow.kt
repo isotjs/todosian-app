@@ -81,6 +81,7 @@ fun TodoRow(
     modifier: Modifier = Modifier,
     allowMove: Boolean = onRequestMove != null,
     showSubtaskButton: Boolean = true,
+    showNotes: Boolean = true,
 ) {
     val indentPadding = (todo.indentLevel * 12).coerceAtMost(48).dp
     val dismissState = rememberSwipeToDismissBoxState(
@@ -203,6 +204,14 @@ fun TodoRow(
                                 }
                             }
                         }
+                    }
+                    if (showNotes && todo.notes.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = todo.notes.map { it.trim() }.joinToString("\n"),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                 }
                 if (showSubtaskButton && todo.indentLevel < 2) {
