@@ -3,7 +3,6 @@ package com.isotjs.todosian.utils
 import com.isotjs.todosian.data.model.TasksPriority
 import com.isotjs.todosian.data.model.Todo
 import java.time.LocalDate
-import java.util.UUID
 
 data class TaskMarkers(
     val created: String = "➕",
@@ -35,6 +34,8 @@ object MarkdownParser {
     private fun isTodoLine(line: String): Boolean = todoRegex.matches(line)
 
     fun parse(lines: List<String>, markers: TaskMarkers = TaskMarkers.Default): List<Todo> {
+        val idOccurrences = HashMap<String, Int>()
+
         return lines.mapIndexedNotNull { index, line ->
             val match = todoRegex.matchEntire(line) ?: return@mapIndexedNotNull null
             val indentPrefix = match.groupValues[1]
@@ -42,12 +43,21 @@ object MarkdownParser {
             val remainder = match.groupValues[3]
 
             val parsed = parseRemainder(remainder, markers)
+            val todoIndentLevel = indentLevel(indentPrefix)
+            val baseId = stableTodoId(
+                indentLevel = todoIndentLevel,
+                text = parsed.mainText,
+                meta = parsed.meta,
+            )
+            val occurrence = idOccurrences.getOrDefault(baseId, 0)
+            idOccurrences[baseId] = occurrence + 1
+
             Todo(
-                id = UUID.randomUUID().toString(),
+                id = if (occurrence == 0) baseId else "$baseId\u001F$occurrence",
                 text = parsed.mainText,
                 isDone = isDone,
                 lineIndex = index,
-                indentLevel = indentLevel(indentPrefix),
+                indentLevel = todoIndentLevel,
                 dueDate = parsed.meta.dueDate,
                 startDate = parsed.meta.startDate,
                 scheduledDate = parsed.meta.scheduledDate,
@@ -70,7 +80,6 @@ object MarkdownParser {
 
         val line = lines[lineIndex]
         val match = todoRegex.matchEntire(line) ?: return lines
-
         val indentPrefix = match.groupValues[1]
         val isDone = match.groupValues[2] == "x"
         val remainder = match.groupValues[3]
@@ -94,23 +103,9 @@ object MarkdownParser {
             this[lineIndex] = newLine
         }
 
-        if (!isDone && enableTasksPlugin) {
-            val parsed = parseRemainder(remainder, markers)
-            val rule = parsed.meta.recurrence
-            if (!rule.isNullOrBlank()) {
-                val nextLine = buildRecurredTaskLine(
-                    indentPrefix = indentPrefix,
-                    taskText = parsed.mainText,
-                    originalMeta = parsed.meta,
-                    rule = rule,
-                    today = today,
-                    markers = markers,
-                )
-                if (nextLine != null) {
-                    return updatedLines.toMutableList().apply {
-                        add(lineIndex, nextLine)
-                    }
-                }
+        if (!isDone) {
+            insertRecurredOccurrenceIfAny(updatedLines, match, lineIndex, enableTasksPlugin, today, markers)?.let {
+                return it
             }
         }
 
@@ -128,6 +123,104 @@ object MarkdownParser {
         val line = lines[lineIndex]
         if (!isTodoLine(line)) return null
         return toggleLine(lines, lineIndex, enableTasksPlugin, today, markers)
+    }
+
+    /**
+     * Toggles a todo line and, when the todo is being marked as completed, also marks all of its
+     * sub-todos as completed. The todo's block includes indented non-todo lines (for example
+     * notes) and interior blank lines, so those do not stop the cascade. The block ends at the
+     * first non-blank line with the same or a lower indentation. Sub-todos that are already
+     * completed are left untouched, including their metadata. Re-opening a todo never touches
+     * its sub-todos.
+     */
+    fun toggleLineWithSubtasks(
+        lines: List<String>,
+        lineIndex: Int,
+        enableTasksPlugin: Boolean,
+        today: LocalDate = LocalDate.now(),
+        markers: TaskMarkers = TaskMarkers.Default,
+    ): List<String> {
+        if (lineIndex !in lines.indices) return lines
+
+        val line = lines[lineIndex]
+        val match = todoRegex.matchEntire(line) ?: return lines
+        val parentIndent = indentLevel(match.groupValues[1])
+        val isDone = match.groupValues[2] == "x"
+
+        val endIndex = blockContentEndIndex(lines, lineIndex, parentIndent)
+
+        val updatedLines = lines.toMutableList()
+        updatedLines[lineIndex] = toggledLine(updatedLines[lineIndex], enableTasksPlugin, today, markers)
+
+        if (!isDone) {
+            for (i in lineIndex + 1 until endIndex) {
+                if (isTodoLine(updatedLines[i])) {
+                    updatedLines[i] = setLineDone(updatedLines[i], enableTasksPlugin, today, markers)
+                }
+            }
+        }
+
+        if (!isDone) {
+            insertRecurredOccurrenceIfAny(updatedLines, match, lineIndex, enableTasksPlugin, today, markers)?.let {
+                return it
+            }
+        }
+
+        return updatedLines
+    }
+
+    fun tryToggleTodoWithSubtasks(
+        lines: List<String>,
+        lineIndex: Int,
+        enableTasksPlugin: Boolean,
+        today: LocalDate = LocalDate.now(),
+        markers: TaskMarkers = TaskMarkers.Default,
+    ): List<String>? {
+        if (lineIndex !in lines.indices) return null
+        val line = lines[lineIndex]
+        if (!isTodoLine(line)) return null
+        return toggleLineWithSubtasks(lines, lineIndex, enableTasksPlugin, today, markers)
+    }
+
+    /**
+     * Computes the line indices of all todos that are sub-todos of a collapsed todo. A todo is
+     * considered collapsed when its stable [Todo.id] is contained in [collapsedTodoIds]. Stable
+     * ids survive external file edits that shift line indices. Descendants of hidden sub-todos
+     * are counted as hidden as well.
+     */
+    fun hiddenSubtaskLineIndices(
+        todos: List<Todo>,
+        collapsedTodoIds: Set<String>,
+    ): Set<Int> {
+        if (collapsedTodoIds.isEmpty() || todos.isEmpty()) return emptySet()
+
+        val ordered = todos.sortedBy { it.lineIndex }
+        val hiddenLineIndices = HashSet<Int>()
+
+        for (i in 1 until ordered.size) {
+            val todo = ordered[i]
+
+            var j = i - 1
+            var ancestor: Todo? = null
+            while (j >= 0) {
+                val candidate = ordered[j]
+                if (candidate.indentLevel < todo.indentLevel) {
+                    ancestor = candidate
+                    break
+                }
+                j--
+            }
+
+            val isHidden = ancestor != null && (
+                ancestor.id in collapsedTodoIds ||
+                    ancestor.lineIndex in hiddenLineIndices
+                )
+            if (isHidden) {
+                hiddenLineIndices.add(todo.lineIndex)
+            }
+        }
+
+        return hiddenLineIndices
     }
 
     fun addTodo(
@@ -360,6 +453,85 @@ object MarkdownParser {
 
     private fun todayString(today: LocalDate = LocalDate.now()): String = today.toString()
 
+    private fun toggledLine(
+        line: String,
+        enableTasksPlugin: Boolean,
+        today: LocalDate,
+        markers: TaskMarkers,
+    ): String {
+        val match = todoRegex.matchEntire(line) ?: return line
+        val indentPrefix = match.groupValues[1]
+        val isDone = match.groupValues[2] == "x"
+        val remainder = match.groupValues[3]
+        val newMark = if (isDone) " " else "x"
+
+        val newRemainder = if (!enableTasksPlugin) {
+            remainder
+        } else {
+            val withoutDoneDate = removeCompletionDate(remainder, markers)
+            if (!isDone) {
+                withoutDoneDate + " ${markers.done} ${today.toString()}"
+            } else {
+                withoutDoneDate
+            }
+        }
+
+        return "$indentPrefix- [$newMark] ${newRemainder.trimEnd()}"
+    }
+
+    private fun setLineDone(
+        line: String,
+        enableTasksPlugin: Boolean,
+        today: LocalDate,
+        markers: TaskMarkers,
+    ): String {
+        val match = todoRegex.matchEntire(line) ?: return line
+        if (match.groupValues[2] == "x") return line
+
+        val indentPrefix = match.groupValues[1]
+        val remainder = match.groupValues[3]
+        val newRemainder = if (!enableTasksPlugin) {
+            remainder
+        } else {
+            removeCompletionDate(remainder, markers) + " ${markers.done} ${today.toString()}"
+        }
+
+        return "$indentPrefix- [x] ${newRemainder.trimEnd()}"
+    }
+
+    /**
+     * When the tasks plugin is enabled and the toggled todo has a recurrence rule, inserts a new
+     * occurrence of that todo at [lineIndex] (above the already-toggled todo and its sub-todos).
+     * Returns the updated lines, or null when no occurrence should be inserted.
+     */
+    private fun insertRecurredOccurrenceIfAny(
+        updatedLines: MutableList<String>,
+        match: MatchResult,
+        lineIndex: Int,
+        enableTasksPlugin: Boolean,
+        today: LocalDate,
+        markers: TaskMarkers,
+    ): List<String>? {
+        if (!enableTasksPlugin) return null
+
+        val parsed = parseRemainder(match.groupValues[3], markers)
+        val rule = parsed.meta.recurrence
+        if (rule.isNullOrBlank()) return null
+
+        val nextLine = buildRecurredTaskLine(
+            indentPrefix = match.groupValues[1],
+            taskText = parsed.mainText,
+            originalMeta = parsed.meta,
+            rule = rule,
+            today = today,
+            markers = markers,
+        ) ?: return null
+
+        return updatedLines.toMutableList().apply {
+            add(lineIndex, nextLine)
+        }
+    }
+
     private fun buildRecurredTaskLine(
         indentPrefix: String,
         taskText: String,
@@ -427,6 +599,56 @@ object MarkdownParser {
         }
         return (width / 2).coerceAtLeast(0)
     }
+
+    private fun leadingWhitespace(line: String): String {
+        var end = 0
+        while (end < line.length && (line[end] == ' ' || line[end] == '\t')) end++
+        return line.substring(0, end)
+    }
+
+    private fun lineIndent(line: String): Int = indentLevel(leadingWhitespace(line))
+
+    /**
+     * Returns the index of the first line after [startIndex] that is not part of the todo's
+     * block (exclusive end). The block contains all non-blank lines deeper than [parentIndent],
+     * notes and other non-todo content included, while interior blank lines are skipped.
+     * A non-blank line at the same or a lower indentation ends the block.
+     */
+    private fun blockContentEndIndex(lines: List<String>, startIndex: Int, parentIndent: Int): Int {
+        var index = startIndex + 1
+        var lastContent = startIndex
+        while (index < lines.size) {
+            val nextLine = lines[index]
+            if (nextLine.isBlank()) {
+                index++
+                continue
+            }
+            if (lineIndent(nextLine) <= parentIndent) break
+            lastContent = index
+            index++
+        }
+        return lastContent + 1
+    }
+
+    /**
+     * Builds an id that is stable across reloads and independent of the todo's line number.
+     * The done state, completion date, and notes are deliberately excluded so that completing
+     * a todo does not change its identity. [parse] appends an occurrence suffix for duplicates.
+     */
+    private fun stableTodoId(
+        indentLevel: Int,
+        text: String,
+        meta: TasksMeta,
+    ): String = listOf(
+        indentLevel.toString(),
+        text,
+        meta.dueDate,
+        meta.startDate,
+        meta.scheduledDate,
+        meta.createdDate,
+        meta.priority?.name,
+        meta.recurrence,
+    ).joinToString(separator = "\u001F") { it ?: "" }
 
     private fun inferIndentUnit(prefix: String): String {
         return if (prefix.contains('\t')) "\t" else "  "

@@ -60,14 +60,48 @@ class MarkdownParserTest {
     }
 
     @Test
-    fun toggleLine_toggles_only_target_line() {
+    fun parse_keeps_ids_stable_when_external_edits_shift_lines() {
+        val before = MarkdownParser.parse(listOf(
+            "- [ ] Parent",
+            "  - [ ] Child",
+        ))
+        val after = MarkdownParser.parse(listOf(
+            "# Added externally",
+            "",
+            "- [ ] Parent",
+            "  - [ ] Child",
+        ))
+
+        assertEquals(before.map { it.id }, after.map { it.id })
+    }
+
+    @Test
+    fun parse_keeps_id_stable_when_todo_is_completed() {
+        val open = MarkdownParser.parse(listOf("- [ ] Task")).single()
+        val done = MarkdownParser.parse(listOf("- [x] Task ✅ 2024-03-15")).single()
+
+        assertEquals(open.id, done.id)
+    }
+
+    @Test
+    fun parse_generates_unique_ids_for_duplicate_todos() {
+        val todos = MarkdownParser.parse(listOf(
+            "- [ ] Same",
+            "- [ ] Same",
+        ))
+
+        assertEquals(2, todos.map { it.id }.toSet().size)
+    }
+
+    @Test
+    fun toggleLineWithSubtasks_toggles_only_target_line() {
         val lines = listOf(
             "Intro",
             "- [ ] Task",
             "Outro",
         )
 
-        val toggled = MarkdownParser.toggleLine(lines, lineIndex = 1, enableTasksPlugin = false)
+        val toggled = MarkdownParser.toggleLineWithSubtasks(lines, lineIndex = 1, enableTasksPlugin = false)
 
         assertEquals("Intro", toggled[0])
         assertEquals("- [x] Task", toggled[1])
@@ -75,12 +109,12 @@ class MarkdownParserTest {
     }
 
     @Test
-    fun toggleLine_preserves_indent_prefix() {
+    fun toggleLineWithSubtasks_preserves_indent_prefix() {
         val lines = listOf(
             "  - [ ] Task",
         )
 
-        val toggled = MarkdownParser.toggleLine(lines, lineIndex = 0, enableTasksPlugin = false)
+        val toggled = MarkdownParser.toggleLineWithSubtasks(lines, lineIndex = 0, enableTasksPlugin = false)
 
         assertEquals("  - [x] Task", toggled[0])
     }
@@ -246,23 +280,23 @@ class MarkdownParserTest {
     }
 
     @Test
-    fun toggleLine_when_enabled_adds_done_date_and_preserves_other_meta() {
+    fun toggleLineWithSubtasks_when_enabled_adds_done_date_and_preserves_other_meta() {
         val today = LocalDate.now().toString()
         val lines = listOf(
             "- [ ] Task 📅 2024-01-02 🔼",
         )
 
-        val toggled = MarkdownParser.toggleLine(lines, lineIndex = 0, enableTasksPlugin = true)
+        val toggled = MarkdownParser.toggleLineWithSubtasks(lines, lineIndex = 0, enableTasksPlugin = true)
         assertEquals("- [x] Task 📅 2024-01-02 🔼 ✅ $today", toggled[0])
     }
 
     @Test
-    fun toggleLine_when_enabled_removes_only_done_date_when_unchecking() {
+    fun toggleLineWithSubtasks_when_enabled_removes_only_done_date_when_unchecking() {
         val lines = listOf(
             "- [x] Task 📅 2024-01-02 ✅ 2024-01-03 🔼",
         )
 
-        val toggled = MarkdownParser.toggleLine(lines, lineIndex = 0, enableTasksPlugin = true)
+        val toggled = MarkdownParser.toggleLineWithSubtasks(lines, lineIndex = 0, enableTasksPlugin = true)
         assertEquals("- [ ] Task 📅 2024-01-02 🔼", toggled[0])
     }
 
@@ -381,13 +415,13 @@ class MarkdownParserTest {
     }
     
     @Test
-    fun toggleLine_recurring_daily_inserts_new_open_task_above() {
+    fun toggleLineWithSubtasks_recurring_daily_inserts_new_open_task_above() {
         val today = LocalDate.of(2024, 3, 15)
         val lines = listOf(
             "- [ ] Water plants 📅 2024-03-14 🔁 every day",
         )
 
-        val result = MarkdownParser.toggleLine(
+        val result = MarkdownParser.toggleLineWithSubtasks(
             lines = lines,
             lineIndex = 0,
             enableTasksPlugin = true,
@@ -400,13 +434,13 @@ class MarkdownParserTest {
     }
 
     @Test
-    fun toggleLine_recurring_weekly_inserts_new_task_with_advanced_due_date() {
+    fun toggleLineWithSubtasks_recurring_weekly_inserts_new_task_with_advanced_due_date() {
         val today = LocalDate.of(2024, 3, 15)
         val lines = listOf(
             "- [ ] Weekly review 📅 2024-03-08 🔁 every week",
         )
 
-        val result = MarkdownParser.toggleLine(
+        val result = MarkdownParser.toggleLineWithSubtasks(
             lines = lines,
             lineIndex = 0,
             enableTasksPlugin = true,
@@ -419,7 +453,7 @@ class MarkdownParserTest {
     }
 
     @Test
-    fun toggleLine_recurring_preserves_surrounding_non_todo_lines() {
+    fun toggleLineWithSubtasks_recurring_preserves_surrounding_non_todo_lines() {
         val today = LocalDate.of(2024, 3, 15)
         val lines = listOf(
             "# Heading",
@@ -427,7 +461,7 @@ class MarkdownParserTest {
             "Some note",
         )
 
-        val result = MarkdownParser.toggleLine(
+        val result = MarkdownParser.toggleLineWithSubtasks(
             lines = lines,
             lineIndex = 1,
             enableTasksPlugin = true,
@@ -442,13 +476,13 @@ class MarkdownParserTest {
     }
 
     @Test
-    fun toggleLine_recurring_preserves_priority_on_new_task() {
+    fun toggleLineWithSubtasks_recurring_preserves_priority_on_new_task() {
         val today = LocalDate.of(2024, 3, 15)
         val lines = listOf(
             "- [ ] Important task 📅 2024-03-10 🔁 every month 🔺",
         )
 
-        val result = MarkdownParser.toggleLine(
+        val result = MarkdownParser.toggleLineWithSubtasks(
             lines = lines,
             lineIndex = 0,
             enableTasksPlugin = true,
@@ -460,13 +494,13 @@ class MarkdownParserTest {
     }
 
     @Test
-    fun toggleLine_recurring_updates_created_date_on_new_task() {
+    fun toggleLineWithSubtasks_recurring_updates_created_date_on_new_task() {
         val today = LocalDate.of(2024, 3, 15)
         val lines = listOf(
             "- [ ] Daily habit ➕ 2024-01-01 📅 2024-03-14 🔁 every day",
         )
 
-        val result = MarkdownParser.toggleLine(
+        val result = MarkdownParser.toggleLineWithSubtasks(
             lines = lines,
             lineIndex = 0,
             enableTasksPlugin = true,
@@ -481,13 +515,13 @@ class MarkdownParserTest {
     }
 
     @Test
-    fun toggleLine_recurring_when_done_uses_today_as_base() {
+    fun toggleLineWithSubtasks_recurring_when_done_uses_today_as_base() {
         val today = LocalDate.of(2024, 3, 20) // Wednesday; task was late
         val lines = listOf(
             "- [ ] Catch-up 📅 2024-03-10 🔁 every week when done",
         )
 
-        val result = MarkdownParser.toggleLine(
+        val result = MarkdownParser.toggleLineWithSubtasks(
             lines = lines,
             lineIndex = 0,
             enableTasksPlugin = true,
@@ -499,13 +533,13 @@ class MarkdownParserTest {
     }
 
     @Test
-    fun toggleLine_non_recurring_task_not_affected_by_recurrence_logic() {
+    fun toggleLineWithSubtasks_non_recurring_task_not_affected_by_recurrence_logic() {
         val today = LocalDate.of(2024, 3, 15)
         val lines = listOf(
             "- [ ] Simple task 📅 2024-03-14",
         )
 
-        val result = MarkdownParser.toggleLine(
+        val result = MarkdownParser.toggleLineWithSubtasks(
             lines = lines,
             lineIndex = 0,
             enableTasksPlugin = true,
@@ -517,13 +551,13 @@ class MarkdownParserTest {
     }
 
     @Test
-    fun toggleLine_plugin_disabled_ignores_recurrence_field() {
+    fun toggleLineWithSubtasks_plugin_disabled_ignores_recurrence_field() {
         val today = LocalDate.of(2024, 3, 15)
         val lines = listOf(
             "- [ ] Daily 📅 2024-03-14 🔁 every day",
         )
 
-        val result = MarkdownParser.toggleLine(
+        val result = MarkdownParser.toggleLineWithSubtasks(
             lines = lines,
             lineIndex = 0,
             enableTasksPlugin = false,
@@ -535,13 +569,13 @@ class MarkdownParserTest {
     }
 
     @Test
-    fun toggleLine_unchecking_recurring_done_task_removes_done_date_only() {
+    fun toggleLineWithSubtasks_unchecking_recurring_done_task_removes_done_date_only() {
         val today = LocalDate.of(2024, 3, 16)
         val lines = listOf(
             "- [x] Daily 📅 2024-03-15 🔁 every day ✅ 2024-03-15",
         )
 
-        val result = MarkdownParser.toggleLine(
+        val result = MarkdownParser.toggleLineWithSubtasks(
             lines = lines,
             lineIndex = 0,
             enableTasksPlugin = true,
@@ -553,13 +587,13 @@ class MarkdownParserTest {
     }
 
     @Test
-    fun toggleLine_recurring_with_indented_task_preserves_indent() {
+    fun toggleLineWithSubtasks_recurring_with_indented_task_preserves_indent() {
         val today = LocalDate.of(2024, 3, 15)
         val lines = listOf(
             "  - [ ] Sub-task 📅 2024-03-14 🔁 every day",
         )
 
-        val result = MarkdownParser.toggleLine(
+        val result = MarkdownParser.toggleLineWithSubtasks(
             lines = lines,
             lineIndex = 0,
             enableTasksPlugin = true,
@@ -572,13 +606,13 @@ class MarkdownParserTest {
     }
 
     @Test
-    fun toggleLine_recurring_multi_date_preserves_offsets() {
+    fun toggleLineWithSubtasks_recurring_multi_date_preserves_offsets() {
         val today = LocalDate.of(2024, 3, 15)
         val lines = listOf(
             "- [ ] Multi-date 🛫 2024-03-15 ⏳ 2024-03-18 📅 2024-03-20 🔁 every week",
         )
 
-        val result = MarkdownParser.toggleLine(
+        val result = MarkdownParser.toggleLineWithSubtasks(
             lines = lines,
             lineIndex = 0,
             enableTasksPlugin = true,
@@ -683,5 +717,250 @@ class MarkdownParserTest {
         val todo = MarkdownParser.parse(lines, markers).single()
         assertEquals("2024-01-02", todo.dueDate)
         assertEquals("Test", todo.text)
+    }
+
+    @Test
+    fun toggleLineWithSubtasks_completes_subtasks_when_parent_checked() {
+        val lines = listOf(
+            "- [ ] Parent",
+            "  - [ ] Child one",
+            "    - [ ] Grandchild",
+            "  - [x] Child done",
+            "- [ ] Sibling",
+        )
+
+        val result = MarkdownParser.toggleLineWithSubtasks(
+            lines = lines,
+            lineIndex = 0,
+            enableTasksPlugin = false,
+        )
+
+        assertEquals(5, result.size)
+        assertEquals("- [x] Parent", result[0])
+        assertEquals("  - [x] Child one", result[1])
+        assertEquals("    - [x] Grandchild", result[2])
+        assertEquals("  - [x] Child done", result[3])
+        assertEquals("- [ ] Sibling", result[4])
+    }
+
+    @Test
+    fun toggleLineWithSubtasks_unchecking_parent_leaves_subtasks_unchanged() {
+        val lines = listOf(
+            "- [x] Parent",
+            "  - [x] Child one",
+            "  - [ ] Child two",
+        )
+
+        val result = MarkdownParser.toggleLineWithSubtasks(
+            lines = lines,
+            lineIndex = 0,
+            enableTasksPlugin = false,
+        )
+
+        assertEquals("- [ ] Parent", result[0])
+        assertEquals("  - [x] Child one", result[1])
+        assertEquals("  - [ ] Child two", result[2])
+    }
+
+    @Test
+    fun toggleLineWithSubtasks_plugin_adds_completion_dates_to_subtasks() {
+        val today = LocalDate.of(2024, 3, 15)
+        val lines = listOf(
+            "- [ ] Parent",
+            "  - [ ] Child 📅 2024-03-10",
+            "  - [x] Child done ✅ 2024-03-01",
+        )
+
+        val result = MarkdownParser.toggleLineWithSubtasks(
+            lines = lines,
+            lineIndex = 0,
+            enableTasksPlugin = true,
+            today = today,
+        )
+
+        assertEquals(3, result.size)
+        assertEquals("- [x] Parent ✅ 2024-03-15", result[0])
+        assertEquals("  - [x] Child 📅 2024-03-10 ✅ 2024-03-15", result[1])
+        assertEquals("  - [x] Child done ✅ 2024-03-01", result[2])
+    }
+
+    @Test
+    fun toggleLineWithSubtasks_without_subtasks_toggles_only_target() {
+        val lines = listOf(
+            "Intro",
+            "- [ ] Task",
+            "Outro",
+        )
+
+        val result = MarkdownParser.toggleLineWithSubtasks(
+            lines = lines,
+            lineIndex = 1,
+            enableTasksPlugin = false,
+        )
+
+        assertEquals(listOf("Intro", "- [x] Task", "Outro"), result)
+    }
+
+    @Test
+    fun toggleLineWithSubtasks_completes_subtasks_when_notes_come_first() {
+        val lines = listOf(
+            "- [ ] Parent",
+            "  A note for the parent",
+            "  - [ ] Child one",
+            "    A note for child one",
+            "  - [ ] Child two",
+            "- [ ] Sibling",
+        )
+
+        val result = MarkdownParser.toggleLineWithSubtasks(
+            lines = lines,
+            lineIndex = 0,
+            enableTasksPlugin = false,
+        )
+
+        assertEquals(
+            listOf(
+                "- [x] Parent",
+                "  A note for the parent",
+                "  - [x] Child one",
+                "    A note for child one",
+                "  - [x] Child two",
+                "- [ ] Sibling",
+            ),
+            result,
+        )
+    }
+
+    @Test
+    fun toggleLineWithSubtasks_skips_blank_lines_inside_the_block() {
+        val lines = listOf(
+            "- [ ] Parent",
+            "  First paragraph",
+            "",
+            "  Second paragraph",
+            "  - [ ] Child",
+            "",
+            "- [ ] Sibling",
+        )
+
+        val result = MarkdownParser.toggleLineWithSubtasks(
+            lines = lines,
+            lineIndex = 0,
+            enableTasksPlugin = false,
+        )
+
+        assertEquals(
+            listOf(
+                "- [x] Parent",
+                "  First paragraph",
+                "",
+                "  Second paragraph",
+                "  - [x] Child",
+                "",
+                "- [ ] Sibling",
+            ),
+            result,
+        )
+    }
+
+    @Test
+    fun toggleLineWithSubtasks_stops_at_same_or_lower_indentation() {
+        val lines = listOf(
+            "- [ ] Parent",
+            "  - [ ] Child",
+            "- [ ] Sibling",
+            "  - [ ] Sibling child",
+        )
+
+        val result = MarkdownParser.toggleLineWithSubtasks(
+            lines = lines,
+            lineIndex = 0,
+            enableTasksPlugin = false,
+        )
+
+        assertEquals(
+            listOf(
+                "- [x] Parent",
+                "  - [x] Child",
+                "- [ ] Sibling",
+                "  - [ ] Sibling child",
+            ),
+            result,
+        )
+    }
+
+    @Test
+    fun toggleLineWithSubtasks_recurring_inserts_new_occurrence_above_block() {
+        val today = LocalDate.of(2024, 3, 15)
+        val lines = listOf(
+            "- [ ] Water plants 📅 2024-03-14 🔁 every day",
+            "  - [ ] Get watering can",
+            "  - [ ] Check soil",
+        )
+
+        val result = MarkdownParser.toggleLineWithSubtasks(
+            lines = lines,
+            lineIndex = 0,
+            enableTasksPlugin = true,
+            today = today,
+        )
+
+        assertEquals(4, result.size)
+        assertEquals("- [ ] Water plants 📅 2024-03-15 🔁 every day", result[0])
+        assertEquals("- [x] Water plants 📅 2024-03-14 🔁 every day ✅ 2024-03-15", result[1])
+        assertEquals("  - [x] Get watering can ✅ 2024-03-15", result[2])
+        assertEquals("  - [x] Check soil ✅ 2024-03-15", result[3])
+    }
+
+    @Test
+    fun tryToggleTodoWithSubtasks_returns_null_for_non_todo_line() {
+        val lines = listOf("# Heading")
+
+        val result = MarkdownParser.tryToggleTodoWithSubtasks(
+            lines = lines,
+            lineIndex = 0,
+            enableTasksPlugin = false,
+        )
+
+        assertEquals(null, result)
+    }
+
+    @Test
+    fun hiddenSubtaskLineIndices_hides_completed_subtask_in_other_section() {
+        val all = MarkdownParser.parse(listOf(
+            "- [ ] A",
+            "  - [x] B done",
+            "  - [ ] C",
+        ))
+        val activeTodos = all.filter { !it.isDone }
+        val completedTodos = all.filter { it.isDone }
+
+        val hidden = MarkdownParser.hiddenSubtaskLineIndices(
+            todos = activeTodos + completedTodos,
+            collapsedTodoIds = setOf(all[0].id),
+        )
+
+        assertEquals(setOf(1, 2), hidden)
+    }
+
+    @Test
+    fun hiddenSubtaskLineIndices_keeps_collapse_after_external_line_shift() {
+        val before = MarkdownParser.parse(listOf(
+            "- [ ] Parent",
+            "  - [ ] Child",
+        ))
+        val after = MarkdownParser.parse(listOf(
+            "# Added externally",
+            "",
+            "- [ ] Parent",
+            "  - [ ] Child",
+        ))
+
+        val hidden = MarkdownParser.hiddenSubtaskLineIndices(
+            todos = after,
+            collapsedTodoIds = setOf(before[0].id),
+        )
+
+        assertEquals(setOf(after[1].lineIndex), hidden)
     }
 }

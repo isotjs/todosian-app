@@ -149,7 +149,7 @@ class CategoryViewModel(
         viewModelScope.launch {
             val markers = currentMarkers()
             val previousLines = _uiState.value.lines
-            val newLines = MarkdownParser.tryToggleLine(
+            val newLines = MarkdownParser.tryToggleTodoWithSubtasks(
                 lines = previousLines,
                 lineIndex = todo.lineIndex,
                 enableTasksPlugin = enableTasksPluginSupport,

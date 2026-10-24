@@ -146,6 +146,21 @@ fun CategoryScreen(
     var deleteTodoHasSubtasks by remember { mutableStateOf(false) }
     var moveTodoTarget by remember { mutableStateOf<Todo?>(null) }
     var showCopyOption by remember { mutableStateOf(false) }
+    var collapsedTodoIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+
+    fun toggleCollapse(todoId: String) {
+        val updated = collapsedTodoIds.toMutableSet()
+        if (!updated.remove(todoId)) updated.add(todoId)
+        collapsedTodoIds = updated
+    }
+
+    LaunchedEffect(uiState.activeTodos, uiState.completedTodos) {
+        val knownIds = (uiState.activeTodos + uiState.completedTodos)
+            .mapTo(HashSet()) { it.id }
+        if (!knownIds.containsAll(collapsedTodoIds)) {
+            collapsedTodoIds = collapsedTodoIds.intersect(knownIds)
+        }
+    }
 
     var autoOpenedAddTodo by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
@@ -520,18 +535,43 @@ fun CategoryScreen(
                     }
                 }
             } else {
-                val sortedActiveTodos = remember(uiState.activeTodos, settings.todoSort) {
-                    sortTodos(uiState.activeTodos, settings.todoSort)
+                val hiddenSubtaskIndices = remember(
+                    uiState.activeTodos,
+                    uiState.completedTodos,
+                    collapsedTodoIds,
+                ) {
+                    MarkdownParser.hiddenSubtaskLineIndices(
+                        todos = uiState.activeTodos + uiState.completedTodos,
+                        collapsedTodoIds = collapsedTodoIds,
+                    )
                 }
-                val sortedCompletedTodos = remember(uiState.completedTodos, settings.todoSort) {
-                    sortTodos(uiState.completedTodos, settings.todoSort)
+                val sortedActiveTodos = remember(
+                    uiState.activeTodos,
+                    settings.todoSort,
+                    hiddenSubtaskIndices,
+                ) {
+                    sortTodos(uiState.activeTodos, settings.todoSort).filterNot {
+                        it.lineIndex in hiddenSubtaskIndices
+                    }
+                }
+                val sortedCompletedTodos = remember(
+                    uiState.completedTodos,
+                    settings.todoSort,
+                    hiddenSubtaskIndices,
+                ) {
+                    sortTodos(uiState.completedTodos, settings.todoSort).filterNot {
+                        it.lineIndex in hiddenSubtaskIndices
+                    }
                 }
                 val sortedAllTodos = remember(
                     uiState.activeTodos,
                     uiState.completedTodos,
                     settings.todoSort,
+                    hiddenSubtaskIndices,
                 ) {
-                    sortTodos(uiState.activeTodos + uiState.completedTodos, settings.todoSort)
+                    sortTodos(uiState.activeTodos + uiState.completedTodos, settings.todoSort).filterNot {
+                        it.lineIndex in hiddenSubtaskIndices
+                    }
                 }
 
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
@@ -545,6 +585,9 @@ fun CategoryScreen(
                                 enableTasksPluginSupport = settings.enableTasksPluginSupport,
                                 useEmojisInUi = settings.tasksPluginUseEmojisInUi,
                                 showSubtaskButton = settings.enableSubtasks,
+                                hasSubTasks = MarkdownParser.hasSubtasks(uiState.lines, todo.lineIndex),
+                                isCollapsed = todo.id in collapsedTodoIds,
+                                onToggleCollapse = { toggleCollapse(todo.id) },
                                 onToggle = { viewModel.toggleTodo(todo, settings.enableTasksPluginSupport) },
                                 onEdit = {
                                     sheetMode = TodoSheetMode.Edit(todo)
@@ -599,6 +642,9 @@ fun CategoryScreen(
                                 enableTasksPluginSupport = settings.enableTasksPluginSupport,
                                 useEmojisInUi = settings.tasksPluginUseEmojisInUi,
                                 showSubtaskButton = settings.enableSubtasks,
+                                hasSubTasks = MarkdownParser.hasSubtasks(uiState.lines, todo.lineIndex),
+                                isCollapsed = todo.id in collapsedTodoIds,
+                                onToggleCollapse = { toggleCollapse(todo.id) },
                                 onToggle = { viewModel.toggleTodo(todo, settings.enableTasksPluginSupport) },
                                 onEdit = {
                                     sheetMode = TodoSheetMode.Edit(todo)
@@ -651,6 +697,9 @@ fun CategoryScreen(
                                 enableTasksPluginSupport = settings.enableTasksPluginSupport,
                                 useEmojisInUi = settings.tasksPluginUseEmojisInUi,
                                 showSubtaskButton = settings.enableSubtasks,
+                                hasSubTasks = MarkdownParser.hasSubtasks(uiState.lines, todo.lineIndex),
+                                isCollapsed = todo.id in collapsedTodoIds,
+                                onToggleCollapse = { toggleCollapse(todo.id) },
                                 onToggle = { viewModel.toggleTodo(todo, settings.enableTasksPluginSupport) },
                                 onEdit = {
                                     sheetMode = TodoSheetMode.Edit(todo)
