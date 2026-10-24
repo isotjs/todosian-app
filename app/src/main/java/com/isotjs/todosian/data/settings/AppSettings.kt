@@ -20,6 +20,7 @@ data class AppSettings(
     val doneMarker: String? = null,
     val recurrenceMarker: String? = null,
     val enableSubtasks: Boolean = false,
+    val showNotesInTaskList: Boolean = true,
     val reminderTimeHour: Int = 19,
     val reminderTimeMinute: Int = 0,
 ) {

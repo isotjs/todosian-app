@@ -25,6 +25,8 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.outlined.AddCircle
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Event
+import androidx.compose.material.icons.outlined.ExpandLess
+import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.FlightTakeoff
 import androidx.compose.material.icons.outlined.Repeat
 import androidx.compose.material.icons.outlined.Schedule
@@ -81,6 +83,10 @@ fun TodoRow(
     modifier: Modifier = Modifier,
     allowMove: Boolean = onRequestMove != null,
     showSubtaskButton: Boolean = true,
+    showNotes: Boolean = true,
+    hasSubTasks: Boolean = false,
+    isCollapsed: Boolean = false,
+    onToggleCollapse: (() -> Unit)? = null,
 ) {
     val indentPadding = (todo.indentLevel * 12).coerceAtMost(48).dp
     val dismissState = rememberSwipeToDismissBoxState(
@@ -203,6 +209,31 @@ fun TodoRow(
                                 }
                             }
                         }
+                    }
+                    if (showNotes && todo.notes.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = MarkdownParser.notesToEditorText(todo.notes),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                if (hasSubTasks && onToggleCollapse != null) {
+                    IconButton(onClick = { onToggleCollapse() }) {
+                        Icon(
+                            imageVector = if (isCollapsed) {
+                                Icons.Outlined.ExpandMore
+                            } else {
+                                Icons.Outlined.ExpandLess
+                            },
+                            contentDescription = if (isCollapsed) {
+                                stringResource(R.string.cd_expand_subtasks)
+                            } else {
+                                stringResource(R.string.cd_collapse_subtasks)
+                            },
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                 }
                 if (showSubtaskButton && todo.indentLevel < 2) {
