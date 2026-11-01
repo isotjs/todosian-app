@@ -32,6 +32,7 @@ class MainActivity : ComponentActivity() {
         val preferencesManager = (application as TodosianApplication).preferencesManager
         val fileRepository = (application as TodosianApplication).fileRepository
         val appSettingsRepository = (application as TodosianApplication).appSettingsRepository
+        val collapsedTodoRepository = (application as TodosianApplication).collapsedTodoRepository
         val initialAddTaskRequest = addTaskSignal.value
         setContent {
             val settings = appSettingsRepository.settings.collectAsStateWithLifecycle(
@@ -57,6 +58,7 @@ class MainActivity : ComponentActivity() {
                         fileRepository = fileRepository,
                         appSettingsRepository = appSettingsRepository,
                         preferencesManager = preferencesManager,
+                        collapsedTodoRepository = collapsedTodoRepository,
                         addTaskSignal = addTaskSignal,
                         initialAddTaskRequest = initialAddTaskRequest,
                     )

@@ -119,6 +119,8 @@
     <string name="cd_add_category">Add category</string>
     <string name="cd_add_todo">Add todo</string>
     <string name="cd_add_subtask">Add subtask</string>
+    <string name="cd_collapse_subtasks">Collapse subtasks</string>
+    <string name="cd_expand_subtasks">Expand subtasks</string>
     <string name="cd_navigate_back">Navigate back</string>
     <string name="cd_delete">Delete</string>
 

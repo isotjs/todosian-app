@@ -1,9 +1,11 @@
 package com.isotjs.todosian
 
 import android.app.Application
+import com.isotjs.todosian.data.CollapsedTodoRepository
 import com.isotjs.todosian.data.FileRepository
 import com.isotjs.todosian.data.PreferencesManager
 import com.isotjs.todosian.data.SafFileRepository
+import com.isotjs.todosian.data.SharedPrefsCollapsedTodoRepository
 import com.isotjs.todosian.data.settings.AppSettingsRepository
 import com.isotjs.todosian.data.settings.SharedPrefsAppSettingsRepository
 import com.isotjs.todosian.notifications.DueReminderScheduler
@@ -32,6 +34,10 @@ class TodosianApplication : Application() {
 
     val appSettingsRepository: AppSettingsRepository by lazy {
         SharedPrefsAppSettingsRepository(applicationContext)
+    }
+
+    val collapsedTodoRepository: CollapsedTodoRepository by lazy {
+        SharedPrefsCollapsedTodoRepository(applicationContext)
     }
 
     override fun onCreate() {
