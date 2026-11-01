@@ -606,6 +606,16 @@ fun SettingsScreen(
                             subtitle = newTodoFilePositionLabel(settings.newTodoFilePosition),
                             onClick = { showNewTodoFilePositionDialog = true },
                         )
+
+                        SettingsDivider()
+
+                        SettingsSwitchRow(
+                            icon = Icons.Filled.Info,
+                            title = stringResource(R.string.settings_show_notes_in_task_list),
+                            subtitle = stringResource(R.string.settings_show_notes_in_task_list_subtitle),
+                            checked = settings.showNotesInTaskList,
+                            onCheckedChange = { appSettingsRepository.setShowNotesInTaskList(it) },
+                        )
                     }
                 }
 
