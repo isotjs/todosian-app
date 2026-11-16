@@ -684,4 +684,59 @@ class MarkdownParserTest {
         assertEquals("2024-01-02", todo.dueDate)
         assertEquals("Test", todo.text)
     }
+
+    @Test
+    fun parse_recognises_custom_statuses() {
+        val lines = listOf("- [/] a", "- [w] b", "- [s] c", "- [-] d", "- [X] e", "- [[link]] f", "- [] g")
+
+        val todos = MarkdownParser.parse(lines)
+
+        assertEquals(listOf('/', 'w', 's', '-', 'X'), todos.map { it.status })
+        assertEquals(listOf(false, false, false, true, true), todos.map { it.isDone })
+    }
+
+    @Test
+    fun toggleLine_completes_in_progress_task_with_done_date_and_recurrence() {
+        val lines = listOf("- [/] Water plants 📅 2024-03-14 🔁 every day")
+
+        val result = MarkdownParser.toggleLine(
+            lines, lineIndex = 0, enableTasksPlugin = true, today = LocalDate.of(2024, 3, 15),
+        )
+
+        assertEquals(
+            listOf(
+                "- [ ] Water plants 📅 2024-03-15 🔁 every day",
+                "- [x] Water plants 📅 2024-03-14 🔁 every day ✅ 2024-03-15",
+            ),
+            result,
+        )
+    }
+
+    @Test
+    fun toggleLine_reopens_cancelled_and_uppercase_done_tasks() {
+        val lines = listOf("- [-] Cancelled", "- [X] Done ✅ 2024-03-14")
+
+        val first = MarkdownParser.toggleLine(lines, lineIndex = 0, enableTasksPlugin = true)
+        val second = MarkdownParser.toggleLine(first, lineIndex = 1, enableTasksPlugin = true)
+
+        assertEquals(listOf("- [ ] Cancelled", "- [ ] Done"), second)
+    }
+
+    @Test
+    fun toggleLine_sets_custom_status_and_removes_done_date() {
+        val lines = listOf("Intro", "- [x] Task 📅 2024-03-14 ✅ 2024-03-15", "Outro")
+
+        val result = MarkdownParser.toggleLine(lines, lineIndex = 1, enableTasksPlugin = true, newStatus = 'w')
+
+        assertEquals(listOf("Intro", "- [w] Task 📅 2024-03-14", "Outro"), result)
+    }
+
+    @Test
+    fun toggleLine_with_current_status_leaves_lines_unchanged() {
+        val lines = listOf("- [w] Task 📅 2024-03-14 🔁 every day")
+
+        val result = MarkdownParser.toggleLine(lines, lineIndex = 0, enableTasksPlugin = true, newStatus = 'w')
+
+        assertEquals(lines, result)
+    }
 }

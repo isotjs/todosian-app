@@ -121,6 +121,7 @@ fun CategoryScreen(
     val settings by appSettingsRepository.settings.collectAsStateWithLifecycle(
         initialValue = com.isotjs.todosian.data.settings.AppSettings(),
     )
+    val statusChoices = remember(settings.customStatuses) { settings.statusChoices() }
 
     val resources = LocalResources.current
     val snackbarHostState = remember { SnackbarHostState() }
@@ -546,6 +547,8 @@ fun CategoryScreen(
                                 useEmojisInUi = settings.tasksPluginUseEmojisInUi,
                                 showSubtaskButton = settings.enableSubtasks,
                                 onToggle = { viewModel.toggleTodo(todo, settings.enableTasksPluginSupport) },
+                                statusChoices = statusChoices,
+                                onSetStatus = { viewModel.toggleTodo(todo, settings.enableTasksPluginSupport, it) },
                                 onEdit = {
                                     sheetMode = TodoSheetMode.Edit(todo)
                                     sheetText = todo.text
@@ -600,6 +603,8 @@ fun CategoryScreen(
                                 useEmojisInUi = settings.tasksPluginUseEmojisInUi,
                                 showSubtaskButton = settings.enableSubtasks,
                                 onToggle = { viewModel.toggleTodo(todo, settings.enableTasksPluginSupport) },
+                                statusChoices = statusChoices,
+                                onSetStatus = { viewModel.toggleTodo(todo, settings.enableTasksPluginSupport, it) },
                                 onEdit = {
                                     sheetMode = TodoSheetMode.Edit(todo)
                                     sheetText = todo.text
@@ -652,6 +657,8 @@ fun CategoryScreen(
                                 useEmojisInUi = settings.tasksPluginUseEmojisInUi,
                                 showSubtaskButton = settings.enableSubtasks,
                                 onToggle = { viewModel.toggleTodo(todo, settings.enableTasksPluginSupport) },
+                                statusChoices = statusChoices,
+                                onSetStatus = { viewModel.toggleTodo(todo, settings.enableTasksPluginSupport, it) },
                                 onEdit = {
                                     sheetMode = TodoSheetMode.Edit(todo)
                                     sheetText = todo.text

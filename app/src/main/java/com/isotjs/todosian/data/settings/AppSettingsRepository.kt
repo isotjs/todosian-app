@@ -37,6 +37,8 @@ interface AppSettingsRepository {
 
     fun setRecurrenceMarker(marker: String)
 
+    fun setCustomStatuses(statuses: String)
+
     fun setEnableSubtasks(enabled: Boolean)
 
     fun setReminderTime(hour: Int, minute: Int)
@@ -129,6 +131,10 @@ class SharedPrefsAppSettingsRepository(
         prefs.edit { putString(KEY_RECURRENCE_MARKER, marker.trim()) }
     }
 
+    override fun setCustomStatuses(statuses: String) {
+        prefs.edit { putString(KEY_CUSTOM_STATUSES, statuses.trim()) }
+    }
+
     override fun setEnableSubtasks(enabled: Boolean) {
         prefs.edit { putBoolean(KEY_SUBTASKS, enabled) }
     }
@@ -180,6 +186,7 @@ class SharedPrefsAppSettingsRepository(
             dueMarker = prefs.getString(KEY_DUE_MARKER, null)?.takeIf { it.isNotBlank() },
             doneMarker = prefs.getString(KEY_DONE_MARKER, null)?.takeIf { it.isNotBlank() },
             recurrenceMarker = prefs.getString(KEY_RECURRENCE_MARKER, null)?.takeIf { it.isNotBlank() },
+            customStatuses = prefs.getString(KEY_CUSTOM_STATUSES, null)?.takeIf { it.isNotBlank() },
             enableSubtasks = prefs.getBoolean(KEY_SUBTASKS, false),
             reminderTimeHour = prefs.getInt(KEY_REMINDER_TIME_HOUR, 19),
             reminderTimeMinute = prefs.getInt(KEY_REMINDER_TIME_MINUTE, 0),
@@ -208,6 +215,7 @@ class SharedPrefsAppSettingsRepository(
         private const val KEY_DUE_MARKER = "due_marker"
         private const val KEY_DONE_MARKER = "done_marker"
         private const val KEY_RECURRENCE_MARKER = "recurrence_marker"
+        private const val KEY_CUSTOM_STATUSES = "custom_statuses"
 
         private const val KEY_SUBTASKS = "enable_subtasks"
 

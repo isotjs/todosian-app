@@ -5,7 +5,9 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -32,6 +34,8 @@ import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.SubdirectoryArrowRight
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -47,6 +51,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -57,6 +64,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -66,7 +75,7 @@ import com.isotjs.todosian.data.model.Todo
 import com.isotjs.todosian.utils.MarkdownParser
 import java.time.LocalDate
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Suppress("DEPRECATION") // dismissState this little fella causes problems with the new Material3 API, so we have to use the deprecated one for now
 @Composable
 fun TodoRow(
@@ -81,7 +90,12 @@ fun TodoRow(
     modifier: Modifier = Modifier,
     allowMove: Boolean = onRequestMove != null,
     showSubtaskButton: Boolean = true,
+    statusChoices: List<Char> = emptyList(),
+    onSetStatus: (Char) -> Unit = {},
 ) {
+    // Open and done are always in the list; the menu only adds value once custom statuses exist.
+    val canSetStatus = statusChoices.size > 2
+    var showStatusMenu by remember { mutableStateOf(false) }
     val indentPadding = (todo.indentLevel * 12).coerceAtMost(48).dp
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
@@ -120,13 +134,36 @@ fun TodoRow(
                         shape = rowShape,
                     )
                     .clip(rowShape)
-                    .clickable(onClick = onEdit)
+                    .combinedClickable(
+                        onClick = onEdit,
+                        onLongClick = if (canSetStatus) {
+                            { showStatusMenu = true }
+                        } else {
+                            null
+                        },
+                    )
                     .padding(horizontal = 12.dp, vertical = 10.dp),
             ) {
                 Checkbox(
                     checked = todo.isDone,
                     onCheckedChange = { onToggle() },
                 )
+                if (canSetStatus) {
+                    DropdownMenu(
+                        expanded = showStatusMenu,
+                        onDismissRequest = { showStatusMenu = false },
+                    ) {
+                        statusChoices.forEach { status ->
+                            DropdownMenuItem(
+                                text = { Text(text = statusLabel(status)) },
+                                onClick = {
+                                    showStatusMenu = false
+                                    onSetStatus(status)
+                                },
+                            )
+                        }
+                    }
+                }
                 Column(
                     modifier = Modifier.weight(1f),
                 ) {
@@ -150,6 +187,21 @@ fun TodoRow(
                                 modifier = Modifier
                                     .size(8.dp)
                                     .background(color = priorityColor, shape = CircleShape),
+                            )
+                        }
+                        if (todo.status !in DEFAULT_STATUSES) {
+                            val statusDescription = stringResource(R.string.cd_todo_status, todo.status.toString())
+                            Text(
+                                text = todo.status.toString(),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                modifier = Modifier
+                                    .background(
+                                        color = MaterialTheme.colorScheme.secondaryContainer,
+                                        shape = MaterialTheme.shapes.small,
+                                    )
+                                    .padding(horizontal = 6.dp, vertical = 1.dp)
+                                    .semantics { contentDescription = statusDescription },
                             )
                         }
                         Text(
@@ -217,6 +269,15 @@ fun TodoRow(
             }
         },
     )
+}
+
+private val DEFAULT_STATUSES = setOf(' ', 'x', 'X')
+
+@Composable
+private fun statusLabel(status: Char): String = when (status) {
+    ' ' -> stringResource(R.string.todo_status_open)
+    'x' -> stringResource(R.string.todo_status_done)
+    else -> stringResource(R.string.todo_status_custom, status.toString())
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

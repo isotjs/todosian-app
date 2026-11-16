@@ -145,7 +145,8 @@ class CategoryViewModel(
         }
     }
 
-    fun toggleTodo(todo: Todo, enableTasksPluginSupport: Boolean) {
+    /** Toggles [todo] between open and done, or sets [newStatus] when given. */
+    fun toggleTodo(todo: Todo, enableTasksPluginSupport: Boolean, newStatus: Char? = null) {
         viewModelScope.launch {
             val markers = currentMarkers()
             val previousLines = _uiState.value.lines
@@ -154,6 +155,7 @@ class CategoryViewModel(
                 lineIndex = todo.lineIndex,
                 enableTasksPlugin = enableTasksPluginSupport,
                 markers = markers,
+                newStatus = newStatus,
             )
             if (newLines == null) {
                 _events.emit(Event.ShowMessage(R.string.error_read_failed))

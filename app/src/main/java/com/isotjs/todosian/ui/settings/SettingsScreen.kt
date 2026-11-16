@@ -894,6 +894,13 @@ private fun TaskMarkersSheet(
                 supporting = stringResource(R.string.settings_marker_default_hint, TaskMarkers.Default.recurrence),
                 onValueChange = { appSettingsRepository.setRecurrenceMarker(it) },
             )
+            SettingsTextFieldRow(
+                label = stringResource(R.string.settings_custom_statuses),
+                value = settings.customStatuses.orEmpty(),
+                placeholder = stringResource(R.string.settings_custom_statuses_example),
+                supporting = stringResource(R.string.settings_custom_statuses_hint),
+                onValueChange = { appSettingsRepository.setCustomStatuses(it) },
+            )
 
             Spacer(modifier = Modifier.height(8.dp))
             Button(
