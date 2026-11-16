@@ -291,20 +291,17 @@ class DailyFocusViewModel(
 
 private fun matchesFocusMode(todo: Todo, mode: DailyFocusMode, today: String): Boolean {
     return when (mode) {
-        DailyFocusMode.TODAY -> todo.dueDate == today
-        DailyFocusMode.OVERDUE -> todo.dueDate?.let { it < today } == true
-        DailyFocusMode.TODAY_AND_OVERDUE -> {
-            val due = todo.dueDate ?: return false
-            due <= today
-        }
+        DailyFocusMode.TODAY -> todo.focusDate == today
+        DailyFocusMode.OVERDUE -> todo.focusDate?.let { it < today } == true
+        DailyFocusMode.TODAY_AND_OVERDUE -> todo.focusDate?.let { it <= today } == true
     }
 }
 
-// Sort: due date earliest -> highest priority -> category name -> line index.
+// Sort: focus date earliest -> highest priority -> category name -> line index.
 private fun sortTasks(tasks: List<DailyFocusTask>): List<DailyFocusTask> {
     return tasks.sortedWith(
-        compareBy<DailyFocusTask> { it.todo.dueDate == null }
-            .thenBy { it.todo.dueDate ?: "" }
+        compareBy<DailyFocusTask> { it.todo.focusDate == null }
+            .thenBy { it.todo.focusDate ?: "" }
             .thenByDescending { it.todo.priority.priorityRank() }
             .thenBy { it.categoryName.lowercase() }
             .thenBy { it.todo.lineIndex },
