@@ -143,6 +143,8 @@
     <string name="settings_reset_folder_body">You’ll be taken back to setup and will need to choose a folder again.</string>
     <string name="settings_reset_folder_confirm">Reset</string>
     <string name="settings_folder_updated">Folder updated.</string>
+    <string name="settings_include_subfolders">Include subfolders</string>
+    <string name="settings_include_subfolders_subtitle">Also show notes in subfolders. Hidden folders such as .obsidian are skipped.</string>
 
     <string name="settings_status">Status</string>
     <string name="settings_status_not_set">Not set</string>

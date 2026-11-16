@@ -10,6 +10,7 @@ import android.provider.DocumentsContract
 import android.util.Log
 import androidx.documentfile.provider.DocumentFile
 import com.isotjs.todosian.data.model.Category
+import com.isotjs.todosian.data.settings.AppSettingsRepository
 import com.isotjs.todosian.utils.MarkdownParser
 import com.isotjs.todosian.utils.TaskMarkers
 import kotlinx.coroutines.CoroutineScope
@@ -21,6 +22,7 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.conflate
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -86,6 +88,7 @@ interface FileRepository {
 class SafFileRepository(
     private val appContext: Context,
     private val preferencesManager: PreferencesManager,
+    private val appSettingsRepository: AppSettingsRepository,
 ) : FileRepository {
 
     private val widgetUpdateScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -118,6 +121,8 @@ class SafFileRepository(
     }
 
     override fun getFolderUri(): Uri? = preferencesManager.getFolderUri()
+
+    private suspend fun includeSubfolders(): Boolean = appSettingsRepository.settings.first().includeSubfolders
 
     override fun isCategoryUri(uri: Uri): Boolean {
         val folderUri = getFolderUri() ?: return false
@@ -154,21 +159,13 @@ class SafFileRepository(
     override suspend fun getCategories(markers: TaskMarkers): Result<List<Category>> {
         val folderUri = getFolderUri() ?: return Result.success(emptyList())
         return withContext(Dispatchers.IO) {
+            val recursive = includeSubfolders()
             runCatching {
-                val folder = DocumentFile.fromTreeUri(appContext, folderUri)
-                    ?: throw IllegalStateException("Invalid folder URI")
-
-                folder.listFiles()
+                scanMarkdownTree(appContext, folderUri, recursive).files
                     .asSequence()
-                    .filter { it.isFile }
-                    .filter { file ->
-                        val name = file.name.orEmpty()
-                        name.endsWith(".md", ignoreCase = true) && !name.contains("sync-conflict", ignoreCase = true)
-                    }
                     .map { file ->
-                        val name = file.name ?: ""
-                        val displayName = name.removeSuffix(".md")
-                        val lines = readLinesInternal(file.uri)
+                        val displayName = file.relativePath
+                        val lines = readLinesInternal(file.ref)
                         val todos = MarkdownParser.parse(lines, markers)
                         val doneCount = todos.count { it.isDone }
                         val today = LocalDate.now().toString()
@@ -179,7 +176,7 @@ class SafFileRepository(
                         }
                         Category(
                             displayName = displayName,
-                            uri = file.uri,
+                            uri = file.ref,
                             todoCount = todos.size,
                             doneCount = doneCount,
                             dueTodayCount = dueTodayCount,
@@ -340,17 +337,9 @@ class SafFileRepository(
     }
 
     override suspend fun countMarkdownFiles(folderUri: Uri): Result<Int> {
+        val recursive = includeSubfolders()
         return withContext(Dispatchers.IO) {
-            runCatching {
-                val folder = DocumentFile.fromTreeUri(appContext, folderUri)
-                    ?: throw IllegalStateException("Invalid folder URI")
-
-                folder.listFiles().count { file ->
-                    if (!file.isFile) return@count false
-                    val name = file.name.orEmpty()
-                    name.endsWith(".md", ignoreCase = true) && !name.contains("sync-conflict", ignoreCase = true)
-                }
-            }
+            runCatching { scanMarkdownTree(appContext, folderUri, recursive).files.size }
         }
     }
 
@@ -376,24 +365,17 @@ class SafFileRepository(
 
             lateinit var observer: ContentObserver
 
-            fun currentMarkdownUris(): List<Pair<Uri, Boolean>> {
-                val folder = DocumentFile.fromTreeUri(appContext, folderUri) ?: return emptyList()
-                val fileUris = folder.listFiles()
-                    .asSequence()
-                    .filter { it.isFile }
-                    .filter {
-                        val name = it.name.orEmpty()
-                        name.endsWith(".md", ignoreCase = true) && !name.contains("sync-conflict", ignoreCase = true)
-                    }
-                    .map { it.uri }
-                    .toList()
+            suspend fun currentMarkdownUris(): List<Pair<Uri, Boolean>> {
+                val tree = scanMarkdownTree(appContext, folderUri, includeSubfolders())
 
                 val uris = mutableListOf<Pair<Uri, Boolean>>()
-                // structural changes
+                // structural changes, in the selected folder and every scanned subfolder
                 uris.add(folderUri to true)
-                uris.add(childrenUri to true)
+                tree.folderIds.forEach { id ->
+                    uris.add(DocumentsContract.buildChildDocumentsUriUsingTree(folderUri, id) to true)
+                }
                 // content changes
-                fileUris.forEach { uris.add(it to false) }
+                tree.files.forEach { uris.add(it.ref to false) }
                 return uris
             }
 
@@ -419,12 +401,9 @@ class SafFileRepository(
             observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
                 override fun onChange(selfChange: Boolean, changedUri: Uri?) {
                     trySend(Unit)
-                    val changed = changedUri?.toString().orEmpty()
-                    val shouldUpdate = changedUri == null ||
-                        changedUri == folderUri ||
-                        changedUri == childrenUri ||
-                        (changed.isNotEmpty() && changed.startsWith(childrenUri.toString()))
-                    if (shouldUpdate) scheduleUpdate()
+                    // Anything but a content change of a known note may add, remove or rename notes.
+                    val isKnownNote = observedUris.any { (uri, notifyDescendants) -> !notifyDescendants && uri == changedUri }
+                    if (!isKnownNote) scheduleUpdate()
                 }
             }
 

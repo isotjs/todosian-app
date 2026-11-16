@@ -27,6 +27,7 @@ class TodosianApplication : Application() {
         SafFileRepository(
             appContext = applicationContext,
             preferencesManager = preferencesManager,
+            appSettingsRepository = appSettingsRepository,
         )
     }
 

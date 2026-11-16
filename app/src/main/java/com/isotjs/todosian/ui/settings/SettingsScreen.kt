@@ -407,6 +407,19 @@ fun SettingsScreen(
 
                         SettingsDivider()
 
+                        SettingsSwitchRow(
+                            icon = Icons.Filled.Folder,
+                            title = stringResource(R.string.settings_include_subfolders),
+                            subtitle = stringResource(R.string.settings_include_subfolders_subtitle),
+                            checked = settings.includeSubfolders,
+                            onCheckedChange = {
+                                appSettingsRepository.setIncludeSubfolders(it)
+                                viewModel.refreshStorageStatus()
+                            },
+                        )
+
+                        SettingsDivider()
+
                         val mdCount = storageState.markdownFileCount
                         val statusText = when {
                             storageState.folderUri == null -> stringResource(R.string.settings_status_not_set)
