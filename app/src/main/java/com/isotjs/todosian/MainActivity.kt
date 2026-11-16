@@ -74,10 +74,12 @@ class MainActivity : ComponentActivity() {
     private fun handleIntent(intent: Intent?) {
         if (intent == null) return
         val wantsGlobalAdd = intent.getBooleanExtra(EXTRA_OPEN_ADD_TASK, false)
-        val fileRepository = (application as TodosianApplication).fileRepository
-        val categoryUri = intent.getStringExtra(EXTRA_OPEN_ADD_TASK_CATEGORY)
-            ?.takeIf { it.isNotBlank() }
-            ?.toUri()
+        val app = application as TodosianApplication
+        val fileRepository = app.fileRepository
+        val categoryUri = (
+            intent.getStringExtra(EXTRA_OPEN_ADD_TASK_CATEGORY)?.takeIf { it.isNotBlank() }?.toUri()
+                ?: app.preferencesManager.getDefaultAddTaskFileUri()?.takeIf { wantsGlobalAdd }
+            )
             ?.takeIf { fileRepository.isCategoryUri(it) }
             ?.toString()
         if (wantsGlobalAdd || categoryUri != null) {

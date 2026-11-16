@@ -1,5 +1,6 @@
 package com.isotjs.todosian.ui.settings
 
+import android.net.Uri
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
@@ -80,6 +81,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -104,6 +106,7 @@ import com.isotjs.todosian.BuildConfig
 import com.isotjs.todosian.R
 import com.isotjs.todosian.data.FileRepository
 import com.isotjs.todosian.data.PreferencesManager
+import com.isotjs.todosian.data.model.Category
 import com.isotjs.todosian.data.settings.AppSettings
 import com.isotjs.todosian.data.settings.AppSettingsRepository
 import com.isotjs.todosian.data.settings.CategorySort
@@ -181,6 +184,11 @@ fun SettingsScreen(
     var showGroupingDialog by remember { mutableStateOf(false) }
     var showTodoSortDialog by remember { mutableStateOf(false) }
     var showNewTodoFilePositionDialog by remember { mutableStateOf(false) }
+    var showDefaultAddTaskFileDialog by remember { mutableStateOf(false) }
+    var defaultAddTaskFileUri by remember { mutableStateOf(preferencesManager.getDefaultAddTaskFileUri()) }
+    val defaultAddTaskFileName by produceState<String?>(initialValue = null, defaultAddTaskFileUri) {
+        value = defaultAddTaskFileUri?.let { fileRepository.getDisplayName(it).getOrNull()?.removeSuffix(".md") }
+    }
     var showResetDialog by remember { mutableStateOf(false) }
     var showDailyFocusModeDialog by remember { mutableStateOf(false) }
     var showReminderTimeDialog by remember { mutableStateOf(false) }
@@ -265,6 +273,27 @@ fun SettingsScreen(
             selected = settings.newTodoFilePosition,
             onSelected = { appSettingsRepository.setNewTodoFilePosition(it) },
             onDismiss = { showNewTodoFilePositionDialog = false },
+        )
+    }
+
+    if (showDefaultAddTaskFileDialog) {
+        val categories by produceState(initialValue = emptyList<Category>()) {
+            value = fileRepository.getCategories().getOrDefault(emptyList())
+        }
+        SingleChoiceDialog(
+            title = stringResource(R.string.settings_default_add_task_file),
+            options = listOf(ChoiceOption<Uri?>(null, stringResource(R.string.settings_default_add_task_file_ask))) +
+                categories.map { ChoiceOption(it.uri, it.displayName) },
+            selected = defaultAddTaskFileUri,
+            onSelected = { uri ->
+                if (uri == null) {
+                    preferencesManager.clearDefaultAddTaskFileUri()
+                } else {
+                    preferencesManager.saveDefaultAddTaskFileUri(uri)
+                }
+                defaultAddTaskFileUri = uri
+            },
+            onDismiss = { showDefaultAddTaskFileDialog = false },
         )
     }
 
@@ -606,6 +635,16 @@ fun SettingsScreen(
                             subtitle = newTodoFilePositionLabel(settings.newTodoFilePosition),
                             onClick = { showNewTodoFilePositionDialog = true },
                         )
+
+                        SettingsDivider()
+
+                        SettingsNavRow(
+                            icon = Icons.Filled.VerticalAlignTop,
+                            title = stringResource(R.string.settings_default_add_task_file),
+                            subtitle = defaultAddTaskFileName
+                                ?: stringResource(R.string.settings_default_add_task_file_ask),
+                            onClick = { showDefaultAddTaskFileDialog = true },
+                        )
                     }
                 }
 
@@ -934,7 +973,7 @@ private fun <T> SingleChoiceDialog(
         onDismissRequest = onDismiss,
         title = { Text(text = title) },
         text = {
-            Column {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 options.forEach { option ->
                     val isSelected = option.value == selected
                     Row(
