@@ -19,7 +19,8 @@ data class TaskMarkers(
 }
 
 object MarkdownParser {
-    private val todoRegex = Regex("""^([ \t]*)- \[(x| )\] (.*)$""")
+    // Any single status character counts, like the Obsidian Tasks plugin's custom statuses.
+    private val todoRegex = Regex("""^([ \t]*)- \[([^\]])\] (.*)$""")
 
     private val prioritySuffixRegex = Regex("""\s(🔺|⏫|🔼|🔽|⏬️?|⏬)\s*$""")
 
@@ -38,14 +39,15 @@ object MarkdownParser {
         return lines.mapIndexedNotNull { index, line ->
             val match = todoRegex.matchEntire(line) ?: return@mapIndexedNotNull null
             val indentPrefix = match.groupValues[1]
-            val isDone = match.groupValues[2] == "x"
+            val status = match.groupValues[2][0]
             val remainder = match.groupValues[3]
 
             val parsed = parseRemainder(remainder, markers)
             Todo(
                 id = UUID.randomUUID().toString(),
                 text = parsed.mainText,
-                isDone = isDone,
+                isDone = isClosedStatus(status),
+                status = status,
                 lineIndex = index,
                 indentLevel = indentLevel(indentPrefix),
                 dueDate = parsed.meta.dueDate,
@@ -59,12 +61,22 @@ object MarkdownParser {
         }
     }
 
+    /** Done (`x`, `X`) and cancelled (`-`) tasks are closed; every other status is open. */
+    fun isClosedStatus(status: Char): Boolean = status == 'x' || status == 'X' || status == '-'
+
+    private fun isDoneStatus(status: Char): Boolean = status == 'x' || status == 'X'
+
+    /**
+     * Sets the status of the task at [lineIndex] to [newStatus], or toggles between open and done when it is null.
+     * Becoming done adds the done date and the next recurrence; leaving done removes the done date.
+     */
     fun toggleLine(
         lines: List<String>,
         lineIndex: Int,
         enableTasksPlugin: Boolean,
         today: LocalDate = LocalDate.now(),
         markers: TaskMarkers = TaskMarkers.Default,
+        newStatus: Char? = null,
     ): List<String> {
         if (lineIndex !in lines.indices) return lines
 
@@ -72,29 +84,27 @@ object MarkdownParser {
         val match = todoRegex.matchEntire(line) ?: return lines
 
         val indentPrefix = match.groupValues[1]
-        val isDone = match.groupValues[2] == "x"
+        val currentStatus = match.groupValues[2][0]
         val remainder = match.groupValues[3]
-        val newMark = if (isDone) " " else "x"
+        val status = newStatus ?: if (isClosedStatus(currentStatus)) ' ' else 'x'
+        if (status == currentStatus) return lines
 
-        val todayStr = today.toString()
+        val wasDone = isDoneStatus(currentStatus)
+        val becomesDone = isDoneStatus(status) && !wasDone
 
-        val newRemainder = if (!enableTasksPlugin) {
-            remainder
-        } else {
-            val withoutDoneDate = removeCompletionDate(remainder, markers)
-            if (!isDone) {
-                withoutDoneDate + " ${markers.done} $todayStr"
-            } else {
-                withoutDoneDate
-            }
+        val newRemainder = when {
+            !enableTasksPlugin -> remainder
+            becomesDone -> removeCompletionDate(remainder, markers) + " ${markers.done} $today"
+            wasDone && !isDoneStatus(status) -> removeCompletionDate(remainder, markers)
+            else -> remainder
         }
 
-        val newLine = "$indentPrefix- [$newMark] ${newRemainder.trimEnd()}"
+        val newLine = "$indentPrefix- [$status] ${newRemainder.trimEnd()}"
         val updatedLines = lines.toMutableList().apply {
             this[lineIndex] = newLine
         }
 
-        if (!isDone && enableTasksPlugin) {
+        if (becomesDone && enableTasksPlugin) {
             val parsed = parseRemainder(remainder, markers)
             val rule = parsed.meta.recurrence
             if (!rule.isNullOrBlank()) {
@@ -123,11 +133,12 @@ object MarkdownParser {
         enableTasksPlugin: Boolean,
         today: LocalDate = LocalDate.now(),
         markers: TaskMarkers = TaskMarkers.Default,
+        newStatus: Char? = null,
     ): List<String>? {
         if (lineIndex !in lines.indices) return null
         val line = lines[lineIndex]
         if (!isTodoLine(line)) return null
-        return toggleLine(lines, lineIndex, enableTasksPlugin, today, markers)
+        return toggleLine(lines, lineIndex, enableTasksPlugin, today, markers, newStatus)
     }
 
     fun addTodo(

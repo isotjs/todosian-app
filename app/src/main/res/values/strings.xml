@@ -207,6 +207,13 @@
     <string name="settings_marker_example_due">e.g. due: 2026-05-20</string>
     <string name="settings_marker_example_done">e.g. done: 2026-05-20</string>
     <string name="settings_marker_example_recurrence">e.g. repeat: every week</string>
+    <string name="settings_custom_statuses">Custom statuses</string>
+    <string name="settings_custom_statuses_example">e.g. / - w</string>
+    <string name="settings_custom_statuses_hint">Status characters offered when you long-press a task, besides open and done. x and - close a task.</string>
+    <string name="todo_status_open">Open</string>
+    <string name="todo_status_done">Done</string>
+    <string name="todo_status_custom">Status [%1$s]</string>
+    <string name="cd_todo_status">Status %1$s</string>
 
     <string name="settings_enable_subtasks">Enable subtasks</string>
     <string name="settings_enable_subtasks_subtitle">Allow adding subtasks to todos.</string>

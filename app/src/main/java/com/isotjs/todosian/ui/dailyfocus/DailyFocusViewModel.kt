@@ -131,7 +131,8 @@ class DailyFocusViewModel(
         }
     }
 
-    fun toggleTodo(task: DailyFocusTask) {
+    /** Toggles [task] between open and done, or sets [newStatus] when given. */
+    fun toggleTodo(task: DailyFocusTask, newStatus: Char? = null) {
         viewModelScope.launch {
             val markers = currentMarkers()
             val previousLines = currentLinesFor(task)
@@ -140,6 +141,7 @@ class DailyFocusViewModel(
                 lineIndex = task.todo.lineIndex,
                 enableTasksPlugin = enableTasksPluginSupport,
                 markers = markers,
+                newStatus = newStatus,
             )
             if (newLines == null) {
                 _events.emit(Event.ShowMessage(R.string.error_read_failed))

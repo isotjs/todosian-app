@@ -19,6 +19,7 @@ data class AppSettings(
     val dueMarker: String? = null,
     val doneMarker: String? = null,
     val recurrenceMarker: String? = null,
+    val customStatuses: String? = null,
     val enableSubtasks: Boolean = false,
     val reminderTimeHour: Int = 19,
     val reminderTimeMinute: Int = 0,
@@ -32,6 +33,11 @@ data class AppSettings(
         done = doneMarker?.takeIf { it.isNotBlank() } ?: TaskMarkers.Default.done,
         recurrence = recurrenceMarker?.takeIf { it.isNotBlank() } ?: TaskMarkers.Default.recurrence,
     )
+
+    /** Statuses offered when long-pressing a task: open, done, then each custom status character. */
+    fun statusChoices(): List<Char> =
+        (listOf(' ', 'x') + customStatuses.orEmpty().filterNot { it.isWhitespace() || it == ']' }.toList())
+            .distinct()
 }
 
 enum class DailyFocusMode {
