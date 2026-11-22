@@ -84,6 +84,7 @@ fun DailyFocusScreen(
     val settings by appSettingsRepository.settings.collectAsStateWithLifecycle(
         initialValue = AppSettings(),
     )
+    val statusChoices = remember(settings.customStatuses) { settings.statusChoices() }
 
     val viewModel: DailyFocusViewModel = viewModel(
         key = "daily_focus_${settings.dailyFocusMode.name}_${settings.enableTasksPluginSupport}",
@@ -321,6 +322,8 @@ fun DailyFocusScreen(
                         enableTasksPluginSupport = settings.enableTasksPluginSupport,
                         useEmojisInUi = settings.tasksPluginUseEmojisInUi,
                         onToggle = { viewModel.toggleTodo(task) },
+                        statusChoices = statusChoices,
+                        onSetStatus = { viewModel.toggleTodo(task, it) },
                         onEdit = {
                             sheetMode = TodoSheetMode.Edit(task.todo)
                             sheetText = task.todo.text

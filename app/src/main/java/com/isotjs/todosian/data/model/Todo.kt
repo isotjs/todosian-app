@@ -23,6 +23,7 @@ fun TasksPriority?.priorityRank(): Int {
 data class Todo(
     val id: String,
     val text: String,
+    // True for closed statuses: done (x, X) and cancelled (-).
     val isDone: Boolean,
     val lineIndex: Int,
     val indentLevel: Int = 0,
@@ -40,6 +41,7 @@ data class Todo(
     val createdDate: String? = null, // ➕ YYYY-MM-DD
     val priority: TasksPriority? = null,
     val recurrence: String? = null, // 🔁 <text>
+    val status: Char = if (isDone) 'x' else ' ', // the character between the brackets
 ) {
     /** Earliest of the due and scheduled dates: the day Daily Focus treats the task as due. */
     val focusDate: String?
