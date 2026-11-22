@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.isotjs.todosian.R
 import com.isotjs.todosian.data.FileRepository
+import com.isotjs.todosian.data.PreferencesManager
 import com.isotjs.todosian.data.model.Category
 import com.isotjs.todosian.data.settings.AppSettingsRepository
 import com.isotjs.todosian.ui.components.awaitMinimumPullRefreshDuration
@@ -22,6 +23,7 @@ data class HomeUiState(
     val isLoading: Boolean = false,
     val isRefreshing: Boolean = false,
     val categories: List<Category> = emptyList(),
+    val launchCategoryUri: Uri? = null,
 ) {
     fun remainingFor(mode: com.isotjs.todosian.data.settings.DailyFocusMode): Int {
         return when (mode) {
@@ -36,12 +38,15 @@ data class HomeUiState(
 class HomeViewModel(
     private val fileRepository: FileRepository,
     private val appSettingsRepository: AppSettingsRepository,
+    private val preferencesManager: PreferencesManager,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(HomeUiState(isLoading = true))
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
     private val _events = MutableSharedFlow<Event>()
     val events = _events.asSharedFlow()
+
+    private var launchCategoryChecked = false
 
     init {
         refresh()
@@ -50,6 +55,8 @@ class HomeViewModel(
     fun refresh(showLoading: Boolean = true, showRefreshing: Boolean = false) {
         if (showRefreshing && _uiState.value.isRefreshing) return
         viewModelScope.launch {
+            val isLaunchRefresh = !launchCategoryChecked
+            launchCategoryChecked = true
             val startedAt = SystemClock.elapsedRealtime()
             if (showRefreshing) {
                 _uiState.value = _uiState.value.copy(isRefreshing = true)
@@ -77,16 +84,40 @@ class HomeViewModel(
                     return@launch
                 }
 
-                _uiState.value = _uiState.value.copy(
+                val categories = result.getOrThrow()
+                var launchCategoryUri: Uri? = null
+                if (isLaunchRefresh) {
+                    val configuredUri = preferencesManager.getDefaultLaunchCategoryUri()
+                    if (configuredUri != null) {
+                        if (categories.any { it.uri == configuredUri }) {
+                            launchCategoryUri = configuredUri
+                        } else {
+                            preferencesManager.clearDefaultLaunchCategoryUri()
+                        }
+                    }
+                }
+
+                val refreshedState = _uiState.value.copy(
                     isLoading = false,
-                    categories = result.getOrThrow(),
+                    categories = categories,
                 )
+                _uiState.value = if (isLaunchRefresh) {
+                    refreshedState.copy(launchCategoryUri = launchCategoryUri)
+                } else {
+                    refreshedState
+                }
             } finally {
                 if (showRefreshing) {
                     awaitMinimumPullRefreshDuration(startedAt)
                     _uiState.value = _uiState.value.copy(isRefreshing = false)
                 }
             }
+        }
+    }
+
+    fun consumeLaunchCategory() {
+        if (_uiState.value.launchCategoryUri != null) {
+            _uiState.value = _uiState.value.copy(launchCategoryUri = null)
         }
     }
 

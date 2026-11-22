@@ -172,6 +172,8 @@
     <string name="settings_dynamic_color_unavailable">Available on Android 12+ only.</string>
 
     <string name="settings_behaviour">Behaviour</string>
+    <string name="settings_launch_category">View on launch</string>
+    <string name="settings_launch_category_overview">Category overview</string>
     <string name="settings_show_daily_focus">Daily focus banner</string>
     <string name="settings_show_daily_focus_subtitle">Show remaining tasks on the Home screen.</string>
     <string name="settings_daily_focus_mode">Daily focus content</string>

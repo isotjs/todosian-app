@@ -43,6 +43,7 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.ColorLens
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.RestartAlt
@@ -189,6 +190,13 @@ fun SettingsScreen(
     val defaultAddTaskFileName by produceState<String?>(initialValue = null, defaultAddTaskFileUri) {
         value = defaultAddTaskFileUri?.let { fileRepository.getDisplayName(it).getOrNull()?.removeSuffix(".md") }
     }
+    var showLaunchCategoryDialog by remember { mutableStateOf(false) }
+    var launchCategoryUri by remember { mutableStateOf(preferencesManager.getDefaultLaunchCategoryUri()) }
+    val launchCategoryName by produceState<String?>(initialValue = null, launchCategoryUri) {
+        value = launchCategoryUri
+            ?.let { fileRepository.getDisplayName(it).getOrNull()?.removeSuffix(".md") }
+            ?.takeIf { it.isNotBlank() }
+    }
     var showResetDialog by remember { mutableStateOf(false) }
     var showDailyFocusModeDialog by remember { mutableStateOf(false) }
     var showReminderTimeDialog by remember { mutableStateOf(false) }
@@ -294,6 +302,31 @@ fun SettingsScreen(
                 defaultAddTaskFileUri = uri
             },
             onDismiss = { showDefaultAddTaskFileDialog = false },
+        )
+    }
+
+    if (showLaunchCategoryDialog) {
+        val categories by produceState(initialValue = emptyList<Category>()) {
+            value = fileRepository.getCategories().getOrDefault(emptyList())
+        }
+        SingleChoiceDialog(
+            title = stringResource(R.string.settings_launch_category),
+            options = listOf(
+                ChoiceOption<Uri?>(
+                    null,
+                    stringResource(R.string.settings_launch_category_overview),
+                ),
+            ) + categories.map { ChoiceOption(it.uri, it.displayName) },
+            selected = launchCategoryUri,
+            onSelected = { uri ->
+                if (uri == null) {
+                    preferencesManager.clearDefaultLaunchCategoryUri()
+                } else {
+                    preferencesManager.saveDefaultLaunchCategoryUri(uri)
+                }
+                launchCategoryUri = uri
+            },
+            onDismiss = { showLaunchCategoryDialog = false },
         )
     }
 
@@ -528,6 +561,16 @@ fun SettingsScreen(
 
                 item {
                     SettingsGroup(title = stringResource(R.string.settings_behaviour)) {
+                        SettingsNavRow(
+                            icon = Icons.Filled.Home,
+                            title = stringResource(R.string.settings_launch_category),
+                            subtitle = launchCategoryName
+                                ?: stringResource(R.string.settings_launch_category_overview),
+                            onClick = { showLaunchCategoryDialog = true },
+                        )
+
+                        SettingsDivider()
+
                         SettingsSwitchRow(
                             icon = Icons.Filled.Info,
                             title = stringResource(R.string.settings_show_daily_focus),
