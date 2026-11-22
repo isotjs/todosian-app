@@ -180,9 +180,9 @@ class SafFileRepository(
                         val doneCount = todos.count { it.isDone }
                         val today = LocalDate.now().toString()
                         val activeTodos = todos.filter { !it.isDone }
-                        val dueTodayCount = activeTodos.count { it.dueDate == today }
+                        val dueTodayCount = activeTodos.count { it.focusDate == today }
                         val overdueCount = activeTodos.count { todo ->
-                            todo.dueDate?.let { it < today } == true
+                            todo.focusDate?.let { it < today } == true
                         }
                         Category(
                             displayName = displayName,

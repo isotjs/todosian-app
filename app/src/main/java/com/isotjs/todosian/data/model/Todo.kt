@@ -35,4 +35,8 @@ data class Todo(
     val createdDate: String? = null, // ➕ YYYY-MM-DD
     val priority: TasksPriority? = null,
     val recurrence: String? = null, // 🔁 <text>
-)
+) {
+    /** Earliest of the due and scheduled dates: the day Daily Focus treats the task as due. */
+    val focusDate: String?
+        get() = listOfNotNull(dueDate, scheduledDate).minOrNull()
+}
