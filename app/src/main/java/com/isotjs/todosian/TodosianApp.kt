@@ -115,6 +115,7 @@ fun TodosianApp(
         composable(Routes.Onboarding) {
             OnboardingScreen(
                 fileRepository = fileRepository,
+                appSettingsRepository = appSettingsRepository,
                 onFinished = {
                     navController.navigate(Routes.Home) {
                         popUpTo(Routes.Onboarding) { inclusive = true }

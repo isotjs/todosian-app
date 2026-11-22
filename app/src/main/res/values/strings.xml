@@ -7,6 +7,7 @@
     <string name="onboarding_choose_folder">Choose folder</string>
     <string name="onboarding_permission_hint">Todosian only accesses the folder you select. You can change this anytime in Settings.</string>
     <string name="onboarding_requirements">The selected folder must include at least one .md file.</string>
+    <string name="onboarding_requirements_subfolders">Subfolders are included, so a folder with no .md files is fine.</string>
     <string name="onboarding_validating">Checking folder…</string>
 
     <!-- Home -->

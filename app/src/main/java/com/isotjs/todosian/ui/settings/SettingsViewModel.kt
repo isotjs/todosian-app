@@ -6,11 +6,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.isotjs.todosian.R
 import com.isotjs.todosian.data.FileRepository
+import com.isotjs.todosian.data.settings.AppSettingsRepository
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 data class StorageUiState(
@@ -23,6 +25,7 @@ data class StorageUiState(
 
 class SettingsViewModel(
     private val fileRepository: FileRepository,
+    private val appSettingsRepository: AppSettingsRepository,
 ) : ViewModel() {
     private val _storageState = MutableStateFlow(StorageUiState(isChecking = true))
     val storageState: StateFlow<StorageUiState> = _storageState.asStateFlow()
@@ -82,7 +85,10 @@ class SettingsViewModel(
                 return@launch
             }
 
-            if (count.getOrThrow() <= 0) {
+            // When subfolders are included an empty folder is acceptable: notes can live
+            // anywhere in the tree, so the ".md file required" rule does not apply.
+            val includeSubfolders = appSettingsRepository.settings.first().includeSubfolders
+            if (!includeSubfolders && count.getOrThrow() <= 0) {
                 fileRepository.clearFolderUri()
                 _events.emit(Event.ShowMessage(R.string.error_folder_empty))
                 _events.emit(Event.RequireOnboarding)

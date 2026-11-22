@@ -377,10 +377,20 @@ fun HomeScreen(
         },
         modifier = modifier.fillMaxSize(),
     ) { padding ->
-        val categories = remember(uiState.categories, settings.categorySort) {
+        val categories = remember(uiState.categories, settings.categorySort, settings.includeSubfolders) {
+            // When subfolders are included, empty notes from nested folders would show up as
+            // "0/0" and clutter the grid. Hide only those empty nested notes; root-level
+            // categories (including ones the user just created) stay visible.
+            val visibleCategories = if (settings.includeSubfolders) {
+                uiState.categories.filterNot {
+                    it.todoCount == 0 && it.doneCount == 0 && it.displayName.contains('/')
+                }
+            } else {
+                uiState.categories
+            }
             when (settings.categorySort) {
-                CategorySort.A_Z -> uiState.categories.sortedBy { it.displayName.lowercase() }
-                CategorySort.MOST_REMAINING -> uiState.categories.sortedByDescending { it.todoCount - it.doneCount }
+                CategorySort.A_Z -> visibleCategories.sortedBy { it.displayName.lowercase() }
+                CategorySort.MOST_REMAINING -> visibleCategories.sortedByDescending { it.todoCount - it.doneCount }
             }
         }
 

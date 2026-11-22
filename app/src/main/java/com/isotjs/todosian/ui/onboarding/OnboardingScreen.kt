@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.Button
@@ -30,6 +31,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
@@ -52,6 +54,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.isotjs.todosian.R
 import com.isotjs.todosian.data.FileRepository
+import com.isotjs.todosian.data.settings.AppSettings
+import com.isotjs.todosian.data.settings.AppSettingsRepository
 import com.isotjs.todosian.ui.components.TodosianDimens
 import kotlinx.coroutines.flow.collectLatest
 
@@ -59,13 +63,17 @@ import kotlinx.coroutines.flow.collectLatest
 @Composable
 fun OnboardingScreen(
     fileRepository: FileRepository,
+    appSettingsRepository: AppSettingsRepository,
     onFinished: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val viewModel: OnboardingViewModel = viewModel(
-        factory = OnboardingViewModelFactory(fileRepository),
+        factory = OnboardingViewModelFactory(fileRepository, appSettingsRepository),
     )
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val settings by appSettingsRepository.settings.collectAsStateWithLifecycle(
+        initialValue = AppSettings(),
+    )
 
     LaunchedEffect(viewModel) {
         viewModel.events.collectLatest { event ->
@@ -167,9 +175,60 @@ fun OnboardingScreen(
                     )
                     Spacer(modifier = Modifier.size(12.dp))
                     Text(
-                        text = stringResource(R.string.onboarding_requirements),
+                        text = stringResource(
+                            if (settings.includeSubfolders) {
+                                R.string.onboarding_requirements_subfolders
+                            } else {
+                                R.string.onboarding_requirements
+                            }
+                        ),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                ),
+                shape = MaterialTheme.shapes.extraLarge,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .alpha(contentAlpha),
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 8.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Folder,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Spacer(modifier = Modifier.size(12.dp))
+                    Column(
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.settings_include_subfolders),
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                        Text(
+                            text = stringResource(R.string.settings_include_subfolders_subtitle),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Spacer(modifier = Modifier.size(12.dp))
+                    Switch(
+                        checked = settings.includeSubfolders,
+                        onCheckedChange = { appSettingsRepository.setIncludeSubfolders(it) },
                     )
                 }
             }
@@ -233,11 +292,12 @@ fun OnboardingScreen(
 
 private class OnboardingViewModelFactory(
     private val fileRepository: FileRepository,
+    private val appSettingsRepository: AppSettingsRepository,
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(OnboardingViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return OnboardingViewModel(fileRepository) as T
+            return OnboardingViewModel(fileRepository, appSettingsRepository) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }
