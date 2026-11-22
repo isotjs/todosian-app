@@ -1,0 +1,9 @@
+Notes, custom statuses, and subfolders.
+
+• Task notes: write notes under any task — they stay as plain indented lines in your Markdown (thanks @BenjaminHae)
+• Custom statuses: - [X], - [/] and - [-] are now tasks too, and a long-press switches between open, done, and your own statuses (thanks @seekermarcel)
+• Subfolders: optionally list notes from subfolders by their relative path, skipping hidden folders (thanks @seekermarcel)
+• Layouts: grid or list categories, compact todo rows, and choose the view Todosian opens on launch
+• The quick-add widget can open a file you choose instead of asking every time (thanks @seekermarcel)
+• Daily Focus now counts tasks scheduled (⏳) for today, not only due ones (thanks @seekermarcel)
+• Saving keeps your line endings and final newline, so sync tools only see the lines you changed (thanks @seekermarcel)

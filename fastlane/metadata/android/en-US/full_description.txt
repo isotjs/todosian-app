@@ -11,10 +11,17 @@ Todosian reads and writes your existing .md files directly. There is no database
 <b>Features</b>
 
 - Add / edit / toggle / delete todos
+- Optional subtasks, and notes that stay as indented lines under their task
+- Custom task statuses: open, done, or your own characters such as - [/]
 - Create / rename / delete categories (files)
-- Optional support for Obsidian Tasks plugin metadata (dates, priority, recurrence)
-- Material 3 UI, dynamic color (Android 12+)
-- Offline-first and privacy-focused (no analytics)
+- Optional subfolder support; notes are listed by their relative path
+- Optional support for Obsidian Tasks plugin metadata (dates, priority, recurrence), with your own markers
+- Daily Focus for tasks that are due or scheduled today, plus an optional daily due reminder
+- Home screen widgets: a todo list with inline toggling and a quick-add button
+- Grid or list category layout, compact rows, and category / todo sorting and grouping
+- Pull to refresh, and writes that keep your line endings and final newline intact
+- Material 3 UI, dynamic color (Android 12+), light and dark theme
+- Offline-first and privacy-focused: no network permission, no analytics
 
 <b>Notes</b>
 

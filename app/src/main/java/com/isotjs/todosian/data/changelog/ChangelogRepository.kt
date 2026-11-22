@@ -8,6 +8,7 @@ import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FilterCenterFocus
+import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Palette
@@ -102,6 +103,7 @@ object ChangelogRepository {
     private fun parseIcon(name: String): ImageVector {
         return when (name) {
             "FilterCenterFocus" -> Icons.Filled.FilterCenterFocus
+            "GridView" -> Icons.Filled.GridView
             "AutoAwesome" -> Icons.Filled.AutoAwesome
             "Checklist" -> Icons.Filled.Checklist
             "Edit" -> Icons.Filled.Edit

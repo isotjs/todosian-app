@@ -4,37 +4,54 @@
     "versionName": "2.2",
     "items": [
       {
-        "icon": "Palette",
-        "title": "A Fresh Look",
-        "description": "Settings, onboarding, and empty screens share a calmer, more expressive design."
+        "icon": "Edit",
+        "title": "Notes On Your Tasks",
+        "description": "Write notes under any task. They stay as plain indented lines in your Markdown, and you can hide them from the task list.",
+        "contributor": {
+          "name": "BenjaminHae",
+          "url": "https://github.com/BenjaminHae"
+        }
       },
       {
-        "icon": "Edit",
-        "title": "Your Own Task Markers",
-        "description": "Choose the text or emoji for dates, priority, and recurrence, still compatible with Obsidian Tasks."
+        "icon": "Checklist",
+        "title": "Any Status You Use",
+        "description": "Todosian now understands custom statuses such as - [X], - [/] or - [-]. Long-press a task to switch between open, done, and your own statuses.",
+        "contributor": {
+          "name": "seekermarcel",
+          "url": "https://github.com/seekermarcel"
+        }
+      },
+      {
+        "icon": "SubdirectoryArrowRight",
+        "title": "Subfolders Included",
+        "description": "Optionally show notes from subfolders, listed by their relative path. Hidden folders such as .obsidian stay skipped.",
+        "contributor": {
+          "name": "seekermarcel",
+          "url": "https://github.com/seekermarcel"
+        }
+      },
+      {
+        "icon": "GridView",
+        "title": "A Layout That Fits",
+        "description": "Pick grid or list categories, compact todo rows, and the view Todosian opens on launch."
       },
       {
         "icon": "Widgets",
-        "title": "Widgets Your Way",
-        "description": "Pick the list each widget shows, hide completed tasks, and see changes right away.",
+        "title": "Quick Add, Your Way",
+        "description": "Point the add-task widget at a file so it opens ready to type instead of asking for a note every time.",
         "contributor": {
-          "name": "willl03",
-          "url": "https://github.com/willl03"
+          "name": "seekermarcel",
+          "url": "https://github.com/seekermarcel"
         }
       },
       {
-        "icon": "BugReport",
-        "title": "Polish & Fixes",
-        "description": "Back gestures slide naturally, and a rare freeze from the floating button is fixed.",
+        "icon": "FilterCenterFocus",
+        "title": "Focus & Sync Fixes",
+        "description": "Daily Focus now counts tasks scheduled for today, and saving keeps your line endings and final newline intact.",
         "contributor": {
-          "name": "willl03",
-          "url": "https://github.com/willl03"
+          "name": "seekermarcel",
+          "url": "https://github.com/seekermarcel"
         }
-      },
-      {
-        "icon": "Security",
-        "title": "Safer Note Links",
-        "description": "Notes opened from other apps or widgets are now validated before they are read."
       }
     ]
   }
