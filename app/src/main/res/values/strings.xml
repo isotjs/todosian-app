@@ -233,6 +233,8 @@
     <string name="settings_enable_subtasks_subtitle">Allow adding subtasks to todos.</string>
     <string name="settings_show_notes_in_task_list">Show notes in task list</string>
     <string name="settings_show_notes_in_task_list_subtitle">Display indented note lines under their task.</string>
+    <string name="settings_compact_todo_entries">Compact todo entries</string>
+    <string name="settings_compact_todo_entries_subtitle">Reduce spacing to show more tasks without scrolling.</string>
     <string name="settings_notification_permission_denied">Notifications are disabled, so due reminders cannot be shown.</string>
 
     <string name="settings_reminder_time">Reminder time</string>

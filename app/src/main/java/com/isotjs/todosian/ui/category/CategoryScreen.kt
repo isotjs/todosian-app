@@ -609,6 +609,7 @@ fun CategoryScreen(
                         it.lineIndex in hiddenSubtaskIndices
                     }
                 }
+                val todoSpacing = if (settings.compactTodoEntries) 4.dp else 8.dp
 
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     if (settings.todoGrouping == TodoGrouping.FILE_ORDER) {
@@ -622,6 +623,7 @@ fun CategoryScreen(
                                 useEmojisInUi = settings.tasksPluginUseEmojisInUi,
                                 showSubtaskButton = settings.enableSubtasks,
                                 showNotes = settings.showNotesInTaskList,
+                                compact = settings.compactTodoEntries,
                                 hasSubTasks = MarkdownParser.hasSubtasks(uiState.lines, todo.lineIndex),
                                 isCollapsed = todo.id in collapsedTodoIds,
                                 onToggleCollapse = { toggleCollapse(todo.id) },
@@ -666,7 +668,7 @@ fun CategoryScreen(
                                     fadeOutSpec = tween(durationMillis = 160),
                                 ),
                             )
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(todoSpacing))
                         }
                         item { Spacer(modifier = Modifier.height(96.dp)) }
                         return@LazyColumn
@@ -684,6 +686,7 @@ fun CategoryScreen(
                                 useEmojisInUi = settings.tasksPluginUseEmojisInUi,
                                 showSubtaskButton = settings.enableSubtasks,
                                 showNotes = settings.showNotesInTaskList,
+                                compact = settings.compactTodoEntries,
                                 hasSubTasks = MarkdownParser.hasSubtasks(uiState.lines, todo.lineIndex),
                                 isCollapsed = todo.id in collapsedTodoIds,
                                 onToggleCollapse = { toggleCollapse(todo.id) },
@@ -728,7 +731,7 @@ fun CategoryScreen(
                                     fadeOutSpec = tween(durationMillis = 160),
                                 ),
                             )
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(todoSpacing))
                         }
                     }
 
@@ -744,6 +747,7 @@ fun CategoryScreen(
                                 useEmojisInUi = settings.tasksPluginUseEmojisInUi,
                                 showSubtaskButton = settings.enableSubtasks,
                                 showNotes = settings.showNotesInTaskList,
+                                compact = settings.compactTodoEntries,
                                 hasSubTasks = MarkdownParser.hasSubtasks(uiState.lines, todo.lineIndex),
                                 isCollapsed = todo.id in collapsedTodoIds,
                                 onToggleCollapse = { toggleCollapse(todo.id) },
@@ -788,7 +792,7 @@ fun CategoryScreen(
                                     fadeOutSpec = tween(durationMillis = 160),
                                 ),
                             )
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(todoSpacing))
                         }
                     }
 

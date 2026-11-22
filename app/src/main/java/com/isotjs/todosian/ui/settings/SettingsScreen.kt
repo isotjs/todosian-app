@@ -736,6 +736,16 @@ fun SettingsScreen(
                             checked = settings.showNotesInTaskList,
                             onCheckedChange = { appSettingsRepository.setShowNotesInTaskList(it) },
                         )
+
+                        SettingsDivider()
+
+                        SettingsSwitchRow(
+                            icon = Icons.AutoMirrored.Filled.List,
+                            title = stringResource(R.string.settings_compact_todo_entries),
+                            subtitle = stringResource(R.string.settings_compact_todo_entries_subtitle),
+                            checked = settings.compactTodoEntries,
+                            onCheckedChange = { appSettingsRepository.setCompactTodoEntries(it) },
+                        )
                     }
                 }
 

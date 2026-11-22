@@ -98,6 +98,7 @@ fun TodoRow(
     hasSubTasks: Boolean = false,
     isCollapsed: Boolean = false,
     onToggleCollapse: (() -> Unit)? = null,
+    compact: Boolean = false,
 ) {
     // Open and done are always in the list; the menu only adds value once custom statuses exist.
     val canSetStatus = statusChoices.size > 2
@@ -132,7 +133,7 @@ fun TodoRow(
         content = {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 12.dp),
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(
@@ -148,7 +149,10 @@ fun TodoRow(
                             null
                         },
                     )
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                    .padding(
+                        horizontal = if (compact) 8.dp else 12.dp,
+                        vertical = if (compact) 2.dp else 10.dp,
+                    ),
             ) {
                 Checkbox(
                     checked = todo.isDone,
@@ -212,7 +216,11 @@ fun TodoRow(
                         }
                         Text(
                             text = todo.text,
-                            style = MaterialTheme.typography.bodyLarge,
+                            style = if (compact) {
+                                MaterialTheme.typography.bodyMedium
+                            } else {
+                                MaterialTheme.typography.bodyLarge
+                            },
                             textDecoration = if (todo.isDone) TextDecoration.LineThrough else TextDecoration.None,
                             color = textColor,
                         )
@@ -221,7 +229,7 @@ fun TodoRow(
                     if (enableTasksPluginSupport) {
                         val chips = buildTasksMetaChips(todo = todo, useEmojisInUi = useEmojisInUi)
                         if (chips.isNotEmpty()) {
-                            Spacer(modifier = Modifier.height(6.dp))
+                            Spacer(modifier = Modifier.height(if (compact) 4.dp else 6.dp))
                             Row(
                                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                                 modifier = Modifier
@@ -263,7 +271,7 @@ fun TodoRow(
                         }
                     }
                     if (showNotes && todo.notes.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(4.dp))
+                        Spacer(modifier = Modifier.height(if (compact) 2.dp else 4.dp))
                         Text(
                             text = MarkdownParser.notesToEditorText(todo.notes),
                             style = MaterialTheme.typography.bodyMedium,

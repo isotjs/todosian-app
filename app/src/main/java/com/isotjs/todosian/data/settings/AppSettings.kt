@@ -23,6 +23,7 @@ data class AppSettings(
     val customStatuses: String? = null,
     val enableSubtasks: Boolean = false,
     val showNotesInTaskList: Boolean = true,
+    val compactTodoEntries: Boolean = false,
     val includeSubfolders: Boolean = false,
     val reminderTimeHour: Int = 19,
     val reminderTimeMinute: Int = 0,
