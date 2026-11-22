@@ -18,8 +18,10 @@ class PreferencesManager(
     }
 
     fun saveFolderUri(uri: Uri) {
-        // The default file belongs to the previous folder.
-        if (getFolderUri() != uri) clearDefaultAddTaskFileUri()
+        if (getFolderUri() != uri) {
+            clearDefaultAddTaskFileUri()
+            clearDefaultLaunchCategoryUri()
+        }
         if (prefs.getInt(KEY_LAST_SEEN_VERSION_CODE, 0) == 0) {
             prefs.edit {
                 putString(KEY_FOLDER_URI, uri.toString())
@@ -36,6 +38,7 @@ class PreferencesManager(
         prefs.edit {
             remove(KEY_FOLDER_URI)
             remove(KEY_DEFAULT_ADD_TASK_FILE_URI)
+            remove(KEY_DEFAULT_LAUNCH_CATEGORY_URI)
         }
     }
 
@@ -51,6 +54,17 @@ class PreferencesManager(
         prefs.edit { remove(KEY_DEFAULT_ADD_TASK_FILE_URI) }
     }
 
+    fun getDefaultLaunchCategoryUri(): Uri? =
+        prefs.getString(KEY_DEFAULT_LAUNCH_CATEGORY_URI, null)?.let { raw -> runCatching { raw.toUri() }.getOrNull() }
+
+    fun saveDefaultLaunchCategoryUri(uri: Uri) {
+        prefs.edit { putString(KEY_DEFAULT_LAUNCH_CATEGORY_URI, uri.toString()) }
+    }
+
+    fun clearDefaultLaunchCategoryUri() {
+        prefs.edit { remove(KEY_DEFAULT_LAUNCH_CATEGORY_URI) }
+    }
+
     fun getLastSeenVersionCode(): Int {
         return prefs.getInt(KEY_LAST_SEEN_VERSION_CODE, 0)
     }
@@ -64,5 +78,6 @@ class PreferencesManager(
         private const val KEY_FOLDER_URI = "folder_uri"
         private const val KEY_LAST_SEEN_VERSION_CODE = "last_seen_version_code"
         private const val KEY_DEFAULT_ADD_TASK_FILE_URI = "default_add_task_file_uri"
+        private const val KEY_DEFAULT_LAUNCH_CATEGORY_URI = "default_launch_category_uri"
     }
 }

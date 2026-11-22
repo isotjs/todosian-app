@@ -111,9 +111,15 @@ fun HomeScreen(
     modifier: Modifier = Modifier,
 ) {
     val viewModel: HomeViewModel = viewModel(
-        factory = HomeViewModelFactory(fileRepository, appSettingsRepository),
+        factory = HomeViewModelFactory(fileRepository, appSettingsRepository, preferencesManager),
     )
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(uiState.launchCategoryUri) {
+        val uri = uiState.launchCategoryUri ?: return@LaunchedEffect
+        viewModel.consumeLaunchCategory()
+        onOpenCategory(uri)
+    }
 
     var showChangelogSheet by remember { mutableStateOf(false) }
 
@@ -706,11 +712,12 @@ private fun EmptyHomeState(
 private class HomeViewModelFactory(
     private val fileRepository: FileRepository,
     private val appSettingsRepository: AppSettingsRepository,
+    private val preferencesManager: PreferencesManager,
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(HomeViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return HomeViewModel(fileRepository, appSettingsRepository) as T
+            return HomeViewModel(fileRepository, appSettingsRepository, preferencesManager) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }
