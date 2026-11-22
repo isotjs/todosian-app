@@ -43,6 +43,13 @@ internal fun isDocumentWithinFolder(
     return !candidateDocumentId.isNullOrEmpty()
 }
 
+/** Joins [lines] using the line separator and final-newline style already present in [original]. */
+internal fun joinLinesLike(original: String, lines: List<String>): String {
+    val separator = if (original.contains("\r\n")) "\r\n" else "\n"
+    val finalNewline = if (lines.isNotEmpty() && original.endsWith('\n')) separator else ""
+    return lines.joinToString(separator) + finalNewline
+}
+
 interface FileRepository {
     fun getFolderUri(): Uri?
 
@@ -490,14 +497,13 @@ class SafFileRepository(
     }
 
     private fun writeLinesInternal(uri: Uri, lines: List<String>) {
+        // Re-read the file so CRLF and the final newline survive the round trip through readLines().
+        val original = appContext.contentResolver.openInputStream(uri)?.use { input ->
+            input.bufferedReader().readText()
+        }.orEmpty()
         appContext.contentResolver.openOutputStream(uri, "w")?.use { out ->
             runCatching { (out as? java.io.FileOutputStream)?.channel?.truncate(0) }
-            out.bufferedWriter().use { writer ->
-                lines.forEachIndexed { index, line ->
-                    if (index > 0) writer.newLine()
-                    writer.write(line)
-                }
-            }
+            out.bufferedWriter().use { writer -> writer.write(joinLinesLike(original, lines)) }
         } ?: throw IllegalStateException("Unable to open output stream")
         
         try {
