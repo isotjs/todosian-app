@@ -489,7 +489,8 @@ fun HomeScreen(
                                         onClick = { onOpenCategory(category.uri) },
                                         onRename = {
                                             renameTarget = category
-                                            renameValue = category.displayName
+                                            // Notes in subfolders show their path; rename only the file itself.
+                                            renameValue = category.displayName.substringAfterLast('/')
                                         },
                                         onDelete = {
                                             deleteTarget = category
