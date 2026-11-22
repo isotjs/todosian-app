@@ -1,107 +1,74 @@
 package com.isotjs.todosian.ui.settings
 
 import android.net.Uri
-import android.Manifest
-import android.content.pm.PackageManager
 import android.os.Build
-import android.text.format.DateFormat
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.automirrored.filled.Sort
+import androidx.compose.material.icons.automirrored.filled.StickyNote2
+import androidx.compose.material.icons.automirrored.filled.ViewList
+import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.ColorLens
-import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.BrightnessAuto
+import androidx.compose.material.icons.filled.Checklist
+import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.DensitySmall
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.RestartAlt
+import androidx.compose.material.icons.filled.LightMode
+import androidx.compose.material.icons.filled.LowPriority
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.RocketLaunch
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Storage
+import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.TaskAlt
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.VerticalAlignTop
 import androidx.compose.material.icons.filled.ViewDay
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material.icons.filled.WbSunny
+import androidx.compose.material.icons.filled.Widgets
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemColors
-import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SheetValue
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberBottomSheetState
-import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalResources
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.isotjs.todosian.BuildConfig
@@ -119,10 +86,6 @@ import com.isotjs.todosian.data.settings.ThemeMode
 import com.isotjs.todosian.data.settings.TodoGrouping
 import com.isotjs.todosian.data.settings.TodoSort
 import com.isotjs.todosian.ui.components.ChangelogBottomSheet
-import com.isotjs.todosian.ui.components.TodosianSectionHeader
-import com.isotjs.todosian.utils.TaskMarkers
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.launch
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -134,207 +97,72 @@ fun SettingsScreen(
     appSettingsRepository: AppSettingsRepository,
     preferencesManager: PreferencesManager,
     onBack: () -> Unit,
-    onRequireOnboarding: () -> Unit,
+    onOpenStorage: () -> Unit,
+    onOpenTasks: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val viewModel: SettingsViewModel = viewModel(
         factory = SettingsViewModelFactory(fileRepository, appSettingsRepository),
     )
-
-    var showChangelogSheet by remember { mutableStateOf(false) }
-
     val settings by appSettingsRepository.settings.collectAsStateWithLifecycle(
         initialValue = AppSettings(),
     )
     val storageState by viewModel.storageState.collectAsStateWithLifecycle()
 
-    val context = LocalContext.current
-    val resources = LocalResources.current
-    val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
-
-    val notificationPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission(),
-    ) { granted ->
-        if (!granted) {
-            scope.launch {
-                snackbarHostState.showSnackbar(
-                    message = resources.getString(R.string.settings_notification_permission_denied),
-                )
-            }
+    // The view model scans storage on creation; only re-scan when returning from a sub-screen.
+    var hasResumedOnce by remember { mutableStateOf(false) }
+    LifecycleResumeEffect(Unit) {
+        if (hasResumedOnce) {
+            viewModel.refreshStorageStatus()
+        } else {
+            hasResumedOnce = true
         }
+        onPauseOrDispose {}
     }
 
-    LaunchedEffect(viewModel) {
-        viewModel.events.collectLatest { event ->
-            when (event) {
-                is SettingsViewModel.Event.ShowMessage ->
-                    snackbarHostState.showSnackbar(resources.getString(event.messageResId))
+    var showChangelogSheet by remember { mutableStateOf(false) }
+    var showLaunchCategorySheet by remember { mutableStateOf(false) }
+    var showDailyFocusModeSheet by remember { mutableStateOf(false) }
+    var showCategorySortSheet by remember { mutableStateOf(false) }
+    var showTodoGroupingSheet by remember { mutableStateOf(false) }
+    var showTodoSortSheet by remember { mutableStateOf(false) }
+    var showNewTodoFilePositionSheet by remember { mutableStateOf(false) }
+    var showDefaultAddTaskFileSheet by remember { mutableStateOf(false) }
 
-                SettingsViewModel.Event.RequireOnboarding -> onRequireOnboarding()
-            }
-        }
-    }
-
-    val folderLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocumentTree(),
-    ) { uri ->
-        if (uri != null) viewModel.changeFolder(uri)
-    }
-
-    var showThemeDialog by remember { mutableStateOf(false) }
-    var showSortDialog by remember { mutableStateOf(false) }
-    var showCategoryLayoutDialog by remember { mutableStateOf(false) }
-    var showGroupingDialog by remember { mutableStateOf(false) }
-    var showTodoSortDialog by remember { mutableStateOf(false) }
-    var showNewTodoFilePositionDialog by remember { mutableStateOf(false) }
-    var showDefaultAddTaskFileDialog by remember { mutableStateOf(false) }
-    var defaultAddTaskFileUri by remember { mutableStateOf(preferencesManager.getDefaultAddTaskFileUri()) }
-    val defaultAddTaskFileName by produceState<String?>(initialValue = null, defaultAddTaskFileUri) {
-        value = defaultAddTaskFileUri?.let { fileRepository.getDisplayName(it).getOrNull()?.removeSuffix(".md") }
-    }
-    var showLaunchCategoryDialog by remember { mutableStateOf(false) }
     var launchCategoryUri by remember { mutableStateOf(preferencesManager.getDefaultLaunchCategoryUri()) }
     val launchCategoryName by produceState<String?>(initialValue = null, launchCategoryUri) {
         value = launchCategoryUri
             ?.let { fileRepository.getDisplayName(it).getOrNull()?.removeSuffix(".md") }
             ?.takeIf { it.isNotBlank() }
     }
-    var showResetDialog by remember { mutableStateOf(false) }
-    var showDailyFocusModeDialog by remember { mutableStateOf(false) }
-    var showReminderTimeDialog by remember { mutableStateOf(false) }
-    var showMarkersSheet by remember { mutableStateOf(false) }
+
+    var defaultAddTaskFileUri by remember { mutableStateOf(preferencesManager.getDefaultAddTaskFileUri()) }
+    val defaultAddTaskFileName by produceState<String?>(initialValue = null, defaultAddTaskFileUri) {
+        value = defaultAddTaskFileUri?.let { fileRepository.getDisplayName(it).getOrNull()?.removeSuffix(".md") }
+    }
 
     val reminderTimeLabel = remember(settings.reminderTimeHour, settings.reminderTimeMinute) {
         LocalTime.of(settings.reminderTimeHour, settings.reminderTimeMinute)
             .format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT))
     }
 
-    if (showThemeDialog) {
-        SingleChoiceDialog(
-            title = stringResource(R.string.settings_theme_mode),
-            options = listOf(
-                ChoiceOption(ThemeMode.SYSTEM, stringResource(R.string.settings_theme_system)),
-                ChoiceOption(ThemeMode.LIGHT, stringResource(R.string.settings_theme_light)),
-                ChoiceOption(ThemeMode.DARK, stringResource(R.string.settings_theme_dark)),
-            ),
-            selected = settings.themeMode,
-            onSelected = { appSettingsRepository.setThemeMode(it) },
-            onDismiss = { showThemeDialog = false },
-        )
-    }
-
-    if (showSortDialog) {
-        SingleChoiceDialog(
-            title = stringResource(R.string.settings_category_sort),
-            options = listOf(
-                ChoiceOption(CategorySort.A_Z, stringResource(R.string.settings_sort_az)),
-                ChoiceOption(CategorySort.MOST_REMAINING, stringResource(R.string.settings_sort_remaining)),
-            ),
-            selected = settings.categorySort,
-            onSelected = { appSettingsRepository.setCategorySort(it) },
-            onDismiss = { showSortDialog = false },
-        )
-    }
-
-    if (showCategoryLayoutDialog) {
-        SingleChoiceDialog(
-            title = stringResource(R.string.settings_category_layout),
-            options = listOf(
-                ChoiceOption(CategoryLayout.GRID, stringResource(R.string.settings_category_layout_grid)),
-                ChoiceOption(CategoryLayout.LIST, stringResource(R.string.settings_category_layout_list)),
-            ),
-            selected = settings.categoryLayout,
-            onSelected = { appSettingsRepository.setCategoryLayout(it) },
-            onDismiss = { showCategoryLayoutDialog = false },
-        )
-    }
-
-    if (showGroupingDialog) {
-        SingleChoiceDialog(
-            title = stringResource(R.string.settings_todo_grouping),
-            options = listOf(
-                ChoiceOption(TodoGrouping.GROUPED, stringResource(R.string.settings_grouping_grouped)),
-                ChoiceOption(TodoGrouping.FILE_ORDER, stringResource(R.string.settings_grouping_file_order)),
-            ),
-            selected = settings.todoGrouping,
-            onSelected = { appSettingsRepository.setTodoGrouping(it) },
-            onDismiss = { showGroupingDialog = false },
-        )
-    }
-
-    if (showTodoSortDialog) {
-        SingleChoiceDialog(
-            title = stringResource(R.string.settings_todo_sort),
-            options = listOf(
-                ChoiceOption(TodoSort.FILE_ORDER, stringResource(R.string.settings_todo_sort_file_order)),
-                ChoiceOption(TodoSort.PRIORITY_HIGH_TO_LOW, stringResource(R.string.settings_todo_sort_priority_desc)),
-                ChoiceOption(
-                    TodoSort.CREATED_DATE_NEWEST_FIRST,
-                    stringResource(R.string.settings_todo_sort_created_newest)
-                ),
-                ChoiceOption(
-                    TodoSort.DUE_DATE_EARLIEST_FIRST,
-                    stringResource(R.string.settings_todo_sort_due_earliest)
-                ),
-            ),
-            selected = settings.todoSort,
-            onSelected = { appSettingsRepository.setTodoSort(it) },
-            onDismiss = { showTodoSortDialog = false },
-        )
-    }
-
-    if (showNewTodoFilePositionDialog) {
-        SingleChoiceDialog(
-            title = stringResource(R.string.settings_new_todo_file_position),
-            options = listOf(
-                ChoiceOption(NewTodoFilePosition.TOP, stringResource(R.string.settings_new_todo_file_position_top)),
-                ChoiceOption(
-                    NewTodoFilePosition.BOTTOM,
-                    stringResource(R.string.settings_new_todo_file_position_bottom)
-                ),
-            ),
-            selected = settings.newTodoFilePosition,
-            onSelected = { appSettingsRepository.setNewTodoFilePosition(it) },
-            onDismiss = { showNewTodoFilePositionDialog = false },
-        )
-    }
-
-    if (showDefaultAddTaskFileDialog) {
+    if (showLaunchCategorySheet) {
         val categories by produceState(initialValue = emptyList<Category>()) {
             value = fileRepository.getCategories().getOrDefault(emptyList())
         }
-        SingleChoiceDialog(
-            title = stringResource(R.string.settings_default_add_task_file),
-            options = listOf(ChoiceOption<Uri?>(null, stringResource(R.string.settings_default_add_task_file_ask))) +
-                categories.map { ChoiceOption(it.uri, it.displayName) },
-            selected = defaultAddTaskFileUri,
-            onSelected = { uri ->
-                if (uri == null) {
-                    preferencesManager.clearDefaultAddTaskFileUri()
-                } else {
-                    preferencesManager.saveDefaultAddTaskFileUri(uri)
-                }
-                defaultAddTaskFileUri = uri
-            },
-            onDismiss = { showDefaultAddTaskFileDialog = false },
-        )
-    }
-
-    if (showLaunchCategoryDialog) {
-        val categories by produceState(initialValue = emptyList<Category>()) {
-            value = fileRepository.getCategories().getOrDefault(emptyList())
-        }
-        SingleChoiceDialog(
+        SettingsChoiceSheet(
             title = stringResource(R.string.settings_launch_category),
             options = listOf(
                 ChoiceOption<Uri?>(
-                    null,
-                    stringResource(R.string.settings_launch_category_overview),
+                    value = null,
+                    label = stringResource(R.string.settings_launch_category_overview),
+                    icon = Icons.Filled.Home,
                 ),
-            ) + categories.map { ChoiceOption(it.uri, it.displayName) },
+            ) + categories.map {
+                ChoiceOption(value = it.uri, label = it.displayName)
+            },
             selected = launchCategoryUri,
-            onSelected = { uri ->
+            onSelect = { uri ->
                 if (uri == null) {
                     preferencesManager.clearDefaultLaunchCategoryUri()
                 } else {
@@ -342,86 +170,152 @@ fun SettingsScreen(
                 }
                 launchCategoryUri = uri
             },
-            onDismiss = { showLaunchCategoryDialog = false },
+            onDismiss = { showLaunchCategorySheet = false },
         )
     }
 
-    if (showDailyFocusModeDialog) {
-        SingleChoiceDialog(
+    if (showDailyFocusModeSheet) {
+        SettingsChoiceSheet(
             title = stringResource(R.string.settings_daily_focus_mode),
             options = listOf(
-                ChoiceOption(DailyFocusMode.TODAY, stringResource(R.string.settings_daily_focus_mode_today)),
-                ChoiceOption(DailyFocusMode.OVERDUE, stringResource(R.string.settings_daily_focus_mode_overdue)),
+                ChoiceOption(
+                    DailyFocusMode.TODAY,
+                    stringResource(R.string.settings_daily_focus_mode_today),
+                ),
+                ChoiceOption(
+                    DailyFocusMode.OVERDUE,
+                    stringResource(R.string.settings_daily_focus_mode_overdue),
+                ),
                 ChoiceOption(
                     DailyFocusMode.TODAY_AND_OVERDUE,
-                    stringResource(R.string.settings_daily_focus_mode_today_overdue)
+                    stringResource(R.string.settings_daily_focus_mode_today_overdue),
                 ),
             ),
             selected = settings.dailyFocusMode,
-            onSelected = { appSettingsRepository.setDailyFocusMode(it) },
-            onDismiss = { showDailyFocusModeDialog = false },
+            onSelect = { appSettingsRepository.setDailyFocusMode(it) },
+            onDismiss = { showDailyFocusModeSheet = false },
         )
     }
 
-    if (showResetDialog) {
-        AlertDialog(
-            onDismissRequest = { showResetDialog = false },
-            title = { Text(text = stringResource(R.string.settings_reset_folder_title)) },
-            text = { Text(text = stringResource(R.string.settings_reset_folder_body)) },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showResetDialog = false
-                        viewModel.resetFolder()
-                    },
-                ) {
-                    Text(text = stringResource(R.string.settings_reset_folder_confirm))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showResetDialog = false }) {
-                    Text(text = stringResource(R.string.action_cancel))
-                }
-            },
+    if (showCategorySortSheet) {
+        SettingsChoiceSheet(
+            title = stringResource(R.string.settings_category_sort),
+            options = listOf(
+                ChoiceOption(
+                    CategorySort.A_Z,
+                    stringResource(R.string.settings_sort_az),
+                    Icons.AutoMirrored.Filled.Sort,
+                ),
+                ChoiceOption(
+                    CategorySort.MOST_REMAINING,
+                    stringResource(R.string.settings_sort_remaining),
+                    Icons.Filled.LowPriority,
+                ),
+            ),
+            selected = settings.categorySort,
+            onSelect = { appSettingsRepository.setCategorySort(it) },
+            onDismiss = { showCategorySortSheet = false },
         )
     }
 
-    if (showReminderTimeDialog) {
-        val timePickerState = rememberTimePickerState(
-            initialHour = settings.reminderTimeHour,
-            initialMinute = settings.reminderTimeMinute,
-            is24Hour = DateFormat.is24HourFormat(context),
-        )
-        AlertDialog(
-            onDismissRequest = { showReminderTimeDialog = false },
-            title = { Text(text = stringResource(R.string.settings_reminder_time)) },
-            text = { TimePicker(state = timePickerState) },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        appSettingsRepository.setReminderTime(
-                            timePickerState.hour,
-                            timePickerState.minute,
-                        )
-                        showReminderTimeDialog = false
-                    },
-                ) {
-                    Text(text = stringResource(R.string.action_ok))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showReminderTimeDialog = false }) {
-                    Text(text = stringResource(R.string.action_cancel))
-                }
-            },
+    if (showTodoGroupingSheet) {
+        SettingsChoiceSheet(
+            title = stringResource(R.string.settings_todo_grouping),
+            options = listOf(
+                ChoiceOption(
+                    TodoGrouping.GROUPED,
+                    stringResource(R.string.settings_grouping_grouped),
+                    Icons.Filled.Checklist,
+                ),
+                ChoiceOption(
+                    TodoGrouping.FILE_ORDER,
+                    stringResource(R.string.settings_grouping_file_order),
+                    Icons.Filled.TaskAlt,
+                ),
+            ),
+            selected = settings.todoGrouping,
+            onSelect = { appSettingsRepository.setTodoGrouping(it) },
+            onDismiss = { showTodoGroupingSheet = false },
         )
     }
 
-    if (showMarkersSheet) {
-        TaskMarkersSheet(
-            settings = settings,
-            appSettingsRepository = appSettingsRepository,
-            onDismiss = { showMarkersSheet = false },
+    if (showTodoSortSheet) {
+        SettingsChoiceSheet(
+            title = stringResource(R.string.settings_todo_sort),
+            options = listOf(
+                ChoiceOption(
+                    TodoSort.FILE_ORDER,
+                    stringResource(R.string.settings_todo_sort_file_order),
+                    Icons.Filled.TaskAlt,
+                ),
+                ChoiceOption(
+                    TodoSort.PRIORITY_HIGH_TO_LOW,
+                    stringResource(R.string.settings_todo_sort_priority_desc),
+                    Icons.Filled.LowPriority,
+                ),
+                ChoiceOption(
+                    TodoSort.CREATED_DATE_NEWEST_FIRST,
+                    stringResource(R.string.settings_todo_sort_created_newest),
+                    Icons.Filled.Schedule,
+                ),
+                ChoiceOption(
+                    TodoSort.DUE_DATE_EARLIEST_FIRST,
+                    stringResource(R.string.settings_todo_sort_due_earliest),
+                    Icons.Filled.Schedule,
+                ),
+            ),
+            selected = settings.todoSort,
+            onSelect = { appSettingsRepository.setTodoSort(it) },
+            onDismiss = { showTodoSortSheet = false },
+        )
+    }
+
+    if (showNewTodoFilePositionSheet) {
+        SettingsChoiceSheet(
+            title = stringResource(R.string.settings_new_todo_file_position),
+            options = listOf(
+                ChoiceOption(
+                    NewTodoFilePosition.TOP,
+                    stringResource(R.string.settings_new_todo_file_position_top),
+                    Icons.Filled.VerticalAlignTop,
+                ),
+                ChoiceOption(
+                    NewTodoFilePosition.BOTTOM,
+                    stringResource(R.string.settings_new_todo_file_position_bottom),
+                    Icons.Filled.VerticalAlignTop,
+                ),
+            ),
+            selected = settings.newTodoFilePosition,
+            onSelect = { appSettingsRepository.setNewTodoFilePosition(it) },
+            onDismiss = { showNewTodoFilePositionSheet = false },
+        )
+    }
+
+    if (showDefaultAddTaskFileSheet) {
+        val categories by produceState(initialValue = emptyList<Category>()) {
+            value = fileRepository.getCategories().getOrDefault(emptyList())
+        }
+        SettingsChoiceSheet(
+            title = stringResource(R.string.settings_default_add_task_file),
+            options = listOf(
+                ChoiceOption<Uri?>(
+                    value = null,
+                    label = stringResource(R.string.settings_default_add_task_file_ask),
+                    icon = Icons.Filled.Widgets,
+                ),
+            ) + categories.map {
+                ChoiceOption(value = it.uri, label = it.displayName)
+            },
+            selected = defaultAddTaskFileUri,
+            onSelect = { uri ->
+                if (uri == null) {
+                    preferencesManager.clearDefaultAddTaskFileUri()
+                } else {
+                    preferencesManager.saveDefaultAddTaskFileUri(uri)
+                }
+                defaultAddTaskFileUri = uri
+            },
+            onDismiss = { showDefaultAddTaskFileSheet = false },
         )
     }
 
@@ -445,7 +339,6 @@ fun SettingsScreen(
                 scrollBehavior = scrollBehavior,
             )
         },
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
     ) { padding ->
         Box(
             modifier = Modifier
@@ -458,337 +351,69 @@ fun SettingsScreen(
                     .fillMaxSize()
                     .widthIn(max = 840.dp)
                     .padding(horizontal = 16.dp),
-                contentPadding = PaddingValues(top = 4.dp, bottom = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+                contentPadding = PaddingValues(top = 4.dp, bottom = 32.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 item {
-                    SettingsGroup(title = stringResource(R.string.settings_storage)) {
-                        val folderText = storageState.folderDisplayName
-                            ?: storageState.folderUri?.toString()
-                            ?: stringResource(R.string.settings_no_folder)
-
-                        SettingsInfoRow(
-                            icon = Icons.Filled.Folder,
-                            title = stringResource(R.string.settings_folder),
-                            subtitle = folderText,
-                            subtitleMaxLines = 2,
-                        )
-
-                        SettingsDivider()
-
-                        SettingsNavRow(
-                            icon = Icons.Filled.RestartAlt,
-                            title = stringResource(R.string.settings_change_folder),
-                            subtitle = stringResource(R.string.settings_change_folder_subtitle),
-                            onClick = { folderLauncher.launch(null) },
-                        )
-
-                        SettingsDivider()
-
-                        SettingsSwitchRow(
-                            icon = Icons.Filled.Folder,
-                            title = stringResource(R.string.settings_include_subfolders),
-                            subtitle = stringResource(R.string.settings_include_subfolders_subtitle),
-                            checked = settings.includeSubfolders,
-                            onCheckedChange = {
-                                appSettingsRepository.setIncludeSubfolders(it)
-                                viewModel.refreshStorageStatus()
-                            },
-                        )
-
-                        SettingsDivider()
-
-                        val mdCount = storageState.markdownFileCount
-                        val statusText = when {
-                            storageState.folderUri == null -> stringResource(R.string.settings_status_not_set)
-                            storageState.isChecking -> stringResource(R.string.settings_status_checking)
-                            !storageState.hasPersistedPermission -> stringResource(R.string.settings_status_permission_lost)
-                            mdCount == null -> stringResource(R.string.settings_status_unknown)
-                            mdCount == 0 -> stringResource(R.string.settings_status_empty)
-                            else -> pluralStringResource(R.plurals.settings_status_ok, mdCount, mdCount)
-                        }
-
-                        SettingsInfoRow(
-                            icon = Icons.Filled.Refresh,
-                            title = stringResource(R.string.settings_status),
-                            subtitle = statusText,
-                            trailing = if (storageState.isChecking) {
-                                {
-                                    CircularProgressIndicator(
-                                        strokeWidth = 2.dp,
-                                        modifier = Modifier.size(18.dp),
-                                    )
-                                }
-                            } else {
-                                null
-                            },
-                        )
-
-                        SettingsDivider()
-
-                        SettingsNavRow(
-                            icon = Icons.Filled.Refresh,
-                            title = stringResource(R.string.settings_recheck_access),
-                            subtitle = stringResource(R.string.settings_recheck_access_subtitle),
-                            showChevron = false,
-                            onClick = { viewModel.refreshStorageStatus() },
-                        )
-
-                        SettingsDivider()
-
-                        SettingsNavRow(
-                            icon = Icons.Filled.RestartAlt,
-                            title = stringResource(R.string.settings_reset_folder),
-                            subtitle = stringResource(R.string.settings_reset_folder_body),
-                            contentColor = MaterialTheme.colorScheme.error,
-                            enabled = storageState.folderUri != null,
-                            showChevron = false,
-                            onClick = { showResetDialog = true },
-                        )
-                    }
+                    AppearanceSection(
+                        settings = settings,
+                        appSettingsRepository = appSettingsRepository,
+                    )
                 }
 
                 item {
-                    SettingsGroup(title = stringResource(R.string.settings_appearance)) {
-                        SettingsNavRow(
-                            icon = Icons.Filled.ColorLens,
-                            title = stringResource(R.string.settings_theme_mode),
-                            subtitle = themeModeLabel(settings.themeMode),
-                            onClick = { showThemeDialog = true },
-                        )
-
-                        SettingsDivider()
-
-                        val dynamicEnabled = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-                        SettingsSwitchRow(
-                            icon = Icons.Filled.ViewDay,
-                            title = stringResource(R.string.settings_dynamic_color),
-                            subtitle = if (dynamicEnabled) {
-                                stringResource(R.string.settings_dynamic_color_subtitle)
-                            } else {
-                                stringResource(R.string.settings_dynamic_color_unavailable)
-                            },
-                            checked = settings.dynamicColorEnabled,
-                            enabled = dynamicEnabled,
-                            onCheckedChange = { appSettingsRepository.setDynamicColorEnabled(it) },
-                        )
-                    }
+                    HomeSection(
+                        settings = settings,
+                        appSettingsRepository = appSettingsRepository,
+                        launchCategoryName = launchCategoryName,
+                        onOpenLaunchCategory = { showLaunchCategorySheet = true },
+                        onOpenDailyFocusMode = { showDailyFocusModeSheet = true },
+                    )
                 }
 
                 item {
-                    SettingsGroup(title = stringResource(R.string.settings_behaviour)) {
-                        SettingsNavRow(
-                            icon = Icons.Filled.Home,
-                            title = stringResource(R.string.settings_launch_category),
-                            subtitle = launchCategoryName
-                                ?: stringResource(R.string.settings_launch_category_overview),
-                            onClick = { showLaunchCategoryDialog = true },
-                        )
-
-                        SettingsDivider()
-
-                        SettingsSwitchRow(
-                            icon = Icons.Filled.Info,
-                            title = stringResource(R.string.settings_show_daily_focus),
-                            subtitle = stringResource(R.string.settings_show_daily_focus_subtitle),
-                            checked = settings.showDailyFocus,
-                            onCheckedChange = { appSettingsRepository.setShowDailyFocus(it) },
-                        )
-
-                        AnimatedVisibility(
-                            visible = settings.showDailyFocus,
-                            enter = fadeIn(tween(180)) + expandVertically(tween(220)),
-                            exit = fadeOut(tween(140)) + shrinkVertically(tween(200)),
-                        ) {
-                            Column {
-                                SettingsDivider()
-                                SettingsNavRow(
-                                    icon = Icons.Filled.Info,
-                                    title = stringResource(R.string.settings_daily_focus_mode),
-                                    subtitle = dailyFocusModeLabel(settings.dailyFocusMode),
-                                    onClick = { showDailyFocusModeDialog = true },
-                                )
-                            }
-                        }
-
-                        SettingsDivider()
-
-                        SettingsSwitchRow(
-                            icon = Icons.Filled.Info,
-                            title = stringResource(R.string.settings_enable_tasks_plugin_support),
-                            subtitle = stringResource(R.string.settings_enable_tasks_plugin_support_subtitle),
-                            checked = settings.enableTasksPluginSupport,
-                            onCheckedChange = { enabled ->
-                                appSettingsRepository.setEnableTasksPluginSupport(enabled)
-
-                                if (!enabled) return@SettingsSwitchRow
-                                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return@SettingsSwitchRow
-
-                                val granted = ContextCompat.checkSelfPermission(
-                                    context,
-                                    Manifest.permission.POST_NOTIFICATIONS,
-                                ) == PackageManager.PERMISSION_GRANTED
-                                if (!granted) {
-                                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                                }
-                            },
-                        )
-
-                        AnimatedVisibility(
-                            visible = settings.enableTasksPluginSupport,
-                            enter = fadeIn(tween(180)) + expandVertically(tween(220)),
-                            exit = fadeOut(tween(140)) + shrinkVertically(tween(200)),
-                        ) {
-                            Column {
-                                SettingsDivider()
-                                SettingsSwitchRow(
-                                    icon = Icons.Filled.Info,
-                                    title = stringResource(R.string.settings_tasks_plugin_ui_emojis),
-                                    subtitle = stringResource(R.string.settings_tasks_plugin_ui_emojis_subtitle),
-                                    checked = settings.tasksPluginUseEmojisInUi,
-                                    onCheckedChange = { appSettingsRepository.setTasksPluginUseEmojisInUi(it) },
-                                )
-
-                                SettingsDivider()
-
-                                SettingsNavRow(
-                                    icon = Icons.Filled.Edit,
-                                    title = stringResource(R.string.settings_markers_title),
-                                    subtitle = stringResource(R.string.settings_markers_subtitle),
-                                    onClick = { showMarkersSheet = true },
-                                )
-
-                                SettingsDivider()
-
-                                SettingsNavRow(
-                                    icon = Icons.Filled.Schedule,
-                                    title = stringResource(R.string.settings_reminder_time),
-                                    subtitle = stringResource(
-                                        R.string.settings_reminder_time_subtitle,
-                                        reminderTimeLabel
-                                    ),
-                                    onClick = { showReminderTimeDialog = true },
-                                )
-                            }
-                        }
-
-                        SettingsDivider()
-
-                        SettingsNavRow(
-                            icon = Icons.AutoMirrored.Filled.List,
-                            title = stringResource(R.string.settings_category_layout),
-                            subtitle = categoryLayoutLabel(settings.categoryLayout),
-                            onClick = { showCategoryLayoutDialog = true },
-                        )
-
-                        SettingsDivider()
-
-                        SettingsNavRow(
-                            icon = Icons.AutoMirrored.Filled.Sort,
-                            title = stringResource(R.string.settings_category_sort),
-                            subtitle = categorySortLabel(settings.categorySort),
-                            onClick = { showSortDialog = true },
-                        )
-
-                        SettingsDivider()
-
-                        SettingsNavRow(
-                            icon = Icons.AutoMirrored.Filled.Sort,
-                            title = stringResource(R.string.settings_todo_grouping),
-                            subtitle = todoGroupingLabel(settings.todoGrouping),
-                            onClick = { showGroupingDialog = true },
-                        )
-
-                        SettingsDivider()
-
-                        SettingsNavRow(
-                            icon = Icons.AutoMirrored.Filled.Sort,
-                            title = stringResource(R.string.settings_todo_sort),
-                            subtitle = todoSortLabel(settings.todoSort),
-                            onClick = { showTodoSortDialog = true },
-                        )
-
-                        SettingsDivider()
-
-                        SettingsNavRow(
-                            icon = Icons.Filled.VerticalAlignTop,
-                            title = stringResource(R.string.settings_new_todo_file_position),
-                            subtitle = newTodoFilePositionLabel(settings.newTodoFilePosition),
-                            onClick = { showNewTodoFilePositionDialog = true },
-                        )
-
-                        SettingsDivider()
-
-                        SettingsNavRow(
-                            icon = Icons.Filled.VerticalAlignTop,
-                            title = stringResource(R.string.settings_default_add_task_file),
-                            subtitle = defaultAddTaskFileName
-                                ?: stringResource(R.string.settings_default_add_task_file_ask),
-                            onClick = { showDefaultAddTaskFileDialog = true },
-                        )
-
-                        SettingsDivider()
-
-                        SettingsSwitchRow(
-                            icon = Icons.Filled.Info,
-                            title = stringResource(R.string.settings_show_notes_in_task_list),
-                            subtitle = stringResource(R.string.settings_show_notes_in_task_list_subtitle),
-                            checked = settings.showNotesInTaskList,
-                            onCheckedChange = { appSettingsRepository.setShowNotesInTaskList(it) },
-                        )
-
-                        SettingsDivider()
-
-                        SettingsSwitchRow(
-                            icon = Icons.AutoMirrored.Filled.List,
-                            title = stringResource(R.string.settings_compact_todo_entries),
-                            subtitle = stringResource(R.string.settings_compact_todo_entries_subtitle),
-                            checked = settings.compactTodoEntries,
-                            onCheckedChange = { appSettingsRepository.setCompactTodoEntries(it) },
-                        )
-                    }
+                    CategoriesSection(
+                        settings = settings,
+                        appSettingsRepository = appSettingsRepository,
+                        onOpenCategorySort = { showCategorySortSheet = true },
+                    )
                 }
 
                 item {
-                    SettingsGroup(title = null) {
-                        SettingsSwitchRow(
-                            icon = Icons.Filled.Info,
-                            title = stringResource(R.string.settings_enable_subtasks),
-                            subtitle = stringResource(R.string.settings_enable_subtasks_subtitle),
-                            checked = settings.enableSubtasks,
-                            onCheckedChange = { appSettingsRepository.setEnableSubtasks(it) },
-                        )
-                    }
+                    TaskListSection(
+                        settings = settings,
+                        appSettingsRepository = appSettingsRepository,
+                        onOpenTodoGrouping = { showTodoGroupingSheet = true },
+                        onOpenTodoSort = { showTodoSortSheet = true },
+                    )
                 }
 
                 item {
-                    SettingsGroup(title = stringResource(R.string.settings_about)) {
-                        SettingsNavRow(
-                            icon = Icons.Filled.AutoAwesome,
-                            title = stringResource(R.string.settings_whats_new),
-                            subtitle = stringResource(R.string.settings_whats_new_subtitle),
-                            onClick = {
-                                showChangelogSheet = true
-                                preferencesManager.saveLastSeenVersionCode(BuildConfig.VERSION_CODE)
-                            },
-                        )
+                    AddingTasksSection(
+                        settings = settings,
+                        appSettingsRepository = appSettingsRepository,
+                        defaultAddTaskFileName = defaultAddTaskFileName,
+                        onOpenNewTodoFilePosition = { showNewTodoFilePositionSheet = true },
+                        onOpenDefaultAddTaskFile = { showDefaultAddTaskFileSheet = true },
+                    )
+                }
 
-                        SettingsDivider()
+                item {
+                    IntegrationsSection(
+                        storageFolderName = storageState.folderDisplayName
+                            ?: stringResource(R.string.settings_no_folder),
+                        tasksEnabled = settings.enableTasksPluginSupport,
+                        reminderTimeLabel = reminderTimeLabel,
+                        onOpenStorage = onOpenStorage,
+                        onOpenTasks = onOpenTasks,
+                    )
+                }
 
-                        SettingsInfoRow(
-                            icon = Icons.Filled.Info,
-                            title = stringResource(R.string.settings_version),
-                            subtitle = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
-                        )
-
-                        SettingsDivider()
-
-                        SettingsInfoRow(
-                            icon = Icons.Filled.Info,
-                            title = stringResource(R.string.settings_android_sdk),
-                            subtitle = Build.VERSION.SDK_INT.toString(),
-                        )
-                    }
+                item {
+                    AboutSection(
+                        preferencesManager = preferencesManager,
+                        onOpenChangelog = { showChangelogSheet = true },
+                    )
                 }
             }
         }
@@ -802,392 +427,326 @@ fun SettingsScreen(
 }
 
 @Composable
-private fun SettingsGroup(
-    title: String?,
-    modifier: Modifier = Modifier,
-    content: @Composable ColumnScope.() -> Unit,
-) {
-    Column(modifier = modifier.fillMaxWidth()) {
-        if (title != null) {
-            TodosianSectionHeader(text = title)
-        }
-        Card(
-            shape = MaterialTheme.shapes.extraLarge,
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Column(content = content)
-        }
-    }
-}
-
-@Composable
-private fun SettingsSwitchRow(
-    icon: ImageVector,
-    title: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-    subtitle: String? = null,
-    enabled: Boolean = true,
-) {
-    ListItem(
-        headlineContent = { Text(text = title) },
-        supportingContent = if (subtitle != null) {
-            { Text(text = subtitle) }
-        } else {
-            null
-        },
-        leadingContent = { Icon(imageVector = icon, contentDescription = null) },
-        trailingContent = {
-            Switch(
-                checked = checked,
-                onCheckedChange = onCheckedChange,
-                enabled = enabled,
-            )
-        },
-        colors = transparentListItemColors(),
-    )
-}
-
-@Composable
-private fun SettingsNavRow(
-    icon: ImageVector,
-    title: String,
-    onClick: () -> Unit,
-    subtitle: String? = null,
-    enabled: Boolean = true,
-    contentColor: Color? = null,
-    showChevron: Boolean = true,
-) {
-    ListItem(
-        headlineContent = {
-            Text(
-                text = title,
-                color = contentColor ?: Color.Unspecified,
-            )
-        },
-        supportingContent = if (subtitle != null) {
-            { Text(text = subtitle) }
-        } else {
-            null
-        },
-        leadingContent = {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = contentColor ?: MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        },
-        trailingContent = if (showChevron) {
-            {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        } else {
-            null
-        },
-        colors = transparentListItemColors(),
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(enabled = enabled, role = Role.Button, onClick = onClick),
-    )
-}
-
-@Composable
-private fun SettingsInfoRow(
-    icon: ImageVector,
-    title: String,
-    subtitle: String? = null,
-    subtitleMaxLines: Int = Int.MAX_VALUE,
-    trailing: (@Composable () -> Unit)? = null,
-) {
-    ListItem(
-        headlineContent = { Text(text = title) },
-        supportingContent = if (subtitle != null) {
-            {
-                Text(
-                    text = subtitle,
-                    maxLines = subtitleMaxLines,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        } else {
-            null
-        },
-        leadingContent = { Icon(imageVector = icon, contentDescription = null) },
-        trailingContent = trailing,
-        colors = transparentListItemColors(),
-    )
-}
-
-@Composable
-private fun SettingsDivider() {
-    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
-}
-
-@Composable
-private fun SettingsTextFieldRow(
-    label: String,
-    value: String,
-    placeholder: String,
-    onValueChange: (String) -> Unit,
-    supporting: String? = null,
-) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        singleLine = true,
-        label = { Text(text = label) },
-        placeholder = { Text(text = placeholder) },
-        supportingText = if (supporting != null) {
-            { Text(text = supporting) }
-        } else {
-            null
-        },
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-    )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun TaskMarkersSheet(
+private fun AppearanceSection(
     settings: AppSettings,
     appSettingsRepository: AppSettingsRepository,
-    onDismiss: () -> Unit,
 ) {
-    val sheetState = rememberBottomSheetState(
-        initialValue = SheetValue.Hidden,
-        enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
-    )
-    val scope = rememberCoroutineScope()
-
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
+    SettingsSection(
+        title = stringResource(R.string.settings_appearance),
+        icon = Icons.Filled.Palette,
+        accent = SettingsAccent.PRIMARY,
     ) {
-        Column(
+        val themeOptions = listOf(
+            ChoiceOption(
+                ThemeMode.SYSTEM,
+                stringResource(R.string.settings_theme_system),
+                Icons.Filled.BrightnessAuto,
+            ),
+            ChoiceOption(
+                ThemeMode.LIGHT,
+                stringResource(R.string.settings_theme_light),
+                Icons.Filled.LightMode,
+            ),
+            ChoiceOption(
+                ThemeMode.DARK,
+                stringResource(R.string.settings_theme_dark),
+                Icons.Filled.DarkMode,
+            ),
+        )
+        SettingsSegmentedRow(
+            icon = Icons.Filled.Tune,
+            title = stringResource(R.string.settings_theme_mode),
+            options = themeOptions,
+            selected = settings.themeMode,
+            onSelect = { appSettingsRepository.setThemeMode(it) },
+        )
+
+        SettingsDivider(startInset = 16.dp)
+
+        val dynamicColorAvailable = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+        SettingsSwitchRow(
+            icon = Icons.Filled.ViewDay,
+            title = stringResource(R.string.settings_dynamic_color),
+            subtitle = if (dynamicColorAvailable) {
+                stringResource(R.string.settings_dynamic_color_subtitle)
+            } else {
+                stringResource(R.string.settings_dynamic_color_unavailable)
+            },
+            checked = settings.dynamicColorEnabled,
+            enabled = dynamicColorAvailable,
+            onCheckedChange = { appSettingsRepository.setDynamicColorEnabled(it) },
+        )
+    }
+}
+
+@Composable
+private fun HomeSection(
+    settings: AppSettings,
+    appSettingsRepository: AppSettingsRepository,
+    launchCategoryName: String?,
+    onOpenLaunchCategory: () -> Unit,
+    onOpenDailyFocusMode: () -> Unit,
+) {
+    SettingsSection(
+        title = stringResource(R.string.settings_section_home),
+        icon = Icons.Filled.Home,
+        accent = SettingsAccent.SECONDARY,
+    ) {
+        SettingsNavRow(
+            icon = Icons.Filled.RocketLaunch,
+            title = stringResource(R.string.settings_launch_category),
+            subtitle = launchCategoryName
+                ?: stringResource(R.string.settings_launch_category_overview),
+            onClick = onOpenLaunchCategory,
+        )
+
+        SettingsDivider()
+
+        SettingsSwitchRow(
+            icon = Icons.Filled.WbSunny,
+            title = stringResource(R.string.settings_show_daily_focus),
+            subtitle = stringResource(R.string.settings_show_daily_focus_subtitle),
+            checked = settings.showDailyFocus,
+            onCheckedChange = { appSettingsRepository.setShowDailyFocus(it) },
+        )
+
+        AnimatedVisibility(
+            visible = settings.showDailyFocus,
+            enter = fadeIn(MaterialTheme.motionScheme.defaultEffectsSpec()) +
+                expandVertically(MaterialTheme.motionScheme.defaultSpatialSpec()),
+            exit = fadeOut(MaterialTheme.motionScheme.fastEffectsSpec()) +
+                shrinkVertically(MaterialTheme.motionScheme.fastSpatialSpec()),
+        ) {
+            Column {
+                SettingsDivider()
+                SettingsNavRow(
+                    icon = Icons.Filled.Tune,
+                    title = stringResource(R.string.settings_daily_focus_mode),
+                    subtitle = dailyFocusModeLabel(settings.dailyFocusMode),
+                    onClick = onOpenDailyFocusMode,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CategoriesSection(
+    settings: AppSettings,
+    appSettingsRepository: AppSettingsRepository,
+    onOpenCategorySort: () -> Unit,
+) {
+    SettingsSection(
+        title = stringResource(R.string.settings_section_categories),
+        icon = Icons.Filled.GridView,
+        accent = SettingsAccent.TERTIARY,
+    ) {
+        val layoutOptions = listOf(
+            ChoiceOption(
+                CategoryLayout.GRID,
+                stringResource(R.string.settings_category_layout_grid),
+                Icons.Filled.GridView,
+            ),
+            ChoiceOption(
+                CategoryLayout.LIST,
+                stringResource(R.string.settings_category_layout_list),
+                Icons.AutoMirrored.Filled.ViewList,
+            ),
+        )
+        SettingsSegmentedRow(
+            icon = Icons.Filled.GridView,
+            title = stringResource(R.string.settings_category_layout),
+            options = layoutOptions,
+            selected = settings.categoryLayout,
+            onSelect = { appSettingsRepository.setCategoryLayout(it) },
+        )
+
+        SettingsDivider(startInset = 16.dp)
+
+        SettingsNavRow(
+            icon = Icons.AutoMirrored.Filled.Sort,
+            title = stringResource(R.string.settings_category_sort),
+            subtitle = categorySortLabel(settings.categorySort),
+            onClick = onOpenCategorySort,
+        )
+    }
+}
+
+@Composable
+private fun TaskListSection(
+    settings: AppSettings,
+    appSettingsRepository: AppSettingsRepository,
+    onOpenTodoGrouping: () -> Unit,
+    onOpenTodoSort: () -> Unit,
+) {
+    SettingsSection(
+        title = stringResource(R.string.settings_section_task_list),
+        icon = Icons.Filled.Checklist,
+        accent = SettingsAccent.PRIMARY,
+    ) {
+        SettingsNavRow(
+            icon = Icons.Filled.Checklist,
+            title = stringResource(R.string.settings_todo_grouping),
+            subtitle = todoGroupingLabel(settings.todoGrouping),
+            onClick = onOpenTodoGrouping,
+        )
+
+        SettingsDivider()
+
+        SettingsNavRow(
+            icon = Icons.AutoMirrored.Filled.Sort,
+            title = stringResource(R.string.settings_todo_sort),
+            subtitle = todoSortLabel(settings.todoSort),
+            onClick = onOpenTodoSort,
+        )
+
+        SettingsDivider()
+
+        SettingsSwitchRow(
+            icon = Icons.AutoMirrored.Filled.StickyNote2,
+            title = stringResource(R.string.settings_show_notes_in_task_list),
+            subtitle = stringResource(R.string.settings_show_notes_in_task_list_subtitle),
+            checked = settings.showNotesInTaskList,
+            onCheckedChange = { appSettingsRepository.setShowNotesInTaskList(it) },
+        )
+
+        SettingsDivider()
+
+        SettingsSwitchRow(
+            icon = Icons.Filled.DensitySmall,
+            title = stringResource(R.string.settings_compact_todo_entries),
+            subtitle = stringResource(R.string.settings_compact_todo_entries_subtitle),
+            checked = settings.compactTodoEntries,
+            onCheckedChange = { appSettingsRepository.setCompactTodoEntries(it) },
+        )
+    }
+}
+
+@Composable
+private fun AddingTasksSection(
+    settings: AppSettings,
+    appSettingsRepository: AppSettingsRepository,
+    defaultAddTaskFileName: String?,
+    onOpenNewTodoFilePosition: () -> Unit,
+    onOpenDefaultAddTaskFile: () -> Unit,
+) {
+    SettingsSection(
+        title = stringResource(R.string.settings_section_adding_tasks),
+        icon = Icons.AutoMirrored.Filled.PlaylistAdd,
+        accent = SettingsAccent.SECONDARY,
+    ) {
+        SettingsNavRow(
+            icon = Icons.Filled.VerticalAlignTop,
+            title = stringResource(R.string.settings_new_todo_file_position),
+            subtitle = newTodoFilePositionLabel(settings.newTodoFilePosition),
+            onClick = onOpenNewTodoFilePosition,
+        )
+
+        SettingsDivider()
+
+        SettingsNavRow(
+            icon = Icons.Filled.Widgets,
+            title = stringResource(R.string.settings_default_add_task_file),
+            subtitle = defaultAddTaskFileName
+                ?: stringResource(R.string.settings_default_add_task_file_ask),
+            onClick = onOpenDefaultAddTaskFile,
+        )
+
+        SettingsDivider()
+
+        SettingsSwitchRow(
+            icon = Icons.Filled.AccountTree,
+            title = stringResource(R.string.settings_enable_subtasks),
+            subtitle = stringResource(R.string.settings_enable_subtasks_subtitle),
+            checked = settings.enableSubtasks,
+            onCheckedChange = { appSettingsRepository.setEnableSubtasks(it) },
+        )
+    }
+}
+
+@Composable
+private fun IntegrationsSection(
+    storageFolderName: String,
+    tasksEnabled: Boolean,
+    reminderTimeLabel: String,
+    onOpenStorage: () -> Unit,
+    onOpenTasks: () -> Unit,
+) {
+    val tasksSubtitle = if (tasksEnabled) {
+        "${stringResource(R.string.settings_status_enabled)} · $reminderTimeLabel"
+    } else {
+        stringResource(R.string.settings_status_disabled)
+    }
+    Column(modifier = Modifier.fillMaxWidth()) {
+        SettingsSectionHeader(
+            title = stringResource(R.string.settings_section_integrations),
+            icon = Icons.Filled.Sync,
+            accent = SettingsAccent.TERTIARY,
+        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier
                 .fillMaxWidth()
-                .fillMaxHeight(0.75f)
-                .windowInsetsPadding(WindowInsets.ime)
-                .verticalScroll(rememberScrollState())
-                .padding(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+                .height(IntrinsicSize.Min),
         ) {
-            Text(
-                text = stringResource(R.string.settings_markers_title),
-                style = MaterialTheme.typography.headlineSmall,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-            )
-            Text(
-                text = stringResource(R.string.settings_markers_subtitle),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 16.dp),
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-
-            SettingsTextFieldRow(
-                label = stringResource(R.string.settings_marker_created),
-                value = settings.createdMarker.orEmpty(),
-                placeholder = stringResource(R.string.settings_marker_example_created),
-                supporting = stringResource(R.string.settings_marker_default_hint, TaskMarkers.Default.created),
-                onValueChange = { appSettingsRepository.setCreatedMarker(it) },
-            )
-            SettingsTextFieldRow(
-                label = stringResource(R.string.settings_marker_start),
-                value = settings.startMarker.orEmpty(),
-                placeholder = stringResource(R.string.settings_marker_example_start),
-                supporting = stringResource(R.string.settings_marker_default_hint, TaskMarkers.Default.start),
-                onValueChange = { appSettingsRepository.setStartMarker(it) },
-            )
-            SettingsTextFieldRow(
-                label = stringResource(R.string.settings_marker_scheduled),
-                value = settings.scheduledMarker.orEmpty(),
-                placeholder = stringResource(R.string.settings_marker_example_scheduled),
-                supporting = stringResource(R.string.settings_marker_default_hint, TaskMarkers.Default.scheduled),
-                onValueChange = { appSettingsRepository.setScheduledMarker(it) },
-            )
-            SettingsTextFieldRow(
-                label = stringResource(R.string.settings_marker_due),
-                value = settings.dueMarker.orEmpty(),
-                placeholder = stringResource(R.string.settings_marker_example_due),
-                supporting = stringResource(R.string.settings_marker_default_hint, TaskMarkers.Default.due),
-                onValueChange = { appSettingsRepository.setDueMarker(it) },
-            )
-            SettingsTextFieldRow(
-                label = stringResource(R.string.settings_marker_done),
-                value = settings.doneMarker.orEmpty(),
-                placeholder = stringResource(R.string.settings_marker_example_done),
-                supporting = stringResource(R.string.settings_marker_default_hint, TaskMarkers.Default.done),
-                onValueChange = { appSettingsRepository.setDoneMarker(it) },
-            )
-            SettingsTextFieldRow(
-                label = stringResource(R.string.settings_marker_recurrence),
-                value = settings.recurrenceMarker.orEmpty(),
-                placeholder = stringResource(R.string.settings_marker_example_recurrence),
-                supporting = stringResource(R.string.settings_marker_default_hint, TaskMarkers.Default.recurrence),
-                onValueChange = { appSettingsRepository.setRecurrenceMarker(it) },
-            )
-            SettingsTextFieldRow(
-                label = stringResource(R.string.settings_custom_statuses),
-                value = settings.customStatuses.orEmpty(),
-                placeholder = stringResource(R.string.settings_custom_statuses_example),
-                supporting = stringResource(R.string.settings_custom_statuses_hint),
-                onValueChange = { appSettingsRepository.setCustomStatuses(it) },
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-            Button(
-                onClick = {
-                    scope.launch {
-                        sheetState.hide()
-                        onDismiss()
-                    }
-                },
+            SettingsShortcutCard(
+                title = stringResource(R.string.settings_storage),
+                subtitle = storageFolderName,
+                icon = Icons.Filled.Folder,
+                accent = SettingsAccent.PRIMARY,
+                onClick = onOpenStorage,
                 modifier = Modifier
-                    .align(Alignment.End)
-                    .padding(horizontal = 16.dp),
-            ) {
-                Text(text = stringResource(R.string.action_ok))
-            }
+                    .weight(1f)
+                    .fillMaxHeight(),
+            )
+            SettingsShortcutCard(
+                title = stringResource(R.string.settings_section_tasks_plugin),
+                subtitle = tasksSubtitle,
+                icon = Icons.Filled.TaskAlt,
+                accent = SettingsAccent.SECONDARY,
+                onClick = onOpenTasks,
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight(),
+            )
         }
     }
 }
 
 @Composable
-private fun transparentListItemColors(): ListItemColors =
-    ListItemDefaults.colors(containerColor = Color.Transparent)
-
-private data class ChoiceOption<T>(
-    val value: T,
-    val label: String,
-)
-
-@Composable
-private fun <T> SingleChoiceDialog(
-    title: String,
-    options: List<ChoiceOption<T>>,
-    selected: T,
-    onSelected: (T) -> Unit,
-    onDismiss: () -> Unit,
+private fun AboutSection(
+    preferencesManager: PreferencesManager,
+    onOpenChangelog: () -> Unit,
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(text = title) },
-        text = {
-            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                options.forEach { option ->
-                    val isSelected = option.value == selected
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .selectable(
-                                selected = isSelected,
-                                role = Role.RadioButton,
-                                onClick = {
-                                    onSelected(option.value)
-                                    onDismiss()
-                                },
-                            )
-                            .padding(horizontal = 8.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        RadioButton(
-                            selected = isSelected,
-                            onClick = null,
-                        )
-                        Text(
-                            text = option.label,
-                            style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.padding(start = 8.dp),
-                        )
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text(text = stringResource(R.string.action_cancel))
-            }
-        },
-    )
-}
+    SettingsSection(
+        title = stringResource(R.string.settings_about),
+        icon = Icons.Filled.Info,
+        accent = SettingsAccent.TERTIARY,
+    ) {
+        SettingsNavRow(
+            icon = Icons.Filled.AutoAwesome,
+            title = stringResource(R.string.settings_whats_new),
+            subtitle = stringResource(R.string.settings_whats_new_subtitle),
+            onClick = {
+                preferencesManager.saveLastSeenVersionCode(BuildConfig.VERSION_CODE)
+                onOpenChangelog()
+            },
+        )
 
-@Composable
-private fun themeModeLabel(mode: ThemeMode): String {
-    return when (mode) {
-        ThemeMode.SYSTEM -> stringResource(R.string.settings_theme_system)
-        ThemeMode.LIGHT -> stringResource(R.string.settings_theme_light)
-        ThemeMode.DARK -> stringResource(R.string.settings_theme_dark)
-    }
-}
+        SettingsDivider()
 
-@Composable
-private fun categoryLayoutLabel(layout: CategoryLayout): String {
-    return when (layout) {
-        CategoryLayout.GRID -> stringResource(R.string.settings_category_layout_grid)
-        CategoryLayout.LIST -> stringResource(R.string.settings_category_layout_list)
-    }
-}
+        SettingsInfoRow(
+            icon = Icons.Filled.Info,
+            title = stringResource(R.string.settings_version),
+            subtitle = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
+        )
 
-@Composable
-private fun categorySortLabel(sort: CategorySort): String {
-    return when (sort) {
-        CategorySort.A_Z -> stringResource(R.string.settings_sort_az)
-        CategorySort.MOST_REMAINING -> stringResource(R.string.settings_sort_remaining)
-    }
-}
+        SettingsDivider()
 
-@Composable
-private fun todoGroupingLabel(grouping: TodoGrouping): String {
-    return when (grouping) {
-        TodoGrouping.GROUPED -> stringResource(R.string.settings_grouping_grouped)
-        TodoGrouping.FILE_ORDER -> stringResource(R.string.settings_grouping_file_order)
-    }
-}
-
-@Composable
-private fun todoSortLabel(sort: TodoSort): String {
-    return when (sort) {
-        TodoSort.FILE_ORDER -> stringResource(R.string.settings_todo_sort_file_order)
-        TodoSort.PRIORITY_HIGH_TO_LOW -> stringResource(R.string.settings_todo_sort_priority_desc)
-        TodoSort.CREATED_DATE_NEWEST_FIRST -> stringResource(R.string.settings_todo_sort_created_newest)
-        TodoSort.DUE_DATE_EARLIEST_FIRST -> stringResource(R.string.settings_todo_sort_due_earliest)
-    }
-}
-
-@Composable
-private fun newTodoFilePositionLabel(position: NewTodoFilePosition): String {
-    return when (position) {
-        NewTodoFilePosition.TOP -> stringResource(R.string.settings_new_todo_file_position_top)
-        NewTodoFilePosition.BOTTOM -> stringResource(R.string.settings_new_todo_file_position_bottom)
-    }
-}
-
-@Composable
-private fun dailyFocusModeLabel(mode: DailyFocusMode): String {
-    return when (mode) {
-        DailyFocusMode.TODAY -> stringResource(R.string.settings_daily_focus_mode_today)
-        DailyFocusMode.OVERDUE -> stringResource(R.string.settings_daily_focus_mode_overdue)
-        DailyFocusMode.TODAY_AND_OVERDUE -> stringResource(R.string.settings_daily_focus_mode_today_overdue)
-    }
-}
-
-private class SettingsViewModelFactory(
-    private val fileRepository: FileRepository,
-    private val appSettingsRepository: AppSettingsRepository,
-) : ViewModelProvider.Factory {
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(SettingsViewModel::class.java)) {
-            @Suppress("UNCHECKED_CAST")
-            return SettingsViewModel(fileRepository, appSettingsRepository) as T
-        }
-        throw IllegalArgumentException("Unknown ViewModel class")
+        SettingsInfoRow(
+            icon = Icons.Filled.Storage,
+            title = stringResource(R.string.settings_android_sdk),
+            subtitle = Build.VERSION.SDK_INT.toString(),
+        )
     }
 }
