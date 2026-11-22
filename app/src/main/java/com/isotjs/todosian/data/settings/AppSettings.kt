@@ -8,6 +8,7 @@ data class AppSettings(
     val showDailyFocus: Boolean = true,
     val dailyFocusMode: DailyFocusMode = DailyFocusMode.TODAY,
     val categorySort: CategorySort = CategorySort.A_Z,
+    val categoryLayout: CategoryLayout = CategoryLayout.GRID,
     val todoGrouping: TodoGrouping = TodoGrouping.GROUPED,
     val todoSort: TodoSort = TodoSort.FILE_ORDER,
     val newTodoFilePosition: NewTodoFilePosition = NewTodoFilePosition.BOTTOM,
@@ -57,6 +58,11 @@ enum class ThemeMode {
 enum class CategorySort {
     A_Z,
     MOST_REMAINING,
+}
+
+enum class CategoryLayout {
+    GRID,
+    LIST,
 }
 
 enum class TodoGrouping {

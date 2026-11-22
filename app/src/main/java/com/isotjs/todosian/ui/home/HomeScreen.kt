@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items as lazyItems
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -79,6 +80,7 @@ import com.isotjs.todosian.R
 import com.isotjs.todosian.data.FileRepository
 import com.isotjs.todosian.data.PreferencesManager
 import com.isotjs.todosian.data.settings.AppSettingsRepository
+import com.isotjs.todosian.data.settings.CategoryLayout
 import com.isotjs.todosian.data.settings.CategorySort
 import com.isotjs.todosian.data.settings.DailyFocusMode
 import com.isotjs.todosian.data.model.Category
@@ -489,36 +491,69 @@ fun HomeScreen(
                                 }
                             }
 
-                            LazyVerticalGrid(
-                                columns = GridCells.Fixed(2),
-                                contentPadding = PaddingValues(bottom = 96.dp),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                verticalArrangement = Arrangement.spacedBy(12.dp),
-                                modifier = Modifier.fillMaxSize(),
-                            ) {
-                                items(
-                                    items = categories,
-                                    key = { it.uri.toString() },
-                                ) { category ->
-                                    CategoryCard(
-                                        category = category,
-                                        onClick = { onOpenCategory(category.uri) },
-                                        onRename = {
-                                            renameTarget = category
-                                            // Notes in subfolders show their path; rename only the file itself.
-                                            renameValue = category.displayName.substringAfterLast('/')
-                                        },
-                                        onDelete = {
-                                            deleteTarget = category
-                                        },
-                                        modifier = Modifier.animateItem(
-                                            fadeInSpec = tween(durationMillis = 180),
-                                            placementSpec = spring(
-                                                stiffness = Spring.StiffnessMediumLow,
+                            when (settings.categoryLayout) {
+                                CategoryLayout.GRID -> LazyVerticalGrid(
+                                    columns = GridCells.Fixed(2),
+                                    contentPadding = PaddingValues(bottom = 96.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                                    modifier = Modifier.fillMaxSize(),
+                                ) {
+                                    items(
+                                        items = categories,
+                                        key = { it.uri.toString() },
+                                    ) { category ->
+                                        CategoryCard(
+                                            category = category,
+                                            onClick = { onOpenCategory(category.uri) },
+                                            onRename = {
+                                                renameTarget = category
+                                                // Notes in subfolders show their path; rename only the file itself.
+                                                renameValue = category.displayName.substringAfterLast('/')
+                                            },
+                                            onDelete = {
+                                                deleteTarget = category
+                                            },
+                                            modifier = Modifier.animateItem(
+                                                fadeInSpec = tween(durationMillis = 180),
+                                                placementSpec = spring(
+                                                    stiffness = Spring.StiffnessMediumLow,
+                                                ),
+                                                fadeOutSpec = tween(durationMillis = 160),
                                             ),
-                                            fadeOutSpec = tween(durationMillis = 160),
-                                        ),
-                                    )
+                                        )
+                                    }
+                                }
+
+                                CategoryLayout.LIST -> LazyColumn(
+                                    contentPadding = PaddingValues(bottom = 96.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                                    modifier = Modifier.fillMaxSize(),
+                                ) {
+                                    lazyItems(
+                                        items = categories,
+                                        key = { it.uri.toString() },
+                                    ) { category ->
+                                        CategoryListRow(
+                                            category = category,
+                                            onClick = { onOpenCategory(category.uri) },
+                                            onRename = {
+                                                renameTarget = category
+                                                // Notes in subfolders show their path; rename only the file itself.
+                                                renameValue = category.displayName.substringAfterLast('/')
+                                            },
+                                            onDelete = {
+                                                deleteTarget = category
+                                            },
+                                            modifier = Modifier.animateItem(
+                                                fadeInSpec = tween(durationMillis = 180),
+                                                placementSpec = spring(
+                                                    stiffness = Spring.StiffnessMediumLow,
+                                                ),
+                                                fadeOutSpec = tween(durationMillis = 160),
+                                            ),
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -690,6 +725,80 @@ private fun CategoryCard(
                 progress = progress,
                 modifier = Modifier.fillMaxWidth(),
             )
+        }
+    }
+}
+
+@Composable
+private fun CategoryListRow(
+    category: Category,
+    onClick: () -> Unit,
+    onRename: () -> Unit,
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val progress = if (category.todoCount == 0) 0f else category.doneCount.toFloat() / category.todoCount.toFloat()
+    var menuExpanded by remember(category.uri) { mutableStateOf(false) }
+    Card(
+        onClick = onClick,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+        shape = MaterialTheme.shapes.extraLarge,
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        Column {
+            Row(
+                modifier = Modifier.padding(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = category.displayName,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+                Text(
+                    text = "${category.doneCount}/${category.todoCount}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                )
+                Box {
+                    IconButton(onClick = { menuExpanded = true }) {
+                        Icon(
+                            imageVector = Icons.Filled.MoreVert,
+                            contentDescription = stringResource(R.string.cd_overflow_menu),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = menuExpanded,
+                        onDismissRequest = { menuExpanded = false },
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text(text = stringResource(R.string.home_category_action_rename)) },
+                            onClick = {
+                                menuExpanded = false
+                                onRename()
+                            },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(text = stringResource(R.string.home_category_action_delete)) },
+                            onClick = {
+                                menuExpanded = false
+                                onDelete()
+                            },
+                        )
+                    }
+                }
+            }
+            TodosianLinearProgress(
+                progress = progress,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+            )
+            Spacer(modifier = Modifier.height(12.dp))
         }
     }
 }

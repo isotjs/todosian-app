@@ -180,6 +180,9 @@
     <string name="settings_daily_focus_mode_today">Today</string>
     <string name="settings_daily_focus_mode_overdue">Overdue</string>
     <string name="settings_daily_focus_mode_today_overdue">Today and overdue</string>
+    <string name="settings_category_layout">Category layout</string>
+    <string name="settings_category_layout_grid">Grid</string>
+    <string name="settings_category_layout_list">List</string>
     <string name="settings_category_sort">Category sorting</string>
     <string name="settings_sort_az">A–Z</string>
     <string name="settings_sort_remaining">Most remaining</string>

@@ -38,6 +38,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.ColorLens
@@ -110,6 +111,7 @@ import com.isotjs.todosian.data.PreferencesManager
 import com.isotjs.todosian.data.model.Category
 import com.isotjs.todosian.data.settings.AppSettings
 import com.isotjs.todosian.data.settings.AppSettingsRepository
+import com.isotjs.todosian.data.settings.CategoryLayout
 import com.isotjs.todosian.data.settings.CategorySort
 import com.isotjs.todosian.data.settings.DailyFocusMode
 import com.isotjs.todosian.data.settings.NewTodoFilePosition
@@ -182,6 +184,7 @@ fun SettingsScreen(
 
     var showThemeDialog by remember { mutableStateOf(false) }
     var showSortDialog by remember { mutableStateOf(false) }
+    var showCategoryLayoutDialog by remember { mutableStateOf(false) }
     var showGroupingDialog by remember { mutableStateOf(false) }
     var showTodoSortDialog by remember { mutableStateOf(false) }
     var showNewTodoFilePositionDialog by remember { mutableStateOf(false) }
@@ -231,6 +234,19 @@ fun SettingsScreen(
             selected = settings.categorySort,
             onSelected = { appSettingsRepository.setCategorySort(it) },
             onDismiss = { showSortDialog = false },
+        )
+    }
+
+    if (showCategoryLayoutDialog) {
+        SingleChoiceDialog(
+            title = stringResource(R.string.settings_category_layout),
+            options = listOf(
+                ChoiceOption(CategoryLayout.GRID, stringResource(R.string.settings_category_layout_grid)),
+                ChoiceOption(CategoryLayout.LIST, stringResource(R.string.settings_category_layout_list)),
+            ),
+            selected = settings.categoryLayout,
+            onSelected = { appSettingsRepository.setCategoryLayout(it) },
+            onDismiss = { showCategoryLayoutDialog = false },
         )
     }
 
@@ -655,6 +671,15 @@ fun SettingsScreen(
                                 )
                             }
                         }
+
+                        SettingsDivider()
+
+                        SettingsNavRow(
+                            icon = Icons.AutoMirrored.Filled.List,
+                            title = stringResource(R.string.settings_category_layout),
+                            subtitle = categoryLayoutLabel(settings.categoryLayout),
+                            onClick = { showCategoryLayoutDialog = true },
+                        )
 
                         SettingsDivider()
 
@@ -1090,6 +1115,14 @@ private fun themeModeLabel(mode: ThemeMode): String {
         ThemeMode.SYSTEM -> stringResource(R.string.settings_theme_system)
         ThemeMode.LIGHT -> stringResource(R.string.settings_theme_light)
         ThemeMode.DARK -> stringResource(R.string.settings_theme_dark)
+    }
+}
+
+@Composable
+private fun categoryLayoutLabel(layout: CategoryLayout): String {
+    return when (layout) {
+        CategoryLayout.GRID -> stringResource(R.string.settings_category_layout_grid)
+        CategoryLayout.LIST -> stringResource(R.string.settings_category_layout_list)
     }
 }
 
