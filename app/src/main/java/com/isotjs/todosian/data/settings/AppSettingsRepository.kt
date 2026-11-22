@@ -39,6 +39,8 @@ interface AppSettingsRepository {
 
     fun setEnableSubtasks(enabled: Boolean)
 
+    fun setShowNotesInTaskList(enabled: Boolean)
+
     fun setIncludeSubfolders(enabled: Boolean)
 
     fun setReminderTime(hour: Int, minute: Int)
@@ -135,6 +137,10 @@ class SharedPrefsAppSettingsRepository(
         prefs.edit { putBoolean(KEY_SUBTASKS, enabled) }
     }
 
+    override fun setShowNotesInTaskList(enabled: Boolean) {
+        prefs.edit { putBoolean(KEY_SHOW_NOTES_IN_TASK_LIST, enabled) }
+    }
+
     override fun setIncludeSubfolders(enabled: Boolean) {
         prefs.edit { putBoolean(KEY_INCLUDE_SUBFOLDERS, enabled) }
     }
@@ -187,6 +193,7 @@ class SharedPrefsAppSettingsRepository(
             doneMarker = prefs.getString(KEY_DONE_MARKER, null)?.takeIf { it.isNotBlank() },
             recurrenceMarker = prefs.getString(KEY_RECURRENCE_MARKER, null)?.takeIf { it.isNotBlank() },
             enableSubtasks = prefs.getBoolean(KEY_SUBTASKS, false),
+            showNotesInTaskList = prefs.getBoolean(KEY_SHOW_NOTES_IN_TASK_LIST, true),
             includeSubfolders = prefs.getBoolean(KEY_INCLUDE_SUBFOLDERS, false),
             reminderTimeHour = prefs.getInt(KEY_REMINDER_TIME_HOUR, 19),
             reminderTimeMinute = prefs.getInt(KEY_REMINDER_TIME_MINUTE, 0),
@@ -218,6 +225,8 @@ class SharedPrefsAppSettingsRepository(
 
         private const val KEY_SUBTASKS = "enable_subtasks"
         private const val KEY_INCLUDE_SUBFOLDERS = "include_subfolders"
+
+        private const val KEY_SHOW_NOTES_IN_TASK_LIST = "show_notes_in_task_list"
 
         private const val KEY_REMINDER_TIME_HOUR = "reminder_time_hour"
         private const val KEY_REMINDER_TIME_MINUTE = "reminder_time_minute"

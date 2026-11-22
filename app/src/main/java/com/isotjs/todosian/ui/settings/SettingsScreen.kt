@@ -658,6 +658,16 @@ fun SettingsScreen(
                                 ?: stringResource(R.string.settings_default_add_task_file_ask),
                             onClick = { showDefaultAddTaskFileDialog = true },
                         )
+
+                        SettingsDivider()
+
+                        SettingsSwitchRow(
+                            icon = Icons.Filled.Info,
+                            title = stringResource(R.string.settings_show_notes_in_task_list),
+                            subtitle = stringResource(R.string.settings_show_notes_in_task_list_subtitle),
+                            checked = settings.showNotesInTaskList,
+                            onCheckedChange = { appSettingsRepository.setShowNotesInTaskList(it) },
+                        )
                     }
                 }
 

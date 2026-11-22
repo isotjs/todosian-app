@@ -18,6 +18,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.isotjs.todosian.data.CollapsedTodoRepository
 import com.isotjs.todosian.data.FileRepository
 import com.isotjs.todosian.data.PreferencesManager
 import com.isotjs.todosian.data.settings.AppSettingsRepository
@@ -34,6 +35,7 @@ fun TodosianApp(
     fileRepository: FileRepository,
     appSettingsRepository: AppSettingsRepository,
     preferencesManager: PreferencesManager,
+    collapsedTodoRepository: CollapsedTodoRepository,
     addTaskSignal: StateFlow<AddTaskRequest>,
     initialAddTaskRequest: AddTaskRequest,
 ) {
@@ -187,6 +189,7 @@ fun TodosianApp(
             CategoryScreen(
                 fileRepository = fileRepository,
                 appSettingsRepository = appSettingsRepository,
+                collapsedTodoRepository = collapsedTodoRepository,
                 categoryUri = uri,
                 autoOpenAddTodo = autoOpenAddTodo,
                 onBack = {
