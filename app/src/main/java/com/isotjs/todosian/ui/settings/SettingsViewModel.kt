@@ -3,6 +3,7 @@ package com.isotjs.todosian.ui.settings
 import android.net.Uri
 import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.isotjs.todosian.R
 import com.isotjs.todosian.data.FileRepository
@@ -110,5 +111,18 @@ class SettingsViewModel(
     sealed interface Event {
         data class ShowMessage(@param:StringRes val messageResId: Int) : Event
         data object RequireOnboarding : Event
+    }
+}
+
+internal class SettingsViewModelFactory(
+    private val fileRepository: FileRepository,
+    private val appSettingsRepository: AppSettingsRepository,
+) : ViewModelProvider.Factory {
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        if (modelClass.isAssignableFrom(SettingsViewModel::class.java)) {
+            @Suppress("UNCHECKED_CAST")
+            return SettingsViewModel(fileRepository, appSettingsRepository) as T
+        }
+        throw IllegalArgumentException("Unknown ViewModel class")
     }
 }

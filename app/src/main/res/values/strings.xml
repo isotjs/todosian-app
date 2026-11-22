@@ -135,8 +135,20 @@
 
     <!-- Settings -->
     <string name="settings_title">Settings</string>
+    <string name="settings_section_home">Home</string>
+    <string name="settings_section_categories">Categories</string>
+    <string name="settings_section_task_list">Task list</string>
+    <string name="settings_section_adding_tasks">Adding tasks</string>
+    <string name="settings_section_integrations">Storage &amp; integrations</string>
+    <string name="settings_section_tasks_plugin">Obsidian Tasks</string>
+    <string name="settings_section_metadata">Metadata</string>
+    <string name="settings_section_reminders">Reminders</string>
+    <string name="settings_status_enabled">On</string>
+    <string name="settings_status_disabled">Off</string>
 
     <string name="settings_storage">Storage</string>
+    <string name="settings_folder_access">Folder access</string>
+    <string name="settings_danger_zone">Danger zone</string>
     <string name="settings_folder">Selected folder</string>
     <string name="settings_no_folder">No folder selected</string>
     <string name="settings_change_folder">Change folder</string>
@@ -202,6 +214,7 @@
 
     <string name="settings_enable_tasks_plugin_support">Enable Tasks Plugin Support</string>
     <string name="settings_enable_tasks_plugin_support_subtitle">Parse and edit Obsidian Tasks metadata (dates, priority, recurrence).</string>
+    <string name="settings_tasks_disabled_hint">Turn on Tasks support to edit dates, priorities and recurrence, and to receive due reminders.</string>
 
     <string name="settings_tasks_plugin_ui_emojis">Use emojis in UI</string>
     <string name="settings_tasks_plugin_ui_emojis_subtitle">Show Tasks metadata as emojis instead of icons.</string>

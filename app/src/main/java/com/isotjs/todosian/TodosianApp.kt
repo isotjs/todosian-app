@@ -28,6 +28,8 @@ import com.isotjs.todosian.ui.dailyfocus.DailyFocusScreen
 import com.isotjs.todosian.ui.home.HomeScreen
 import com.isotjs.todosian.ui.onboarding.OnboardingScreen
 import com.isotjs.todosian.ui.settings.SettingsScreen
+import com.isotjs.todosian.ui.settings.SettingsStorageScreen
+import com.isotjs.todosian.ui.settings.SettingsTasksScreen
 import kotlinx.coroutines.flow.StateFlow
 
 @Composable
@@ -164,11 +166,28 @@ fun TodosianApp(
                     )
                     navController.popBackStack()
                 },
+                onOpenStorage = { navController.navigate(Routes.SettingsStorage) },
+                onOpenTasks = { navController.navigate(Routes.SettingsTasks) },
+            )
+        }
+
+        composable(Routes.SettingsStorage) {
+            SettingsStorageScreen(
+                fileRepository = fileRepository,
+                appSettingsRepository = appSettingsRepository,
+                onBack = { navController.popBackStack() },
                 onRequireOnboarding = {
                     navController.navigate(Routes.Onboarding) {
                         popUpTo(Routes.Home) { inclusive = true }
                     }
                 },
+            )
+        }
+
+        composable(Routes.SettingsTasks) {
+            SettingsTasksScreen(
+                appSettingsRepository = appSettingsRepository,
+                onBack = { navController.popBackStack() },
             )
         }
 
@@ -235,6 +254,8 @@ object Routes {
     const val Onboarding = "onboarding"
     const val Home = "home"
     const val Settings = "settings"
+    const val SettingsStorage = "settings/storage"
+    const val SettingsTasks = "settings/tasks"
     const val DailyFocus = "daily_focus"
     const val AddTask = "add_task"
 
