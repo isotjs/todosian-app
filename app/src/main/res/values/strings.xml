@@ -51,6 +51,8 @@
     <string name="category_add_subtask_hint">Subtask text</string>
     <string name="category_edit_todo_title">Edit todo</string>
     <string name="category_edit_todo_hint">Todo text</string>
+    <string name="task_notes_label">Notes</string>
+    <string name="task_notes_hint">Optional notes for this task</string>
     <string name="category_delete_todo_title">Delete todo?</string>
     <string name="category_delete_todo_body">This action removes the todo from the markdown file.</string>
     <string name="category_delete_todo_body_with_subtasks">This action removes the todo and its subtasks from the markdown file.</string>
@@ -119,6 +121,8 @@
     <string name="cd_add_category">Add category</string>
     <string name="cd_add_todo">Add todo</string>
     <string name="cd_add_subtask">Add subtask</string>
+    <string name="cd_collapse_subtasks">Collapse subtasks</string>
+    <string name="cd_expand_subtasks">Expand subtasks</string>
     <string name="cd_navigate_back">Navigate back</string>
     <string name="cd_delete">Delete</string>
 
@@ -143,6 +147,8 @@
     <string name="settings_reset_folder_body">You’ll be taken back to setup and will need to choose a folder again.</string>
     <string name="settings_reset_folder_confirm">Reset</string>
     <string name="settings_folder_updated">Folder updated.</string>
+    <string name="settings_include_subfolders">Include subfolders</string>
+    <string name="settings_include_subfolders_subtitle">Also show notes in subfolders. Hidden folders such as .obsidian are skipped.</string>
 
     <string name="settings_status">Status</string>
     <string name="settings_status_not_set">Not set</string>
@@ -185,6 +191,8 @@
     <string name="settings_new_todo_file_position">Add new todos</string>
     <string name="settings_new_todo_file_position_top">Top of file</string>
     <string name="settings_new_todo_file_position_bottom">Bottom of file</string>
+    <string name="settings_default_add_task_file">Add task widget opens</string>
+    <string name="settings_default_add_task_file_ask">Ask every time</string>
 
     <string name="settings_enable_tasks_plugin_support">Enable Tasks Plugin Support</string>
     <string name="settings_enable_tasks_plugin_support_subtitle">Parse and edit Obsidian Tasks metadata (dates, priority, recurrence).</string>
@@ -217,6 +225,8 @@
 
     <string name="settings_enable_subtasks">Enable subtasks</string>
     <string name="settings_enable_subtasks_subtitle">Allow adding subtasks to todos.</string>
+    <string name="settings_show_notes_in_task_list">Show notes in task list</string>
+    <string name="settings_show_notes_in_task_list_subtitle">Display indented note lines under their task.</string>
     <string name="settings_notification_permission_denied">Notifications are disabled, so due reminders cannot be shown.</string>
 
     <string name="settings_reminder_time">Reminder time</string>

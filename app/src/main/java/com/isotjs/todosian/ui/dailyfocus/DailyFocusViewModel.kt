@@ -136,13 +136,22 @@ class DailyFocusViewModel(
         viewModelScope.launch {
             val markers = currentMarkers()
             val previousLines = currentLinesFor(task)
-            val newLines = MarkdownParser.tryToggleLine(
-                lines = previousLines,
-                lineIndex = task.todo.lineIndex,
-                enableTasksPlugin = enableTasksPluginSupport,
-                markers = markers,
-                newStatus = newStatus,
-            )
+            val newLines = if (newStatus == null) {
+                MarkdownParser.tryToggleTodoWithSubtasks(
+                    lines = previousLines,
+                    lineIndex = task.todo.lineIndex,
+                    enableTasksPlugin = enableTasksPluginSupport,
+                    markers = markers,
+                )
+            } else {
+                MarkdownParser.tryToggleLine(
+                    lines = previousLines,
+                    lineIndex = task.todo.lineIndex,
+                    enableTasksPlugin = enableTasksPluginSupport,
+                    markers = markers,
+                    newStatus = newStatus,
+                )
+            }
             if (newLines == null) {
                 _events.emit(Event.ShowMessage(R.string.error_read_failed))
                 refreshFromDisk(showLoading = false)
@@ -170,6 +179,7 @@ class DailyFocusViewModel(
         task: DailyFocusTask,
         newText: String,
         meta: MarkdownParser.TasksMeta?,
+        notes: List<String>,
     ) {
         viewModelScope.launch {
             val markers = currentMarkers()
@@ -192,14 +202,15 @@ class DailyFocusViewModel(
                 }
                 updated
             }
+            val finalLines = MarkdownParser.tryEditTodoNotes(newLines, task.todo.lineIndex, notes) ?: newLines
 
-            applyLines(task.categoryUri, newLines, markers)
+            applyLines(task.categoryUri, finalLines, markers)
 
             inFlightWrites.incrementAndGet()
             try {
-                val write = fileRepository.writeLines(task.categoryUri, newLines)
+                val write = fileRepository.writeLines(task.categoryUri, finalLines)
                 if (write.isFailure) {
-                    if (currentLinesFor(task) == newLines) {
+                    if (currentLinesFor(task) == finalLines) {
                         applyLines(task.categoryUri, previousLines, markers)
                     }
                     _events.emit(Event.ShowMessage(R.string.error_write_failed))
@@ -293,20 +304,17 @@ class DailyFocusViewModel(
 
 private fun matchesFocusMode(todo: Todo, mode: DailyFocusMode, today: String): Boolean {
     return when (mode) {
-        DailyFocusMode.TODAY -> todo.dueDate == today
-        DailyFocusMode.OVERDUE -> todo.dueDate?.let { it < today } == true
-        DailyFocusMode.TODAY_AND_OVERDUE -> {
-            val due = todo.dueDate ?: return false
-            due <= today
-        }
+        DailyFocusMode.TODAY -> todo.focusDate == today
+        DailyFocusMode.OVERDUE -> todo.focusDate?.let { it < today } == true
+        DailyFocusMode.TODAY_AND_OVERDUE -> todo.focusDate?.let { it <= today } == true
     }
 }
 
-// Sort: due date earliest -> highest priority -> category name -> line index.
+// Sort: focus date earliest -> highest priority -> category name -> line index.
 private fun sortTasks(tasks: List<DailyFocusTask>): List<DailyFocusTask> {
     return tasks.sortedWith(
-        compareBy<DailyFocusTask> { it.todo.dueDate == null }
-            .thenBy { it.todo.dueDate ?: "" }
+        compareBy<DailyFocusTask> { it.todo.focusDate == null }
+            .thenBy { it.todo.focusDate ?: "" }
             .thenByDescending { it.todo.priority.priorityRank() }
             .thenBy { it.categoryName.lowercase() }
             .thenBy { it.todo.lineIndex },

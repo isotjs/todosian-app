@@ -28,6 +28,11 @@ data class Todo(
     val lineIndex: Int,
     val indentLevel: Int = 0,
 
+    // Indented non-todo lines that belong to this todo. Raw lines with their original
+    // indentation; interior and trailing blank lines plus whitespace-only lines are
+    // preserved as-is so note text round-trips losslessly.
+    val notes: List<String> = emptyList(),
+
     // Obsidian Tasks plugin metadata (Tasks Emoji Format)
     val dueDate: String? = null, // 📅 YYYY-MM-DD
     val startDate: String? = null, // 🛫 YYYY-MM-DD
@@ -37,4 +42,8 @@ data class Todo(
     val priority: TasksPriority? = null,
     val recurrence: String? = null, // 🔁 <text>
     val status: Char = if (isDone) 'x' else ' ', // the character between the brackets
-)
+) {
+    /** Earliest of the due and scheduled dates: the day Daily Focus treats the task as due. */
+    val focusDate: String?
+        get() = listOfNotNull(dueDate, scheduledDate).minOrNull()
+}

@@ -114,6 +114,7 @@ fun DailyFocusScreen(
 
     var sheetMode by remember { mutableStateOf<TodoSheetMode?>(null) }
     var sheetText by remember { mutableStateOf("") }
+    var sheetNotes by remember { mutableStateOf("") }
     var sheetMeta by remember { mutableStateOf(MarkdownParser.TasksMeta()) }
     var sheetTask by remember { mutableStateOf<DailyFocusTask?>(null) }
     var deleteTodoTarget by remember { mutableStateOf<DailyFocusTask?>(null) }
@@ -121,6 +122,7 @@ fun DailyFocusScreen(
     fun dismissSheet() {
         sheetMode = null
         sheetText = ""
+        sheetNotes = ""
         sheetMeta = MarkdownParser.TasksMeta()
         sheetTask = null
     }
@@ -178,6 +180,17 @@ fun DailyFocusScreen(
                             },
                     )
                 }
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = sheetNotes,
+                    onValueChange = { sheetNotes = it },
+                    singleLine = false,
+                    minLines = 3,
+                    maxLines = 6,
+                    label = { Text(text = stringResource(R.string.task_notes_label)) },
+                    supportingText = { Text(text = stringResource(R.string.task_notes_hint)) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
 
                 Spacer(modifier = Modifier.height(16.dp))
                 Row(
@@ -202,6 +215,7 @@ fun DailyFocusScreen(
                                     task = task,
                                     newText = sheetText,
                                     meta = if (settings.enableTasksPluginSupport) sheetMeta else null,
+                                    notes = sheetNotes.split("\n"),
                                 )
                             }
                             scope.launch {
@@ -313,6 +327,7 @@ fun DailyFocusScreen(
                         onEdit = {
                             sheetMode = TodoSheetMode.Edit(task.todo)
                             sheetText = task.todo.text
+                            sheetNotes = MarkdownParser.notesToEditorText(task.todo.notes)
                             sheetMeta = MarkdownParser.TasksMeta(
                                 dueDate = task.todo.dueDate,
                                 startDate = task.todo.startDate,
@@ -329,6 +344,7 @@ fun DailyFocusScreen(
                         onRequestMove = null,
                         allowMove = false,
                         showSubtaskButton = false,
+                        showNotes = settings.showNotesInTaskList,
                         modifier = Modifier.animateItem(
                             fadeInSpec = tween(durationMillis = 180),
                             placementSpec = spring(stiffness = Spring.StiffnessMediumLow),

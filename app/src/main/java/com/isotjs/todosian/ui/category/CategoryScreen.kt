@@ -67,6 +67,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.isotjs.todosian.R
+import com.isotjs.todosian.data.CollapsedTodoRepository
 import com.isotjs.todosian.data.FileRepository
 import com.isotjs.todosian.data.model.Todo
 import com.isotjs.todosian.data.model.priorityRank
@@ -95,6 +96,7 @@ import java.time.LocalDate
 fun CategoryScreen(
     fileRepository: FileRepository,
     appSettingsRepository: AppSettingsRepository,
+    collapsedTodoRepository: CollapsedTodoRepository,
     categoryUri: Uri,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
@@ -141,12 +143,41 @@ fun CategoryScreen(
 
     var sheetMode by remember { mutableStateOf<TodoSheetMode?>(null) }
     var sheetText by remember { mutableStateOf("") }
+    var sheetNotes by remember { mutableStateOf("") }
     var sheetMeta by remember { mutableStateOf(MarkdownParser.TasksMeta()) }
     var sheetParentTodo by remember { mutableStateOf<Todo?>(null) }
     var deleteTodoTarget by remember { mutableStateOf<Todo?>(null) }
     var deleteTodoHasSubtasks by remember { mutableStateOf(false) }
     var moveTodoTarget by remember { mutableStateOf<Todo?>(null) }
     var showCopyOption by remember { mutableStateOf(false) }
+    var collapsedTodoIds by remember(categoryUri, collapsedTodoRepository) {
+        mutableStateOf(collapsedTodoRepository.getCollapsedTodoIds(categoryUri))
+    }
+
+    fun toggleCollapse(todoId: String) {
+        val updated = collapsedTodoIds.toMutableSet()
+        if (!updated.remove(todoId)) updated.add(todoId)
+        collapsedTodoIds = updated
+        collapsedTodoRepository.setCollapsedTodoIds(categoryUri, updated)
+    }
+
+    LaunchedEffect(
+        uiState.isLoading,
+        uiState.activeTodos,
+        uiState.completedTodos,
+    ) {
+        // The initial state is empty while the note is still loading; pruning then would
+        // discard the persisted collapsed ids before the todos are available.
+        if (uiState.isLoading) return@LaunchedEffect
+        val knownIds = (uiState.activeTodos + uiState.completedTodos)
+            .mapTo(HashSet()) { it.id }
+        if (knownIds.isEmpty()) return@LaunchedEffect
+        val pruned = collapsedTodoIds.intersect(knownIds)
+        if (pruned != collapsedTodoIds) {
+            collapsedTodoIds = pruned
+            collapsedTodoRepository.setCollapsedTodoIds(categoryUri, pruned)
+        }
+    }
 
     var autoOpenedAddTodo by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
@@ -154,6 +185,7 @@ fun CategoryScreen(
             autoOpenedAddTodo = true
             sheetMode = TodoSheetMode.Add
             sheetText = ""
+            sheetNotes = ""
             sheetMeta = if (settings.enableTasksPluginSupport) {
                 MarkdownParser.TasksMeta(createdDate = LocalDate.now().toString())
             } else {
@@ -167,6 +199,7 @@ fun CategoryScreen(
             onDismissRequest = {
                 sheetMode = null
                 sheetText = ""
+                sheetNotes = ""
                 sheetMeta = MarkdownParser.TasksMeta()
                 sheetParentTodo = null
             },
@@ -233,6 +266,19 @@ fun CategoryScreen(
                             },
                     )
                 }
+                if (sheetMode is TodoSheetMode.Edit) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = sheetNotes,
+                        onValueChange = { sheetNotes = it },
+                        singleLine = false,
+                        minLines = 3,
+                        maxLines = 6,
+                        label = { Text(text = stringResource(R.string.task_notes_label)) },
+                        supportingText = { Text(text = stringResource(R.string.task_notes_hint)) },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
                 Spacer(modifier = Modifier.height(16.dp))
                 Row(
                     horizontalArrangement = Arrangement.End,
@@ -244,6 +290,7 @@ fun CategoryScreen(
                                 todoSheetState.hide()
                                 sheetMode = null
                                 sheetText = ""
+                                sheetNotes = ""
                                 sheetMeta = MarkdownParser.TasksMeta()
                                 sheetParentTodo = null
                             }
@@ -266,6 +313,7 @@ fun CategoryScreen(
                                     newText = sheetText,
                                     meta = if (settings.enableTasksPluginSupport) sheetMeta else null,
                                     enableTasksPluginSupport = settings.enableTasksPluginSupport,
+                                    notes = sheetNotes.split("\n"),
                                 )
 
                                 TodoSheetMode.AddSubtask -> {
@@ -286,6 +334,7 @@ fun CategoryScreen(
                                 todoSheetState.hide()
                                 sheetMode = null
                                 sheetText = ""
+                                sheetNotes = ""
                                 sheetMeta = MarkdownParser.TasksMeta()
                                 sheetParentTodo = null
                             }
@@ -469,6 +518,7 @@ fun CategoryScreen(
                 onClick = {
                     sheetMode = TodoSheetMode.Add
                     sheetText = ""
+                    sheetNotes = ""
                     sheetMeta = if (settings.enableTasksPluginSupport) {
                         MarkdownParser.TasksMeta(createdDate = LocalDate.now().toString())
                     } else {
@@ -521,18 +571,43 @@ fun CategoryScreen(
                     }
                 }
             } else {
-                val sortedActiveTodos = remember(uiState.activeTodos, settings.todoSort) {
-                    sortTodos(uiState.activeTodos, settings.todoSort)
+                val hiddenSubtaskIndices = remember(
+                    uiState.activeTodos,
+                    uiState.completedTodos,
+                    collapsedTodoIds,
+                ) {
+                    MarkdownParser.hiddenSubtaskLineIndices(
+                        todos = uiState.activeTodos + uiState.completedTodos,
+                        collapsedTodoIds = collapsedTodoIds,
+                    )
                 }
-                val sortedCompletedTodos = remember(uiState.completedTodos, settings.todoSort) {
-                    sortTodos(uiState.completedTodos, settings.todoSort)
+                val sortedActiveTodos = remember(
+                    uiState.activeTodos,
+                    settings.todoSort,
+                    hiddenSubtaskIndices,
+                ) {
+                    sortTodos(uiState.activeTodos, settings.todoSort).filterNot {
+                        it.lineIndex in hiddenSubtaskIndices
+                    }
+                }
+                val sortedCompletedTodos = remember(
+                    uiState.completedTodos,
+                    settings.todoSort,
+                    hiddenSubtaskIndices,
+                ) {
+                    sortTodos(uiState.completedTodos, settings.todoSort).filterNot {
+                        it.lineIndex in hiddenSubtaskIndices
+                    }
                 }
                 val sortedAllTodos = remember(
                     uiState.activeTodos,
                     uiState.completedTodos,
                     settings.todoSort,
+                    hiddenSubtaskIndices,
                 ) {
-                    sortTodos(uiState.activeTodos + uiState.completedTodos, settings.todoSort)
+                    sortTodos(uiState.activeTodos + uiState.completedTodos, settings.todoSort).filterNot {
+                        it.lineIndex in hiddenSubtaskIndices
+                    }
                 }
 
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
@@ -546,12 +621,17 @@ fun CategoryScreen(
                                 enableTasksPluginSupport = settings.enableTasksPluginSupport,
                                 useEmojisInUi = settings.tasksPluginUseEmojisInUi,
                                 showSubtaskButton = settings.enableSubtasks,
+                                showNotes = settings.showNotesInTaskList,
+                                hasSubTasks = MarkdownParser.hasSubtasks(uiState.lines, todo.lineIndex),
+                                isCollapsed = todo.id in collapsedTodoIds,
+                                onToggleCollapse = { toggleCollapse(todo.id) },
                                 onToggle = { viewModel.toggleTodo(todo, settings.enableTasksPluginSupport) },
                                 statusChoices = statusChoices,
                                 onSetStatus = { viewModel.toggleTodo(todo, settings.enableTasksPluginSupport, it) },
                                 onEdit = {
                                     sheetMode = TodoSheetMode.Edit(todo)
                                     sheetText = todo.text
+                                    sheetNotes = MarkdownParser.notesToEditorText(todo.notes)
                                     sheetMeta = MarkdownParser.TasksMeta(
                                         dueDate = todo.dueDate,
                                         startDate = todo.startDate,
@@ -566,6 +646,7 @@ fun CategoryScreen(
                                     sheetMode = TodoSheetMode.AddSubtask
                                     sheetParentTodo = todo
                                     sheetText = ""
+                                    sheetNotes = ""
                                     sheetMeta = if (settings.enableTasksPluginSupport) {
                                         MarkdownParser.TasksMeta(createdDate = LocalDate.now().toString())
                                     } else {
@@ -602,12 +683,17 @@ fun CategoryScreen(
                                 enableTasksPluginSupport = settings.enableTasksPluginSupport,
                                 useEmojisInUi = settings.tasksPluginUseEmojisInUi,
                                 showSubtaskButton = settings.enableSubtasks,
+                                showNotes = settings.showNotesInTaskList,
+                                hasSubTasks = MarkdownParser.hasSubtasks(uiState.lines, todo.lineIndex),
+                                isCollapsed = todo.id in collapsedTodoIds,
+                                onToggleCollapse = { toggleCollapse(todo.id) },
                                 onToggle = { viewModel.toggleTodo(todo, settings.enableTasksPluginSupport) },
                                 statusChoices = statusChoices,
                                 onSetStatus = { viewModel.toggleTodo(todo, settings.enableTasksPluginSupport, it) },
                                 onEdit = {
                                     sheetMode = TodoSheetMode.Edit(todo)
                                     sheetText = todo.text
+                                    sheetNotes = MarkdownParser.notesToEditorText(todo.notes)
                                     sheetMeta = MarkdownParser.TasksMeta(
                                         dueDate = todo.dueDate,
                                         startDate = todo.startDate,
@@ -622,6 +708,7 @@ fun CategoryScreen(
                                     sheetMode = TodoSheetMode.AddSubtask
                                     sheetParentTodo = todo
                                     sheetText = ""
+                                    sheetNotes = ""
                                     sheetMeta = if (settings.enableTasksPluginSupport) {
                                         MarkdownParser.TasksMeta(createdDate = LocalDate.now().toString())
                                     } else {
@@ -656,12 +743,17 @@ fun CategoryScreen(
                                 enableTasksPluginSupport = settings.enableTasksPluginSupport,
                                 useEmojisInUi = settings.tasksPluginUseEmojisInUi,
                                 showSubtaskButton = settings.enableSubtasks,
+                                showNotes = settings.showNotesInTaskList,
+                                hasSubTasks = MarkdownParser.hasSubtasks(uiState.lines, todo.lineIndex),
+                                isCollapsed = todo.id in collapsedTodoIds,
+                                onToggleCollapse = { toggleCollapse(todo.id) },
                                 onToggle = { viewModel.toggleTodo(todo, settings.enableTasksPluginSupport) },
                                 statusChoices = statusChoices,
                                 onSetStatus = { viewModel.toggleTodo(todo, settings.enableTasksPluginSupport, it) },
                                 onEdit = {
                                     sheetMode = TodoSheetMode.Edit(todo)
                                     sheetText = todo.text
+                                    sheetNotes = MarkdownParser.notesToEditorText(todo.notes)
                                     sheetMeta = MarkdownParser.TasksMeta(
                                         dueDate = todo.dueDate,
                                         startDate = todo.startDate,
@@ -676,6 +768,7 @@ fun CategoryScreen(
                                     sheetMode = TodoSheetMode.AddSubtask
                                     sheetParentTodo = todo
                                     sheetText = ""
+                                    sheetNotes = ""
                                     sheetMeta = if (settings.enableTasksPluginSupport) {
                                         MarkdownParser.TasksMeta(createdDate = LocalDate.now().toString())
                                     } else {

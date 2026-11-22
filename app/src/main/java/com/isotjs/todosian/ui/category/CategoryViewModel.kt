@@ -150,13 +150,22 @@ class CategoryViewModel(
         viewModelScope.launch {
             val markers = currentMarkers()
             val previousLines = _uiState.value.lines
-            val newLines = MarkdownParser.tryToggleLine(
-                lines = previousLines,
-                lineIndex = todo.lineIndex,
-                enableTasksPlugin = enableTasksPluginSupport,
-                markers = markers,
-                newStatus = newStatus,
-            )
+            val newLines = if (newStatus == null) {
+                MarkdownParser.tryToggleTodoWithSubtasks(
+                    lines = previousLines,
+                    lineIndex = todo.lineIndex,
+                    enableTasksPlugin = enableTasksPluginSupport,
+                    markers = markers,
+                )
+            } else {
+                MarkdownParser.tryToggleLine(
+                    lines = previousLines,
+                    lineIndex = todo.lineIndex,
+                    enableTasksPlugin = enableTasksPluginSupport,
+                    markers = markers,
+                    newStatus = newStatus,
+                )
+            }
             if (newLines == null) {
                 _events.emit(Event.ShowMessage(R.string.error_read_failed))
                 refreshFromDisk(showLoading = false)
@@ -261,6 +270,7 @@ class CategoryViewModel(
         newText: String,
         meta: MarkdownParser.TasksMeta?,
         enableTasksPluginSupport: Boolean,
+        notes: List<String>,
     ) {
         viewModelScope.launch {
             val markers = currentMarkers()
@@ -283,14 +293,15 @@ class CategoryViewModel(
                 }
                 updated
             }
+            val finalLines = MarkdownParser.tryEditTodoNotes(newLines, todo.lineIndex, notes) ?: newLines
 
-            applyLines(newLines, markers)
+            applyLines(finalLines, markers)
 
             inFlightWrites.incrementAndGet()
             try {
-                val write = fileRepository.writeLines(categoryUri, newLines)
+                val write = fileRepository.writeLines(categoryUri, finalLines)
                 if (write.isFailure) {
-                    if (_uiState.value.lines == newLines) {
+                    if (_uiState.value.lines == finalLines) {
                         applyLines(previousLines, markers)
                     }
                     _events.emit(Event.ShowMessage(R.string.error_write_failed))

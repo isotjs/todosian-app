@@ -27,6 +27,8 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.outlined.AddCircle
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Event
+import androidx.compose.material.icons.outlined.ExpandLess
+import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.FlightTakeoff
 import androidx.compose.material.icons.outlined.Repeat
 import androidx.compose.material.icons.outlined.Schedule
@@ -92,6 +94,10 @@ fun TodoRow(
     showSubtaskButton: Boolean = true,
     statusChoices: List<Char> = emptyList(),
     onSetStatus: (Char) -> Unit = {},
+    showNotes: Boolean = true,
+    hasSubTasks: Boolean = false,
+    isCollapsed: Boolean = false,
+    onToggleCollapse: (() -> Unit)? = null,
 ) {
     // Open and done are always in the list; the menu only adds value once custom statuses exist.
     val canSetStatus = statusChoices.size > 2
@@ -255,6 +261,31 @@ fun TodoRow(
                                 }
                             }
                         }
+                    }
+                    if (showNotes && todo.notes.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = MarkdownParser.notesToEditorText(todo.notes),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                if (hasSubTasks && onToggleCollapse != null) {
+                    IconButton(onClick = { onToggleCollapse() }) {
+                        Icon(
+                            imageVector = if (isCollapsed) {
+                                Icons.Outlined.ExpandMore
+                            } else {
+                                Icons.Outlined.ExpandLess
+                            },
+                            contentDescription = if (isCollapsed) {
+                                stringResource(R.string.cd_expand_subtasks)
+                            } else {
+                                stringResource(R.string.cd_collapse_subtasks)
+                            },
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                 }
                 if (showSubtaskButton && todo.indentLevel < 2) {

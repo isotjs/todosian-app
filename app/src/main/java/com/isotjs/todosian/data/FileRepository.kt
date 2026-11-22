@@ -10,6 +10,7 @@ import android.provider.DocumentsContract
 import android.util.Log
 import androidx.documentfile.provider.DocumentFile
 import com.isotjs.todosian.data.model.Category
+import com.isotjs.todosian.data.settings.AppSettingsRepository
 import com.isotjs.todosian.utils.MarkdownParser
 import com.isotjs.todosian.utils.TaskMarkers
 import kotlinx.coroutines.CoroutineScope
@@ -21,6 +22,7 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.conflate
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -41,6 +43,13 @@ internal fun isDocumentWithinFolder(
     if (folderAuthority.isNullOrEmpty()) return false
     if (candidateAuthority != folderAuthority) return false
     return !candidateDocumentId.isNullOrEmpty()
+}
+
+/** Joins [lines] using the line separator and final-newline style already present in [original]. */
+internal fun joinLinesLike(original: String, lines: List<String>): String {
+    val separator = if (original.contains("\r\n")) "\r\n" else "\n"
+    val finalNewline = if (lines.isNotEmpty() && original.endsWith('\n')) separator else ""
+    return lines.joinToString(separator) + finalNewline
 }
 
 interface FileRepository {
@@ -86,6 +95,7 @@ interface FileRepository {
 class SafFileRepository(
     private val appContext: Context,
     private val preferencesManager: PreferencesManager,
+    private val appSettingsRepository: AppSettingsRepository,
 ) : FileRepository {
 
     private val widgetUpdateScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -118,6 +128,8 @@ class SafFileRepository(
     }
 
     override fun getFolderUri(): Uri? = preferencesManager.getFolderUri()
+
+    private suspend fun includeSubfolders(): Boolean = appSettingsRepository.settings.first().includeSubfolders
 
     override fun isCategoryUri(uri: Uri): Boolean {
         val folderUri = getFolderUri() ?: return false
@@ -154,32 +166,24 @@ class SafFileRepository(
     override suspend fun getCategories(markers: TaskMarkers): Result<List<Category>> {
         val folderUri = getFolderUri() ?: return Result.success(emptyList())
         return withContext(Dispatchers.IO) {
+            val recursive = includeSubfolders()
             runCatching {
-                val folder = DocumentFile.fromTreeUri(appContext, folderUri)
-                    ?: throw IllegalStateException("Invalid folder URI")
-
-                folder.listFiles()
+                scanMarkdownTree(appContext, folderUri, recursive).files
                     .asSequence()
-                    .filter { it.isFile }
-                    .filter { file ->
-                        val name = file.name.orEmpty()
-                        name.endsWith(".md", ignoreCase = true) && !name.contains("sync-conflict", ignoreCase = true)
-                    }
                     .map { file ->
-                        val name = file.name ?: ""
-                        val displayName = name.removeSuffix(".md")
-                        val lines = readLinesInternal(file.uri)
+                        val displayName = file.relativePath
+                        val lines = readLinesInternal(file.ref)
                         val todos = MarkdownParser.parse(lines, markers)
                         val doneCount = todos.count { it.isDone }
                         val today = LocalDate.now().toString()
                         val activeTodos = todos.filter { !it.isDone }
-                        val dueTodayCount = activeTodos.count { it.dueDate == today }
+                        val dueTodayCount = activeTodos.count { it.focusDate == today }
                         val overdueCount = activeTodos.count { todo ->
-                            todo.dueDate?.let { it < today } == true
+                            todo.focusDate?.let { it < today } == true
                         }
                         Category(
                             displayName = displayName,
-                            uri = file.uri,
+                            uri = file.ref,
                             todoCount = todos.size,
                             doneCount = doneCount,
                             dueTodayCount = dueTodayCount,
@@ -340,17 +344,9 @@ class SafFileRepository(
     }
 
     override suspend fun countMarkdownFiles(folderUri: Uri): Result<Int> {
+        val recursive = includeSubfolders()
         return withContext(Dispatchers.IO) {
-            runCatching {
-                val folder = DocumentFile.fromTreeUri(appContext, folderUri)
-                    ?: throw IllegalStateException("Invalid folder URI")
-
-                folder.listFiles().count { file ->
-                    if (!file.isFile) return@count false
-                    val name = file.name.orEmpty()
-                    name.endsWith(".md", ignoreCase = true) && !name.contains("sync-conflict", ignoreCase = true)
-                }
-            }
+            runCatching { scanMarkdownTree(appContext, folderUri, recursive).files.size }
         }
     }
 
@@ -376,24 +372,17 @@ class SafFileRepository(
 
             lateinit var observer: ContentObserver
 
-            fun currentMarkdownUris(): List<Pair<Uri, Boolean>> {
-                val folder = DocumentFile.fromTreeUri(appContext, folderUri) ?: return emptyList()
-                val fileUris = folder.listFiles()
-                    .asSequence()
-                    .filter { it.isFile }
-                    .filter {
-                        val name = it.name.orEmpty()
-                        name.endsWith(".md", ignoreCase = true) && !name.contains("sync-conflict", ignoreCase = true)
-                    }
-                    .map { it.uri }
-                    .toList()
+            suspend fun currentMarkdownUris(): List<Pair<Uri, Boolean>> {
+                val tree = scanMarkdownTree(appContext, folderUri, includeSubfolders())
 
                 val uris = mutableListOf<Pair<Uri, Boolean>>()
-                // structural changes
+                // structural changes, in the selected folder and every scanned subfolder
                 uris.add(folderUri to true)
-                uris.add(childrenUri to true)
+                tree.folderIds.forEach { id ->
+                    uris.add(DocumentsContract.buildChildDocumentsUriUsingTree(folderUri, id) to true)
+                }
                 // content changes
-                fileUris.forEach { uris.add(it to false) }
+                tree.files.forEach { uris.add(it.ref to false) }
                 return uris
             }
 
@@ -419,12 +408,9 @@ class SafFileRepository(
             observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
                 override fun onChange(selfChange: Boolean, changedUri: Uri?) {
                     trySend(Unit)
-                    val changed = changedUri?.toString().orEmpty()
-                    val shouldUpdate = changedUri == null ||
-                        changedUri == folderUri ||
-                        changedUri == childrenUri ||
-                        (changed.isNotEmpty() && changed.startsWith(childrenUri.toString()))
-                    if (shouldUpdate) scheduleUpdate()
+                    // Anything but a content change of a known note may add, remove or rename notes.
+                    val isKnownNote = observedUris.any { (uri, notifyDescendants) -> !notifyDescendants && uri == changedUri }
+                    if (!isKnownNote) scheduleUpdate()
                 }
             }
 
@@ -490,14 +476,13 @@ class SafFileRepository(
     }
 
     private fun writeLinesInternal(uri: Uri, lines: List<String>) {
+        // Re-read the file so CRLF and the final newline survive the round trip through readLines().
+        val original = appContext.contentResolver.openInputStream(uri)?.use { input ->
+            input.bufferedReader().readText()
+        }.orEmpty()
         appContext.contentResolver.openOutputStream(uri, "w")?.use { out ->
             runCatching { (out as? java.io.FileOutputStream)?.channel?.truncate(0) }
-            out.bufferedWriter().use { writer ->
-                lines.forEachIndexed { index, line ->
-                    if (index > 0) writer.newLine()
-                    writer.write(line)
-                }
-            }
+            out.bufferedWriter().use { writer -> writer.write(joinLinesLike(original, lines)) }
         } ?: throw IllegalStateException("Unable to open output stream")
         
         try {

@@ -32,6 +32,7 @@ class MainActivity : ComponentActivity() {
         val preferencesManager = (application as TodosianApplication).preferencesManager
         val fileRepository = (application as TodosianApplication).fileRepository
         val appSettingsRepository = (application as TodosianApplication).appSettingsRepository
+        val collapsedTodoRepository = (application as TodosianApplication).collapsedTodoRepository
         val initialAddTaskRequest = addTaskSignal.value
         setContent {
             val settings = appSettingsRepository.settings.collectAsStateWithLifecycle(
@@ -57,6 +58,7 @@ class MainActivity : ComponentActivity() {
                         fileRepository = fileRepository,
                         appSettingsRepository = appSettingsRepository,
                         preferencesManager = preferencesManager,
+                        collapsedTodoRepository = collapsedTodoRepository,
                         addTaskSignal = addTaskSignal,
                         initialAddTaskRequest = initialAddTaskRequest,
                     )
@@ -74,10 +76,12 @@ class MainActivity : ComponentActivity() {
     private fun handleIntent(intent: Intent?) {
         if (intent == null) return
         val wantsGlobalAdd = intent.getBooleanExtra(EXTRA_OPEN_ADD_TASK, false)
-        val fileRepository = (application as TodosianApplication).fileRepository
-        val categoryUri = intent.getStringExtra(EXTRA_OPEN_ADD_TASK_CATEGORY)
-            ?.takeIf { it.isNotBlank() }
-            ?.toUri()
+        val app = application as TodosianApplication
+        val fileRepository = app.fileRepository
+        val categoryUri = (
+            intent.getStringExtra(EXTRA_OPEN_ADD_TASK_CATEGORY)?.takeIf { it.isNotBlank() }?.toUri()
+                ?: app.preferencesManager.getDefaultAddTaskFileUri()?.takeIf { wantsGlobalAdd }
+            )
             ?.takeIf { fileRepository.isCategoryUri(it) }
             ?.toString()
         if (wantsGlobalAdd || categoryUri != null) {
