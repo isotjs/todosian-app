@@ -185,6 +185,8 @@
     <string name="settings_new_todo_file_position">Add new todos</string>
     <string name="settings_new_todo_file_position_top">Top of file</string>
     <string name="settings_new_todo_file_position_bottom">Bottom of file</string>
+    <string name="settings_default_add_task_file">Add task widget opens</string>
+    <string name="settings_default_add_task_file_ask">Ask every time</string>
 
     <string name="settings_enable_tasks_plugin_support">Enable Tasks Plugin Support</string>
     <string name="settings_enable_tasks_plugin_support_subtitle">Parse and edit Obsidian Tasks metadata (dates, priority, recurrence).</string>
