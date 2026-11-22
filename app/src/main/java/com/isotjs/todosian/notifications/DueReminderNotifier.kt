@@ -14,10 +14,11 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.edit
-import androidx.documentfile.provider.DocumentFile
 import com.isotjs.todosian.MainActivity
 import com.isotjs.todosian.R
+import com.isotjs.todosian.data.MarkdownEntry
 import com.isotjs.todosian.data.PreferencesManager
+import com.isotjs.todosian.data.scanMarkdownTree
 import com.isotjs.todosian.data.model.Todo
 import com.isotjs.todosian.data.settings.SharedPrefsAppSettingsRepository
 import com.isotjs.todosian.utils.MarkdownParser
@@ -54,7 +55,7 @@ object DueReminderNotifier {
         val folderUri = PreferencesManager(appContext).getFolderUri()
             ?: return false
 
-        val dueSoon = runCatching { loadDueSoonTodos(appContext, folderUri, settings.toTaskMarkers()) }
+        val dueSoon = runCatching { loadDueSoonTodos(appContext, folderUri, settings.toTaskMarkers(), settings.includeSubfolders) }
             .getOrElse { return false }
 
         if (dueSoon.isEmpty()) {
@@ -139,17 +140,16 @@ object DueReminderNotifier {
         NotificationManagerCompat.from(context.applicationContext).cancel(NOTIFICATION_ID)
     }
 
-    private fun loadDueSoonTodos(context: Context, folderUri: Uri, markers: TaskMarkers): List<DueTodo> {
-        val folder = DocumentFile.fromTreeUri(context, folderUri) ?: return emptyList()
+    private fun loadDueSoonTodos(
+        context: Context,
+        folderUri: Uri,
+        markers: TaskMarkers,
+        includeSubfolders: Boolean,
+    ): List<DueTodo> {
         val today = LocalDate.now()
 
-        return folder.listFiles()
+        return scanMarkdownTree(context, folderUri, includeSubfolders).files
             .asSequence()
-            .filter { it.isFile }
-            .filter {
-                val name = it.name.orEmpty()
-                name.endsWith(".md", ignoreCase = true) && !name.contains("sync-conflict", ignoreCase = true)
-            }
             .flatMap { file ->
                 parseDueTodosFromFile(context, file, today, markers).asSequence()
             }
@@ -159,11 +159,11 @@ object DueReminderNotifier {
 
     private fun parseDueTodosFromFile(
         context: Context,
-        file: DocumentFile,
+        file: MarkdownEntry<Uri>,
         today: LocalDate,
         markers: TaskMarkers,
     ): List<DueTodo> {
-        val lines = context.contentResolver.openInputStream(file.uri)?.use { input ->
+        val lines = context.contentResolver.openInputStream(file.ref)?.use { input ->
             input.bufferedReader().readLines()
         } ?: return emptyList()
 
@@ -174,14 +174,14 @@ object DueReminderNotifier {
             .toList()
     }
 
-    private fun mapDueTodo(todo: Todo, file: DocumentFile, today: LocalDate): DueTodo? {
+    private fun mapDueTodo(todo: Todo, file: MarkdownEntry<Uri>, today: LocalDate): DueTodo? {
         val due = todo.dueDate?.let { raw -> runCatching { LocalDate.parse(raw) }.getOrNull() }
             ?: return null
         val daysUntil = due.toEpochDay() - today.toEpochDay()
         if (daysUntil > 2L) return null
 
         return DueTodo(
-            fileName = file.name.orEmpty(),
+            fileName = file.relativePath,
             lineIndex = todo.lineIndex,
             text = todo.text.trim().ifEmpty { "Untitled task" },
             dueDate = due,
