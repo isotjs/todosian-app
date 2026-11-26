@@ -21,6 +21,7 @@ class PreferencesManager(
         if (getFolderUri() != uri) {
             clearDefaultAddTaskFileUri()
             clearDefaultLaunchCategoryUri()
+            clearQuickAddCategoryUri()
         }
         if (prefs.getInt(KEY_LAST_SEEN_VERSION_CODE, 0) == 0) {
             prefs.edit {
@@ -39,7 +40,19 @@ class PreferencesManager(
             remove(KEY_FOLDER_URI)
             remove(KEY_DEFAULT_ADD_TASK_FILE_URI)
             remove(KEY_DEFAULT_LAUNCH_CATEGORY_URI)
+            remove(KEY_QUICK_ADD_CATEGORY_URI)
         }
+    }
+
+    fun getQuickAddCategoryUri(): Uri? =
+        prefs.getString(KEY_QUICK_ADD_CATEGORY_URI, null)?.let { raw -> runCatching { raw.toUri() }.getOrNull() }
+
+    fun saveQuickAddCategoryUri(uri: Uri) {
+        prefs.edit { putString(KEY_QUICK_ADD_CATEGORY_URI, uri.toString()) }
+    }
+
+    fun clearQuickAddCategoryUri() {
+        prefs.edit { remove(KEY_QUICK_ADD_CATEGORY_URI) }
     }
 
     /** The note that the "Add task" widget opens directly, instead of asking for a file. */
@@ -79,5 +92,6 @@ class PreferencesManager(
         private const val KEY_LAST_SEEN_VERSION_CODE = "last_seen_version_code"
         private const val KEY_DEFAULT_ADD_TASK_FILE_URI = "default_add_task_file_uri"
         private const val KEY_DEFAULT_LAUNCH_CATEGORY_URI = "default_launch_category_uri"
+        private const val KEY_QUICK_ADD_CATEGORY_URI = "quick_add_category_uri"
     }
 }

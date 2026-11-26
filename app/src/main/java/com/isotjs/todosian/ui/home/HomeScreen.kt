@@ -11,17 +11,22 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.foundation.lazy.LazyColumn
@@ -30,29 +35,40 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.CreateNewFolder
+import androidx.compose.material.icons.outlined.Folder
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -60,14 +76,18 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.input.ImeAction
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -90,13 +110,12 @@ import com.isotjs.todosian.ui.components.TodosianEmptyState
 import com.isotjs.todosian.ui.components.TodosianLoadingIndicator
 import com.isotjs.todosian.ui.components.TodosianLinearProgress
 import com.isotjs.todosian.ui.components.TodosianPullToRefreshBox
-import com.isotjs.todosian.ui.components.todosianFabShape
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.ime
-import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.navigationBars
 import androidx.annotation.StringRes
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -116,6 +135,10 @@ fun HomeScreen(
         factory = HomeViewModelFactory(fileRepository, appSettingsRepository, preferencesManager),
     )
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    var quickAddText by rememberSaveable { mutableStateOf("") }
+    var quickAddCategoryUri by remember { mutableStateOf(preferencesManager.getQuickAddCategoryUri()) }
+    var isQuickTodoSaving by remember { mutableStateOf(false) }
+    var showQuickAddCategorySheet by remember { mutableStateOf(false) }
 
     LaunchedEffect(uiState.launchCategoryUri) {
         val uri = uiState.launchCategoryUri ?: return@LaunchedEffect
@@ -139,6 +162,7 @@ fun HomeScreen(
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             // Re-scan on every resume so tasks checked in the widget, edits made in Obsidian,
             // or sync changes that happened while the app was away are picked up.
+            quickAddCategoryUri = preferencesManager.getQuickAddCategoryUri()
             viewModel.refresh(showLoading = false)
         }
     }
@@ -150,6 +174,15 @@ fun HomeScreen(
             when (event) {
                 is HomeViewModel.Event.ShowMessage -> {
                     snackbarHostState.showSnackbar(resources.getString(event.messageResId))
+                }
+                HomeViewModel.Event.QuickTodoAdded -> {
+                    isQuickTodoSaving = false
+                    quickAddText = ""
+                    showQuickAddCategorySheet = false
+                    snackbarHostState.showSnackbar(resources.getString(R.string.home_quick_add_success))
+                }
+                HomeViewModel.Event.QuickTodoFailed -> {
+                    isQuickTodoSaving = false
                 }
                 HomeViewModel.Event.RequireOnboarding -> onRequireOnboarding()
             }
@@ -172,6 +205,21 @@ fun HomeScreen(
     var deleteTarget by remember { mutableStateOf<Category?>(null) }
 
     val scope = rememberCoroutineScope()
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val quickAddCategory = uiState.categories.firstOrNull { it.uri == quickAddCategoryUri }
+    val submitQuickAdd = {
+        if (quickAddText.isNotBlank() && !isQuickTodoSaving) {
+            if (quickAddCategory == null) {
+                focusManager.clearFocus()
+                keyboardController?.hide()
+                showQuickAddCategorySheet = true
+            } else {
+                isQuickTodoSaving = true
+                viewModel.addQuickTodo(quickAddCategory.uri, quickAddText)
+            }
+        }
+    }
     val newCategorySheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val renameCategorySheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     if (showNewCategorySheet) {
@@ -348,6 +396,65 @@ fun HomeScreen(
         )
     }
 
+    val quickAddCategorySheetState = rememberBottomSheetState(
+        initialValue = SheetValue.Hidden,
+        enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
+    )
+    if (showQuickAddCategorySheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showQuickAddCategorySheet = false },
+            sheetState = quickAddCategorySheetState,
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 24.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.home_quick_add_category_title),
+                    style = MaterialTheme.typography.titleLarge,
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = stringResource(R.string.home_quick_add_category_subtitle),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 480.dp),
+                ) {
+                    lazyItems(
+                        items = uiState.categories,
+                        key = { it.uri.toString() },
+                    ) { category ->
+                        ListItem(
+                            leadingContent = {
+                                Icon(
+                                    imageVector = Icons.Outlined.Folder,
+                                    contentDescription = null,
+                                )
+                            },
+                            modifier = Modifier.clickable(enabled = !isQuickTodoSaving) {
+                                isQuickTodoSaving = true
+                                showQuickAddCategorySheet = false
+                                viewModel.addQuickTodo(category.uri, quickAddText)
+                            },
+                        ) {
+                            Text(text = category.displayName)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    val quickAddDestinationText = quickAddCategory?.let {
+        stringResource(R.string.home_quick_add_destination_category, it.displayName)
+    } ?: stringResource(R.string.home_quick_add_destination_ask)
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -362,26 +469,36 @@ fun HomeScreen(
                 },
             )
         },
+        bottomBar = {
+            if (settings.enableQuickAdd && uiState.categories.isNotEmpty()) {
+                HomeQuickAddBar(
+                    text = quickAddText,
+                    isSaving = isQuickTodoSaving,
+                    destinationText = quickAddDestinationText,
+                    onTextChange = { quickAddText = it },
+                    onSubmit = submitQuickAdd,
+                )
+            }
+        },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         floatingActionButton = {
-            FloatingActionButton(
+            ExtendedFloatingActionButton(
                 onClick = { showNewCategorySheet = true },
-                shape = todosianFabShape(),
-                // The cookie shape is concave; Skia's spot-shadow tessellation for concave
-                // outlines is pathologically slow and freezes the RenderThread during
-                // navigation animations. Keep depth via tonal colors instead of a shadow.
+                shape = MaterialTheme.shapes.large,
                 elevation = FloatingActionButtonDefaults.elevation(
                     defaultElevation = 0.dp,
                     pressedElevation = 0.dp,
                     focusedElevation = 0.dp,
                     hoveredElevation = 0.dp,
                 ),
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Add,
-                    contentDescription = stringResource(R.string.cd_add_category),
-                )
-            }
+                icon = {
+                    Icon(
+                        imageVector = Icons.Filled.Add,
+                        contentDescription = null,
+                    )
+                },
+                text = { Text(text = stringResource(R.string.home_new_category_action)) },
+            )
         },
         modifier = modifier.fillMaxSize(),
     ) { padding ->
@@ -568,6 +685,95 @@ private enum class HomeContentState {
     LOADING,
     EMPTY,
     DATA,
+}
+
+@Composable
+private fun HomeQuickAddBar(
+    text: String,
+    isSaving: Boolean,
+    destinationText: String,
+    onTextChange: (String) -> Unit,
+    onSubmit: () -> Unit,
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.background,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom))
+                .windowInsetsPadding(WindowInsets.ime.only(WindowInsetsSides.Bottom))
+                .padding(horizontal = TodosianDimens.ScreenHorizontalPadding)
+                .padding(top = 8.dp, bottom = 8.dp),
+        ) {
+            Surface(
+                color = MaterialTheme.colorScheme.secondaryContainer,
+                shape = MaterialTheme.shapes.extraLarge,
+                modifier = Modifier.padding(start = 4.dp, bottom = 6.dp),
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Folder,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                        modifier = Modifier.size(16.dp),
+                    )
+                    Spacer(modifier = Modifier.size(5.dp))
+                    Text(
+                        text = destinationText,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = onTextChange,
+                    modifier = Modifier.weight(1f),
+                    enabled = !isSaving,
+                    singleLine = true,
+                    placeholder = {
+                        Text(text = stringResource(R.string.home_quick_add_hint))
+                    },
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                    keyboardActions = KeyboardActions(onSend = { onSubmit() }),
+                )
+                FilledIconButton(
+                    onClick = onSubmit,
+                    enabled = text.isNotBlank() && !isSaving,
+                    shape = MaterialTheme.shapes.large,
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                    ),
+                    modifier = Modifier.size(48.dp),
+                ) {
+                    if (isSaving) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(22.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.onPrimary,
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.Send,
+                            contentDescription = stringResource(R.string.home_quick_add_send),
+                        )
+                    }
+                }
+            }
+        }
+    }
 }
 
 private data class RenameCategoryValidation(

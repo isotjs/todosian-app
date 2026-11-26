@@ -12,6 +12,7 @@ data class AppSettings(
     val todoGrouping: TodoGrouping = TodoGrouping.GROUPED,
     val todoSort: TodoSort = TodoSort.FILE_ORDER,
     val newTodoFilePosition: NewTodoFilePosition = NewTodoFilePosition.BOTTOM,
+    val enableQuickAdd: Boolean = true,
     val enableTasksPluginSupport: Boolean = false,
     val tasksPluginUseEmojisInUi: Boolean = false,
     val createdMarker: String? = null,

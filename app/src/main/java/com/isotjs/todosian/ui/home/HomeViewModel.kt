@@ -9,8 +9,10 @@ import com.isotjs.todosian.R
 import com.isotjs.todosian.data.FileRepository
 import com.isotjs.todosian.data.PreferencesManager
 import com.isotjs.todosian.data.model.Category
+import com.isotjs.todosian.data.settings.NewTodoFilePosition
 import com.isotjs.todosian.data.settings.AppSettingsRepository
 import com.isotjs.todosian.ui.components.awaitMinimumPullRefreshDuration
+import com.isotjs.todosian.utils.MarkdownParser
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -159,8 +161,36 @@ class HomeViewModel(
         }
     }
 
+    fun addQuickTodo(categoryUri: Uri, text: String) {
+        val cleanedText = text.trim()
+        if (cleanedText.isEmpty()) return
+
+        viewModelScope.launch {
+            val settings = appSettingsRepository.settings.first()
+            val result = fileRepository.updateLines(categoryUri) { lines ->
+                MarkdownParser.addTodo(
+                    lines = lines,
+                    text = cleanedText,
+                    enableTasksPlugin = settings.enableTasksPluginSupport,
+                    addAtStart = settings.newTodoFilePosition == NewTodoFilePosition.TOP,
+                    markers = settings.toTaskMarkers(),
+                )
+            }
+            if (result.isFailure) {
+                _events.emit(Event.QuickTodoFailed)
+                _events.emit(Event.ShowMessage(R.string.error_write_failed))
+                return@launch
+            }
+
+            _events.emit(Event.QuickTodoAdded)
+            refresh(showLoading = false)
+        }
+    }
+
     sealed interface Event {
         data class ShowMessage(@param:StringRes val messageResId: Int) : Event
+        data object QuickTodoAdded : Event
+        data object QuickTodoFailed : Event
         data object RequireOnboarding : Event
     }
 }
