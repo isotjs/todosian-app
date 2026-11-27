@@ -147,11 +147,6 @@ fun SettingsScreen(
         value = quickAddCategoryUri?.let { fileRepository.getDisplayName(it).getOrNull()?.removeSuffix(".md") }
     }
 
-    LifecycleResumeEffect(Unit) {
-        quickAddCategoryUri = preferencesManager.getQuickAddCategoryUri()
-        onPauseOrDispose {}
-    }
-
     val reminderTimeLabel = remember(settings.reminderTimeHour, settings.reminderTimeMinute) {
         LocalTime.of(settings.reminderTimeHour, settings.reminderTimeMinute)
             .format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT))

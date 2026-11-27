@@ -211,7 +211,7 @@ class SharedPrefsAppSettingsRepository(
             todoGrouping = todoGrouping,
             todoSort = todoSort,
             newTodoFilePosition = newTodoFilePosition,
-            enableQuickAdd = prefs.getBoolean(KEY_ENABLE_QUICK_ADD, true),
+            enableQuickAdd = prefs.getBoolean(KEY_ENABLE_QUICK_ADD, false),
             enableTasksPluginSupport = prefs.getBoolean(KEY_TASKS_PLUGIN, false),
             tasksPluginUseEmojisInUi = prefs.getBoolean(KEY_TASKS_PLUGIN_UI_EMOJIS, false),
             createdMarker = prefs.getString(KEY_CREATED_MARKER, null)?.takeIf { it.isNotBlank() },

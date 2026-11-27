@@ -9,6 +9,7 @@ import com.isotjs.todosian.R
 import com.isotjs.todosian.data.FileRepository
 import com.isotjs.todosian.data.PreferencesManager
 import com.isotjs.todosian.data.model.Category
+import com.isotjs.todosian.data.settings.AppSettings
 import com.isotjs.todosian.data.settings.NewTodoFilePosition
 import com.isotjs.todosian.data.settings.AppSettingsRepository
 import com.isotjs.todosian.ui.components.awaitMinimumPullRefreshDuration
@@ -20,6 +21,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 
 data class HomeUiState(
     val isLoading: Boolean = false,
@@ -161,36 +163,83 @@ class HomeViewModel(
         }
     }
 
-    fun addQuickTodo(categoryUri: Uri, text: String) {
+    fun addQuickTodo(categoryUri: Uri, categoryName: String, text: String) {
         val cleanedText = text.trim()
         if (cleanedText.isEmpty()) return
 
         viewModelScope.launch {
             val settings = appSettingsRepository.settings.first()
+            val markers = settings.toTaskMarkers()
+            val today = LocalDate.now().toString()
+            var updatedCategoryCounts: QuickTodoCategoryCounts? = null
             val result = fileRepository.updateLines(categoryUri) { lines ->
-                MarkdownParser.addTodo(
-                    lines = lines,
-                    text = cleanedText,
-                    enableTasksPlugin = settings.enableTasksPluginSupport,
-                    addAtStart = settings.newTodoFilePosition == NewTodoFilePosition.TOP,
-                    markers = settings.toTaskMarkers(),
+                val updatedLines = addQuickTodoToLines(lines, cleanedText, settings)
+                    ?: return@updateLines null
+                val todos = MarkdownParser.parse(updatedLines, markers)
+                val activeTodos = todos.filterNot { it.isDone }
+                updatedCategoryCounts = QuickTodoCategoryCounts(
+                    todoCount = todos.size,
+                    doneCount = todos.count { it.isDone },
+                    dueTodayCount = activeTodos.count { it.focusDate == today },
+                    overdueCount = activeTodos.count { todo ->
+                        todo.focusDate?.let { it < today } == true
+                    },
                 )
+                updatedLines
             }
             if (result.isFailure) {
                 _events.emit(Event.QuickTodoFailed)
-                _events.emit(Event.ShowMessage(R.string.error_write_failed))
                 return@launch
             }
 
-            _events.emit(Event.QuickTodoAdded)
-            refresh(showLoading = false)
+            updatedCategoryCounts?.let { counts ->
+                _uiState.value = _uiState.value.copy(
+                    categories = _uiState.value.categories.map { category ->
+                        if (category.uri == categoryUri) {
+                            category.copy(
+                                todoCount = counts.todoCount,
+                                doneCount = counts.doneCount,
+                                dueTodayCount = counts.dueTodayCount,
+                                overdueCount = counts.overdueCount,
+                            )
+                        } else {
+                            category
+                        }
+                    },
+                )
+            }
+            _events.emit(Event.QuickTodoAdded(categoryName))
         }
     }
 
     sealed interface Event {
         data class ShowMessage(@param:StringRes val messageResId: Int) : Event
-        data object QuickTodoAdded : Event
+        data class QuickTodoAdded(val categoryName: String) : Event
         data object QuickTodoFailed : Event
         data object RequireOnboarding : Event
     }
 }
+
+internal fun addQuickTodoToLines(
+    lines: List<String>,
+    text: String,
+    settings: AppSettings,
+): List<String>? {
+    val cleanedText = text.trim()
+    if (cleanedText.isEmpty()) return null
+
+    return MarkdownParser.addTodo(
+        lines = lines,
+        text = cleanedText,
+        enableTasksPlugin = settings.enableTasksPluginSupport,
+        addAtStart = settings.newTodoFilePosition == NewTodoFilePosition.TOP,
+        markers = settings.toTaskMarkers(),
+    )
+}
+
+private data class QuickTodoCategoryCounts(
+    val todoCount: Int,
+    val doneCount: Int,
+    val dueTodayCount: Int,
+    val overdueCount: Int,
+)

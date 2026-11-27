@@ -50,7 +50,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
@@ -61,14 +61,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SheetValue
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -110,6 +108,7 @@ import com.isotjs.todosian.ui.components.TodosianEmptyState
 import com.isotjs.todosian.ui.components.TodosianLoadingIndicator
 import com.isotjs.todosian.ui.components.TodosianLinearProgress
 import com.isotjs.todosian.ui.components.TodosianPullToRefreshBox
+import com.isotjs.todosian.ui.components.todosianFabShape
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
@@ -175,14 +174,17 @@ fun HomeScreen(
                 is HomeViewModel.Event.ShowMessage -> {
                     snackbarHostState.showSnackbar(resources.getString(event.messageResId))
                 }
-                HomeViewModel.Event.QuickTodoAdded -> {
+                is HomeViewModel.Event.QuickTodoAdded -> {
                     isQuickTodoSaving = false
                     quickAddText = ""
                     showQuickAddCategorySheet = false
-                    snackbarHostState.showSnackbar(resources.getString(R.string.home_quick_add_success))
+                    snackbarHostState.showSnackbar(
+                        resources.getString(R.string.home_quick_add_success, event.categoryName),
+                    )
                 }
                 HomeViewModel.Event.QuickTodoFailed -> {
                     isQuickTodoSaving = false
+                    snackbarHostState.showSnackbar(resources.getString(R.string.error_write_failed))
                 }
                 HomeViewModel.Event.RequireOnboarding -> onRequireOnboarding()
             }
@@ -216,7 +218,7 @@ fun HomeScreen(
                 showQuickAddCategorySheet = true
             } else {
                 isQuickTodoSaving = true
-                viewModel.addQuickTodo(quickAddCategory.uri, quickAddText)
+                viewModel.addQuickTodo(quickAddCategory.uri, quickAddCategory.displayName, quickAddText)
             }
         }
     }
@@ -396,10 +398,7 @@ fun HomeScreen(
         )
     }
 
-    val quickAddCategorySheetState = rememberBottomSheetState(
-        initialValue = SheetValue.Hidden,
-        enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
-    )
+    val quickAddCategorySheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     if (showQuickAddCategorySheet) {
         ModalBottomSheet(
             onDismissRequest = { showQuickAddCategorySheet = false },
@@ -440,7 +439,7 @@ fun HomeScreen(
                             modifier = Modifier.clickable(enabled = !isQuickTodoSaving) {
                                 isQuickTodoSaving = true
                                 showQuickAddCategorySheet = false
-                                viewModel.addQuickTodo(category.uri, quickAddText)
+                                viewModel.addQuickTodo(category.uri, category.displayName, quickAddText)
                             },
                         ) {
                             Text(text = category.displayName)
@@ -450,10 +449,6 @@ fun HomeScreen(
             }
         }
     }
-
-    val quickAddDestinationText = quickAddCategory?.let {
-        stringResource(R.string.home_quick_add_destination_category, it.displayName)
-    } ?: stringResource(R.string.home_quick_add_destination_ask)
 
     Scaffold(
         topBar = {
@@ -474,7 +469,6 @@ fun HomeScreen(
                 HomeQuickAddBar(
                     text = quickAddText,
                     isSaving = isQuickTodoSaving,
-                    destinationText = quickAddDestinationText,
                     onTextChange = { quickAddText = it },
                     onSubmit = submitQuickAdd,
                 )
@@ -482,23 +476,24 @@ fun HomeScreen(
         },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         floatingActionButton = {
-            ExtendedFloatingActionButton(
+            FloatingActionButton(
                 onClick = { showNewCategorySheet = true },
-                shape = MaterialTheme.shapes.large,
+                shape = todosianFabShape(),
+                // The cookie shape is concave; Skia's spot-shadow tessellation for concave
+                // outlines is pathologically slow and freezes the RenderThread during
+                // navigation animations. Keep depth via tonal colors instead of a shadow.
                 elevation = FloatingActionButtonDefaults.elevation(
                     defaultElevation = 0.dp,
                     pressedElevation = 0.dp,
                     focusedElevation = 0.dp,
                     hoveredElevation = 0.dp,
                 ),
-                icon = {
-                    Icon(
-                        imageVector = Icons.Filled.Add,
-                        contentDescription = null,
-                    )
-                },
-                text = { Text(text = stringResource(R.string.home_new_category_action)) },
-            )
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Add,
+                    contentDescription = stringResource(R.string.cd_add_category),
+                )
+            }
         },
         modifier = modifier.fillMaxSize(),
     ) { padding ->
@@ -691,7 +686,6 @@ private enum class HomeContentState {
 private fun HomeQuickAddBar(
     text: String,
     isSaving: Boolean,
-    destinationText: String,
     onTextChange: (String) -> Unit,
     onSubmit: () -> Unit,
 ) {
@@ -707,31 +701,6 @@ private fun HomeQuickAddBar(
                 .padding(horizontal = TodosianDimens.ScreenHorizontalPadding)
                 .padding(top = 8.dp, bottom = 8.dp),
         ) {
-            Surface(
-                color = MaterialTheme.colorScheme.secondaryContainer,
-                shape = MaterialTheme.shapes.extraLarge,
-                modifier = Modifier.padding(start = 4.dp, bottom = 6.dp),
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Folder,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                        modifier = Modifier.size(16.dp),
-                    )
-                    Spacer(modifier = Modifier.size(5.dp))
-                    Text(
-                        text = destinationText,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            }
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),

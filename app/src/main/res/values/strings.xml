@@ -29,14 +29,11 @@
     <string name="home_empty_subtitle">Create a category or choose a different folder.</string>
     <string name="home_create_category">Create category</string>
     <string name="home_new_category_title">New category</string>
-    <string name="home_new_category_action">New category</string>
     <string name="home_new_category_hint">Category name</string>
     <string name="home_quick_add_hint">Add a task…</string>
-    <string name="home_quick_add_destination_ask">Choose category after adding</string>
-    <string name="home_quick_add_destination_category">Tasks go to %1$s</string>
     <string name="home_quick_add_category_title">Choose a category</string>
     <string name="home_quick_add_category_subtitle">Your task will be added to the selected category.</string>
-    <string name="home_quick_add_success">Task added.</string>
+    <string name="home_quick_add_success">Task added to %1$s.</string>
     <string name="home_quick_add_send">Add task</string>
     <string name="home_category_action_rename">Rename</string>
     <string name="home_category_action_delete">Delete</string>
