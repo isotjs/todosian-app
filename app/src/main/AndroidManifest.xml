@@ -40,6 +40,16 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".ui.widget.AddTaskWidgetConfigureActivity"
+            android:exported="true"
+            android:label="@string/widget_add_task_name"
+            android:theme="@style/Theme.Todosian">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+
         <receiver
             android:name=".notifications.DueReminderReceiver"
             android:enabled="true"

@@ -14,23 +14,20 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.FolderOpen
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -43,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.state.getAppWidgetState
 import androidx.glance.appwidget.state.updateAppWidgetState
+import androidx.glance.appwidget.updateAll
 import androidx.glance.state.PreferencesGlanceStateDefinition
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
@@ -68,6 +66,13 @@ class WidgetConfigureActivity : ComponentActivity() {
     // Hoisted "show completed" preference; pre-filled asynchronously from the widget state so
     // reconfiguring shows the widget's current value.
     private val showCompleted = mutableStateOf(true)
+
+    // Hoisted appearance preferences; pre-filled from the widget state like "show completed".
+    private val backgroundTheme = mutableStateOf(WidgetBackgroundTheme.SYSTEM)
+    private val backgroundOpacity = mutableIntStateOf(100)
+
+    // Which list this widget is bound to; defaults to "All lists" until the user picks one.
+    private val selected = mutableStateOf(WidgetSelection.ALL)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -102,15 +107,21 @@ class WidgetConfigureActivity : ComponentActivity() {
         // Pre-fill the screen with the widget's current preferences (reconfigure case); the
         // state read is suspending, so it lands in the hoisted state asynchronously.
         lifecycleScope.launch {
-            showCompleted.value = runCatching {
+            val state = runCatching {
                 val glanceId = GlanceAppWidgetManager(this@WidgetConfigureActivity)
                     .getGlanceIdBy(appWidgetId)
                 getAppWidgetState(
                     this@WidgetConfigureActivity,
                     PreferencesGlanceStateDefinition,
                     glanceId,
-                )[KEY_SHOW_COMPLETED] ?: true
-            }.getOrDefault(true)
+                )
+            }.getOrDefault(null)
+
+            showCompleted.value = state?.get(KEY_SHOW_COMPLETED) ?: true
+            val appearance = state?.let { WidgetAppearance.from(it) } ?: WidgetAppearance()
+            backgroundTheme.value = appearance.theme
+            backgroundOpacity.intValue = appearance.opacityPercent
+            selected.value = state?.let { WidgetSelection.from(it) } ?: WidgetSelection.ALL
         }
 
         val initialSettings = app.appSettingsRepository.settings
@@ -137,10 +148,34 @@ class WidgetConfigureActivity : ComponentActivity() {
                         showCompleted = showCompleted.value,
                         onShowCompletedChange = { checked ->
                             showCompleted.value = checked
-                            persistPreferences(appWidgetId, selection = null, showCompleted = checked)
+                            persistPreferences(
+                                appWidgetId,
+                                selection = null,
+                                showCompleted = checked,
+                                appearance = currentAppearance(),
+                            )
                         },
-                        onConfirm = { selection ->
-                            persistPreferences(appWidgetId, selection, showCompleted.value)
+                        backgroundTheme = backgroundTheme.value,
+                        backgroundOpacity = backgroundOpacity.intValue,
+                        onBackgroundThemeChange = { theme ->
+                            backgroundTheme.value = theme
+                            persistAppearance(appWidgetId, currentAppearance())
+                        },
+                        onBackgroundOpacityChange = { opacity ->
+                            backgroundOpacity.intValue = opacity
+                        },
+                        onBackgroundOpacityChangeFinished = {
+                            persistAppearance(appWidgetId, currentAppearance())
+                        },
+                        selected = selected.value,
+                        onSelect = { selection -> selected.value = selection },
+                        onConfirm = {
+                            persistPreferences(
+                                appWidgetId,
+                                selected.value,
+                                showCompleted.value,
+                                currentAppearance(),
+                            )
                         },
                         onCancel = {
                             setResult(RESULT_CANCELED)
@@ -159,7 +194,12 @@ class WidgetConfigureActivity : ComponentActivity() {
      * a null selection only persists the "show completed" toggle, leaving the activity open
      * and the stored selection untouched.
      */
-    private fun persistPreferences(appWidgetId: Int, selection: WidgetSelection?, showCompleted: Boolean) {
+    private fun persistPreferences(
+        appWidgetId: Int,
+        selection: WidgetSelection?,
+        showCompleted: Boolean,
+        appearance: WidgetAppearance,
+    ) {
         val context = this
         lifecycleScope.launch {
             val result = runCatching {
@@ -168,6 +208,7 @@ class WidgetConfigureActivity : ComponentActivity() {
                     prefs.toMutablePreferences().apply {
                         selection?.writeTo(this)
                         this[KEY_SHOW_COMPLETED] = showCompleted
+                        appearance.writeTo(this)
                     }
                 }
                 // Rebuild the snapshots now so the widget shows the new preferences immediately.
@@ -186,15 +227,41 @@ class WidgetConfigureActivity : ComponentActivity() {
             }
         }
     }
+
+    /**
+     * Persists only the appearance settings and re-renders the widget in place. Appearance is read
+     * directly from Glance state, so this skips the full snapshot rebuild that [persistPreferences]
+     * performs (the slider would otherwise trigger a file re-read on every release).
+     */
+    private fun persistAppearance(appWidgetId: Int, appearance: WidgetAppearance) {
+        val context = this
+        lifecycleScope.launch {
+            runCatching {
+                val glanceId = GlanceAppWidgetManager(context).getGlanceIdBy(appWidgetId)
+                updateAppWidgetState(context, PreferencesGlanceStateDefinition, glanceId) { prefs ->
+                    prefs.toMutablePreferences().apply { appearance.writeTo(this) }
+                }
+                TodosianWidget().updateAll(context)
+            }
+        }
+    }
+
+    private fun currentAppearance() = WidgetAppearance(backgroundTheme.value, backgroundOpacity.intValue)
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun WidgetConfigureScreen(
     fileRepository: FileRepository?,
     showCompleted: Boolean,
     onShowCompletedChange: (Boolean) -> Unit,
-    onConfirm: (WidgetSelection) -> Unit,
+    backgroundTheme: WidgetBackgroundTheme,
+    backgroundOpacity: Int,
+    onBackgroundThemeChange: (WidgetBackgroundTheme) -> Unit,
+    onBackgroundOpacityChange: (Int) -> Unit,
+    onBackgroundOpacityChangeFinished: () -> Unit,
+    selected: WidgetSelection,
+    onSelect: (WidgetSelection) -> Unit,
+    onConfirm: () -> Unit,
     onCancel: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -210,20 +277,10 @@ private fun WidgetConfigureScreen(
         isLoading = false
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(text = stringResource(R.string.widget_configure_title)) },
-                navigationIcon = {
-                    IconButton(onClick = onCancel) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.cd_navigate_back),
-                        )
-                    }
-                },
-            )
-        },
+    WidgetConfigureScaffold(
+        title = stringResource(R.string.widget_configure_title),
+        onConfirm = onConfirm,
+        onCancel = onCancel,
         modifier = modifier.fillMaxSize(),
     ) { padding ->
         when {
@@ -258,6 +315,15 @@ private fun WidgetConfigureScreen(
                             ),
                         )
                     }
+                    item(key = APPEARANCE_KEY) {
+                        WidgetAppearanceSection(
+                            theme = backgroundTheme,
+                            opacityPercent = backgroundOpacity,
+                            onThemeChange = onBackgroundThemeChange,
+                            onOpacityChange = onBackgroundOpacityChange,
+                            onOpacityChangeFinished = onBackgroundOpacityChangeFinished,
+                        )
+                    }
                     item(key = ALL_LISTS_KEY) {
                         ListItem(
                             headlineContent = {
@@ -273,11 +339,17 @@ private fun WidgetConfigureScreen(
                                     tint = MaterialTheme.colorScheme.primary,
                                 )
                             },
+                            trailingContent = {
+                                RadioButton(
+                                    selected = selected == WidgetSelection.ALL,
+                                    onClick = null,
+                                )
+                            },
                             colors = ListItemDefaults.colors(
                                 containerColor = Color.Transparent,
                             ),
                             modifier = Modifier.clickable {
-                                onConfirm(WidgetSelection.ALL)
+                                onSelect(WidgetSelection.ALL)
                             },
                         )
                     }
@@ -285,6 +357,7 @@ private fun WidgetConfigureScreen(
                         items = categories,
                         key = { it.uri.toString() },
                     ) { category ->
+                        val categorySelection = WidgetSelection(category.uri.toString(), category.displayName)
                         ListItem(
                             headlineContent = { Text(text = category.displayName) },
                             supportingContent = {
@@ -302,11 +375,17 @@ private fun WidgetConfigureScreen(
                                     contentDescription = null,
                                 )
                             },
+                            trailingContent = {
+                                RadioButton(
+                                    selected = selected == categorySelection,
+                                    onClick = null,
+                                )
+                            },
                             colors = ListItemDefaults.colors(
                                 containerColor = Color.Transparent,
                             ),
                             modifier = Modifier.clickable {
-                                onConfirm(WidgetSelection(category.uri.toString(), category.displayName))
+                                onSelect(categorySelection)
                             },
                         )
                     }
@@ -318,3 +397,4 @@ private fun WidgetConfigureScreen(
 
 private const val ALL_LISTS_KEY = "all_lists"
 private const val SHOW_COMPLETED_KEY = "show_completed"
+private const val APPEARANCE_KEY = "appearance"

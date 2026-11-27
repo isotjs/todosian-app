@@ -316,6 +316,11 @@
     <string name="widget_configure_title">Select a list for this widget</string>
     <string name="widget_configure_all_lists_hint">Shows tasks from every note</string>
     <string name="widget_configure_show_completed">Show completed tasks</string>
+    <string name="widget_configure_background_theme">Background theme</string>
+    <string name="widget_configure_background_opacity">Background opacity</string>
+    <string name="widget_configure_opacity_value">%1$d%%</string>
+    <string name="widget_add_task_configure_title">Add task widget</string>
+    <string name="widget_configure_confirm">Save</string>
     <string name="widget_missing_list">List unavailable. Long-press the widget and choose Edit to pick another.</string>
     <plurals name="widget_configure_task_count">
         <item quantity="one">%d task</item>
