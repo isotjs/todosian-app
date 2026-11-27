@@ -21,6 +21,7 @@ interface AppSettingsRepository {
     fun setTodoGrouping(grouping: TodoGrouping)
     fun setTodoSort(sort: TodoSort)
     fun setNewTodoFilePosition(position: NewTodoFilePosition)
+    fun setEnableQuickAdd(enabled: Boolean)
 
     fun setEnableTasksPluginSupport(enabled: Boolean)
 
@@ -108,6 +109,10 @@ class SharedPrefsAppSettingsRepository(
 
     override fun setNewTodoFilePosition(position: NewTodoFilePosition) {
         prefs.edit { putString(KEY_NEW_TODO_FILE_POSITION, position.name) }
+    }
+
+    override fun setEnableQuickAdd(enabled: Boolean) {
+        prefs.edit { putBoolean(KEY_ENABLE_QUICK_ADD, enabled) }
     }
 
     override fun setEnableTasksPluginSupport(enabled: Boolean) {
@@ -206,6 +211,7 @@ class SharedPrefsAppSettingsRepository(
             todoGrouping = todoGrouping,
             todoSort = todoSort,
             newTodoFilePosition = newTodoFilePosition,
+            enableQuickAdd = prefs.getBoolean(KEY_ENABLE_QUICK_ADD, false),
             enableTasksPluginSupport = prefs.getBoolean(KEY_TASKS_PLUGIN, false),
             tasksPluginUseEmojisInUi = prefs.getBoolean(KEY_TASKS_PLUGIN_UI_EMOJIS, false),
             createdMarker = prefs.getString(KEY_CREATED_MARKER, null)?.takeIf { it.isNotBlank() },
@@ -236,6 +242,7 @@ class SharedPrefsAppSettingsRepository(
         private const val KEY_TODO_GROUPING = "todo_grouping"
         private const val KEY_TODO_SORT = "todo_sort"
         private const val KEY_NEW_TODO_FILE_POSITION = "new_todo_file_position"
+        private const val KEY_ENABLE_QUICK_ADD = "enable_quick_add"
 
         private const val KEY_TASKS_PLUGIN = "tasks_plugin_support"
 

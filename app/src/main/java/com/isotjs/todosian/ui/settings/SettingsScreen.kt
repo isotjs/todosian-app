@@ -128,6 +128,7 @@ fun SettingsScreen(
     var showTodoSortSheet by remember { mutableStateOf(false) }
     var showNewTodoFilePositionSheet by remember { mutableStateOf(false) }
     var showDefaultAddTaskFileSheet by remember { mutableStateOf(false) }
+    var showQuickAddCategorySheet by remember { mutableStateOf(false) }
 
     var launchCategoryUri by remember { mutableStateOf(preferencesManager.getDefaultLaunchCategoryUri()) }
     val launchCategoryName by produceState<String?>(initialValue = null, launchCategoryUri) {
@@ -139,6 +140,11 @@ fun SettingsScreen(
     var defaultAddTaskFileUri by remember { mutableStateOf(preferencesManager.getDefaultAddTaskFileUri()) }
     val defaultAddTaskFileName by produceState<String?>(initialValue = null, defaultAddTaskFileUri) {
         value = defaultAddTaskFileUri?.let { fileRepository.getDisplayName(it).getOrNull()?.removeSuffix(".md") }
+    }
+
+    var quickAddCategoryUri by remember { mutableStateOf(preferencesManager.getQuickAddCategoryUri()) }
+    val quickAddCategoryName by produceState<String?>(initialValue = null, quickAddCategoryUri) {
+        value = quickAddCategoryUri?.let { fileRepository.getDisplayName(it).getOrNull()?.removeSuffix(".md") }
     }
 
     val reminderTimeLabel = remember(settings.reminderTimeHour, settings.reminderTimeMinute) {
@@ -319,6 +325,34 @@ fun SettingsScreen(
         )
     }
 
+    if (showQuickAddCategorySheet) {
+        val categories by produceState(initialValue = emptyList<Category>()) {
+            value = fileRepository.getCategories().getOrDefault(emptyList())
+        }
+        SettingsChoiceSheet(
+            title = stringResource(R.string.settings_quick_add_category),
+            options = listOf(
+                ChoiceOption<Uri?>(
+                    value = null,
+                    label = stringResource(R.string.settings_quick_add_category_ask),
+                    icon = Icons.Filled.Widgets,
+                ),
+            ) + categories.map {
+                ChoiceOption(value = it.uri, label = it.displayName)
+            },
+            selected = quickAddCategoryUri,
+            onSelect = { uri ->
+                if (uri == null) {
+                    preferencesManager.clearQuickAddCategoryUri()
+                } else {
+                    preferencesManager.saveQuickAddCategoryUri(uri)
+                }
+                quickAddCategoryUri = uri
+            },
+            onDismiss = { showQuickAddCategorySheet = false },
+        )
+    }
+
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     Scaffold(
@@ -393,8 +427,10 @@ fun SettingsScreen(
                         settings = settings,
                         appSettingsRepository = appSettingsRepository,
                         defaultAddTaskFileName = defaultAddTaskFileName,
+                        quickAddCategoryName = quickAddCategoryName,
                         onOpenNewTodoFilePosition = { showNewTodoFilePositionSheet = true },
                         onOpenDefaultAddTaskFile = { showDefaultAddTaskFileSheet = true },
+                        onOpenQuickAddCategory = { showQuickAddCategorySheet = true },
                     )
                 }
 
@@ -627,8 +663,10 @@ private fun AddingTasksSection(
     settings: AppSettings,
     appSettingsRepository: AppSettingsRepository,
     defaultAddTaskFileName: String?,
+    quickAddCategoryName: String?,
     onOpenNewTodoFilePosition: () -> Unit,
     onOpenDefaultAddTaskFile: () -> Unit,
+    onOpenQuickAddCategory: () -> Unit,
 ) {
     SettingsSection(
         title = stringResource(R.string.settings_section_adding_tasks),
@@ -641,6 +679,28 @@ private fun AddingTasksSection(
             subtitle = newTodoFilePositionLabel(settings.newTodoFilePosition),
             onClick = onOpenNewTodoFilePosition,
         )
+
+        SettingsDivider()
+
+        SettingsSwitchRow(
+            icon = Icons.AutoMirrored.Filled.PlaylistAdd,
+            title = stringResource(R.string.settings_quick_add_enabled),
+            subtitle = stringResource(R.string.settings_quick_add_enabled_subtitle),
+            checked = settings.enableQuickAdd,
+            onCheckedChange = { appSettingsRepository.setEnableQuickAdd(it) },
+        )
+
+        if (settings.enableQuickAdd) {
+            SettingsDivider()
+
+            SettingsNavRow(
+                icon = Icons.Filled.Folder,
+                title = stringResource(R.string.settings_quick_add_category),
+                subtitle = quickAddCategoryName
+                    ?: stringResource(R.string.settings_quick_add_category_ask),
+                onClick = onOpenQuickAddCategory,
+            )
+        }
 
         SettingsDivider()
 

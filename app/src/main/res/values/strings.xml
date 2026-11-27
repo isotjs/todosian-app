@@ -30,6 +30,11 @@
     <string name="home_create_category">Create category</string>
     <string name="home_new_category_title">New category</string>
     <string name="home_new_category_hint">Category name</string>
+    <string name="home_quick_add_hint">Add a task…</string>
+    <string name="home_quick_add_category_title">Choose a category</string>
+    <string name="home_quick_add_category_subtitle">Your task will be added to the selected category.</string>
+    <string name="home_quick_add_success">Task added to %1$s.</string>
+    <string name="home_quick_add_send">Add task</string>
     <string name="home_category_action_rename">Rename</string>
     <string name="home_category_action_delete">Delete</string>
     <string name="home_rename_category_title">Rename category</string>
@@ -211,6 +216,10 @@
     <string name="settings_new_todo_file_position_bottom">Bottom of file</string>
     <string name="settings_default_add_task_file">Add task widget opens</string>
     <string name="settings_default_add_task_file_ask">Ask every time</string>
+    <string name="settings_quick_add_enabled">Quick add on Home</string>
+    <string name="settings_quick_add_enabled_subtitle">Show a task field at the bottom of Home.</string>
+    <string name="settings_quick_add_category">Default quick-add category</string>
+    <string name="settings_quick_add_category_ask">Prompt each time</string>
 
     <string name="settings_enable_tasks_plugin_support">Enable Tasks Plugin Support</string>
     <string name="settings_enable_tasks_plugin_support_subtitle">Parse and edit Obsidian Tasks metadata (dates, priority, recurrence).</string>
