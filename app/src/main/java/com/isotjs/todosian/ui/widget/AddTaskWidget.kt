@@ -10,6 +10,7 @@ import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
 import androidx.glance.LocalContext
+import androidx.glance.currentState
 import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
@@ -22,21 +23,25 @@ import androidx.glance.layout.fillMaxSize
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
+import androidx.glance.state.PreferencesGlanceStateDefinition
 import com.isotjs.todosian.MainActivity
 import com.isotjs.todosian.R
 
 class AddTaskWidget : GlanceAppWidget() {
 
+    override val stateDefinition = PreferencesGlanceStateDefinition
+
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         provideContent {
-            GlanceTheme {
-                AddTaskContent()
+            val appearance = WidgetAppearance.from(currentState())
+            GlanceTheme(colors = widgetColorProviders(appearance.theme)) {
+                AddTaskContent(backgroundAlpha = appearance.backgroundAlpha)
             }
         }
     }
 
     @Composable
-    private fun AddTaskContent() {
+    private fun AddTaskContent(backgroundAlpha: Float) {
         val context = LocalContext.current
         val openAddTaskAction = actionStartActivity(
             Intent(context, MainActivity::class.java).apply {
@@ -49,7 +54,7 @@ class AddTaskWidget : GlanceAppWidget() {
             modifier = GlanceModifier
                 .fillMaxSize()
                 .appWidgetBackground()
-                .background(GlanceTheme.colors.primaryContainer)
+                .background(GlanceTheme.colors.primaryContainer.getColor(context).copy(alpha = backgroundAlpha))
                 .clickable(openAddTaskAction)
                 .semantics {
                     contentDescription = context.getString(R.string.widget_add_task)

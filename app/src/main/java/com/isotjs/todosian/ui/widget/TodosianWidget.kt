@@ -65,8 +65,9 @@ class TodosianWidget : GlanceAppWidget() {
             // every change, which triggers exactly one recomposition with fresh data. The content
             // never touches the file system itself.
             val snapshot = WidgetSnapshot.fromPreferences(currentState())
+            val appearance = WidgetAppearance.from(currentState())
 
-            GlanceTheme {
+            GlanceTheme(colors = widgetColorProviders(appearance.theme)) {
                 WidgetContent(
                     hasFolder = snapshot?.hasFolder ?: false,
                     items = snapshot?.items.orEmpty(),
@@ -74,6 +75,7 @@ class TodosianWidget : GlanceAppWidget() {
                     title = snapshot?.title,
                     selectedCategoryUri = snapshot?.selectedCategoryUri,
                     missingList = snapshot?.missingList ?: false,
+                    backgroundAlpha = appearance.backgroundAlpha,
                 )
             }
         }
@@ -87,6 +89,7 @@ class TodosianWidget : GlanceAppWidget() {
         title: String?,
         selectedCategoryUri: String?,
         missingList: Boolean,
+        backgroundAlpha: Float,
     ) {
         val context = LocalContext.current
         val openAppAction = actionStartActivity(
@@ -112,7 +115,7 @@ class TodosianWidget : GlanceAppWidget() {
             modifier = GlanceModifier
                 .fillMaxSize()
                 .appWidgetBackground()
-                .background(GlanceTheme.colors.surface)
+                .background(GlanceTheme.colors.surface.getColor(context).copy(alpha = backgroundAlpha))
                 .padding(12.dp),
         ) {
             // Header
